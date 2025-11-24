@@ -91,7 +91,7 @@ export default function Properties() {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const url = `http://localhost:3000/api/properties${queryParams}`;
+      const url = `https://backend.hoomy.site/api/properties${queryParams}`;
       // Protection: bloquer les requêtes vers des endpoints invalides
       if (url.includes('/properties/create') || url.includes('/properties/edit')) {
         throw new Error(`Invalid API endpoint: ${url}`);
@@ -125,7 +125,7 @@ export default function Properties() {
         'Authorization': `Bearer ${token}`,
       };
       
-      const url = `http://localhost:3000/api/favorites`;
+      const url = `https://backend.hoomy.site/api/favorites`;
       const res = await fetch(url, { headers });
       
       if (!res.ok) {
