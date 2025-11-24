@@ -376,7 +376,7 @@ export default function Properties() {
 
       <div>
         <label className="text-sm font-medium mb-2 block">
-          {t('properties.price.max', { price: maxPrice[0].toLocaleString() })}
+          {maxPrice[0] >= 5000 ? '5000+/mois' : `CHF ${maxPrice[0].toLocaleString()}/mois`}
         </label>
         <Slider
           value={maxPrice}
@@ -385,6 +385,7 @@ export default function Properties() {
           min={200}
           step={100}
           data-testid="slider-price"
+          className="cursor-grab active:cursor-grabbing"
         />
       </div>
 
