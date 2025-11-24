@@ -112,14 +112,23 @@ export async function uploadImages(files: File[]): Promise<{ images: { url: stri
   });
 
   if (!response.ok) {
-    let errorMessage = 'Images upload failed';
+    let errorMessage = `Images upload failed (${response.status} ${response.statusText})`;
     try {
-      const errorData = await response.json();
-      errorMessage = errorData.error || errorData.message || errorMessage;
-    } catch {
-      // Si la réponse n'est pas du JSON, utiliser le statusText
+      const text = await response.text();
+      if (text) {
+        try {
+          const errorData = JSON.parse(text);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          // Si ce n'est pas du JSON, utiliser le texte brut
+          errorMessage = text || errorMessage;
+        }
+      }
+    } catch (e) {
+      // Si on ne peut pas lire la réponse, utiliser le statusText
       errorMessage = response.statusText || errorMessage;
     }
+    logger.error('Upload images error:', errorMessage, 'Status:', response.status);
     throw new Error(errorMessage);
   }
 
