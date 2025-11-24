@@ -10,13 +10,19 @@ if (window.location.pathname.startsWith('/index.html/')) {
 }
 
 // Gérer la redirection depuis 404.html
-const redirectPath = sessionStorage.getItem('redirectPath');
-if (redirectPath && window.location.pathname === '/') {
-  sessionStorage.removeItem('redirectPath');
-  // Utiliser replaceState pour mettre à jour l'URL sans recharger
-  window.history.replaceState(null, '', redirectPath);
-  // Déclencher un événement popstate pour que le router réagisse
-  window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
+// Attendre que le DOM soit prêt avant de gérer la redirection
+if (typeof window !== 'undefined') {
+  const redirectPath = sessionStorage.getItem('redirectPath');
+  if (redirectPath && window.location.pathname === '/') {
+    sessionStorage.removeItem('redirectPath');
+    // Utiliser replaceState pour mettre à jour l'URL sans recharger
+    // Attendre un peu pour que le router soit initialisé
+    setTimeout(() => {
+      window.history.replaceState(null, '', redirectPath);
+      // Déclencher un événement popstate pour que le router réagisse
+      window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
+    }, 0);
+  }
 }
 
 createRoot(document.getElementById("root")!).render(
