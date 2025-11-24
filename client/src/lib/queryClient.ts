@@ -1,7 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAuthToken } from "./auth";
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'https://backend.hoomy.site/api';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
