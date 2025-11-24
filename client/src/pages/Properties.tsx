@@ -512,13 +512,18 @@ export default function Properties() {
               )}
               {maxPrice[0] < 5000 && (
                 <Badge variant="outline" className="gap-1">
-                  Max: CHF {maxPrice[0].toLocaleString()}
+                  {maxPrice[0].toLocaleString()}/mois
                   <button
                     onClick={() => setMaxPrice([5000])}
                     className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
                   >
                     <X className="h-3 w-3" />
                   </button>
+                </Badge>
+              )}
+              {maxPrice[0] >= 5000 && (
+                <Badge variant="outline">
+                  5000+/mois
                 </Badge>
               )}
               {minRooms && minRooms !== '___all___' && (
