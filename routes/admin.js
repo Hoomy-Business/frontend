@@ -29,6 +29,37 @@ const requireAdmin = (req, res, next) => {
 };
 
 // =========================================
+// FONCTION HELPER: LOGGER LES ACTIONS ADMIN
+// =========================================
+async function logAdminAction(client, adminId, actionType, targetType, targetId, targetEmail, targetName, description, metadata = null, req = null) {
+    try {
+        const ipAddress = req ? (req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip) : null;
+        const userAgent = req ? req.headers['user-agent'] : null;
+        
+        await client.query(`
+            INSERT INTO admin_logs (
+                admin_id, action_type, target_type, target_id, target_email, target_name,
+                description, metadata, ip_address, user_agent
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `, [
+            adminId,
+            actionType,
+            targetType,
+            targetId,
+            targetEmail,
+            targetName,
+            description,
+            metadata ? JSON.stringify(metadata) : null,
+            ipAddress,
+            userAgent
+        ]);
+    } catch (error) {
+        // Ne pas bloquer l'action si le log échoue
+        console.error('⚠️ Erreur lors de l\'enregistrement du log:', error.message);
+    }
+}
+
+// =========================================
 // ROUTE: STATISTIQUES KYC (DOIT ÊTRE AVANT /kyc/:id)
 // =========================================
 router.get('/kyc/stats', authenticateToken, requireAdmin, async (req, res) => {
@@ -213,6 +244,22 @@ router.put('/kyc/:id/approve', authenticateToken, requireAdmin, async (req, res)
             WHERE id = $1
         `, [kycCheck.rows[0].user_id]);
 
+        // Logger l'action
+        const userInfo = await client.query('SELECT email, first_name, last_name FROM users WHERE id = $1', [kycCheck.rows[0].user_id]);
+        const user = userInfo.rows[0];
+        await logAdminAction(
+            client,
+            req.user.id,
+            'kyc_approve',
+            'kyc',
+            id,
+            user?.email,
+            user ? `${user.first_name} ${user.last_name}` : null,
+            `KYC approuvé pour ${user ? `${user.first_name} ${user.last_name}` : `utilisateur ${kycCheck.rows[0].user_id}`}`,
+            { kyc_id: id, user_id: kycCheck.rows[0].user_id },
+            req
+        );
+
         res.json({ 
             message: 'KYC approuvé avec succès',
             kyc_id: id
@@ -271,6 +318,22 @@ router.put('/kyc/:id/reject', authenticateToken, requireAdmin, async (req, res) 
             SET kyc_verified = FALSE 
             WHERE id = $1
         `, [kycCheck.rows[0].user_id]);
+
+        // Logger l'action
+        const userInfo = await client.query('SELECT email, first_name, last_name FROM users WHERE id = $1', [kycCheck.rows[0].user_id]);
+        const user = userInfo.rows[0];
+        await logAdminAction(
+            client,
+            req.user.id,
+            'kyc_reject',
+            'kyc',
+            id,
+            user?.email,
+            user ? `${user.first_name} ${user.last_name}` : null,
+            `KYC rejeté pour ${user ? `${user.first_name} ${user.last_name}` : `utilisateur ${kycCheck.rows[0].user_id}`}. Raison: ${reason.trim()}`,
+            { kyc_id: id, user_id: kycCheck.rows[0].user_id, reason: reason.trim() },
+            req
+        );
 
         res.json({ 
             message: 'KYC rejeté avec succès',
@@ -479,6 +542,22 @@ router.post('/users/:id/ban', authenticateToken, requireAdmin, async (req, res) 
             WHERE id = $3
         `, [bannedUntil, reason.trim(), id]);
 
+        // Logger l'action
+        const userInfo = await client.query('SELECT email, first_name, last_name FROM users WHERE id = $1', [id]);
+        const user = userInfo.rows[0];
+        await logAdminAction(
+            client,
+            req.user.id,
+            'user_ban',
+            'user',
+            id,
+            user?.email,
+            user ? `${user.first_name} ${user.last_name}` : null,
+            `Utilisateur banni pour ${days} jour(s). Raison: ${reason.trim()}`,
+            { user_id: id, days: parseInt(days), reason: reason.trim(), banned_until: bannedUntil.toISOString() },
+            req
+        );
+
         res.json({ 
             message: 'Utilisateur banni avec succès',
             banned_until: bannedUntil.toISOString()
@@ -509,6 +588,22 @@ router.post('/users/:id/unban', authenticateToken, requireAdmin, async (req, res
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = $1
         `, [id]);
+
+        // Logger l'action
+        const userInfo = await client.query('SELECT email, first_name, last_name FROM users WHERE id = $1', [id]);
+        const user = userInfo.rows[0];
+        await logAdminAction(
+            client,
+            req.user.id,
+            'user_unban',
+            'user',
+            id,
+            user?.email,
+            user ? `${user.first_name} ${user.last_name}` : null,
+            `Utilisateur débanni`,
+            { user_id: id },
+            req
+        );
 
         res.json({ message: 'Utilisateur débanni avec succès' });
     } catch (error) {
@@ -558,6 +653,22 @@ router.post('/users/:id/mute', authenticateToken, requireAdmin, async (req, res)
             WHERE id = $3
         `, [mutedUntil, reason.trim(), id]);
 
+        // Logger l'action
+        const userInfo = await client.query('SELECT email, first_name, last_name FROM users WHERE id = $1', [id]);
+        const user = userInfo.rows[0];
+        await logAdminAction(
+            client,
+            req.user.id,
+            'user_mute',
+            'user',
+            id,
+            user?.email,
+            user ? `${user.first_name} ${user.last_name}` : null,
+            `Utilisateur muté pour ${hours} heure(s). Raison: ${reason.trim()}`,
+            { user_id: id, hours: parseInt(hours), reason: reason.trim(), muted_until: mutedUntil.toISOString() },
+            req
+        );
+
         res.json({ 
             message: 'Utilisateur muté avec succès',
             muted_until: mutedUntil.toISOString()
@@ -588,6 +699,22 @@ router.post('/users/:id/unmute', authenticateToken, requireAdmin, async (req, re
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = $1
         `, [id]);
+
+        // Logger l'action
+        const userInfo = await client.query('SELECT email, first_name, last_name FROM users WHERE id = $1', [id]);
+        const user = userInfo.rows[0];
+        await logAdminAction(
+            client,
+            req.user.id,
+            'user_unmute',
+            'user',
+            id,
+            user?.email,
+            user ? `${user.first_name} ${user.last_name}` : null,
+            `Utilisateur démuté`,
+            { user_id: id },
+            req
+        );
 
         res.json({ message: 'Utilisateur démuté avec succès' });
     } catch (error) {
@@ -622,8 +749,26 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
             return res.status(403).json({ error: 'Impossible de supprimer votre propre compte' });
         }
 
+        // Logger l'action AVANT la suppression
+        const userInfo = await client.query('SELECT email, first_name, last_name, role FROM users WHERE id = $1', [id]);
+        const user = userInfo.rows[0];
+        
         // Supprimer l'utilisateur (CASCADE supprimera les données liées)
         await client.query('DELETE FROM users WHERE id = $1', [id]);
+
+        // Logger l'action
+        await logAdminAction(
+            client,
+            req.user.id,
+            'user_delete',
+            'user',
+            id,
+            user?.email,
+            user ? `${user.first_name} ${user.last_name}` : null,
+            `Utilisateur supprimé définitivement (rôle: ${user?.role || 'inconnu'})`,
+            { user_id: id, user_role: user?.role },
+            req
+        );
 
         res.json({ message: 'Utilisateur supprimé avec succès' });
     } catch (error) {
@@ -668,12 +813,107 @@ router.delete('/properties/:id', authenticateToken, requireAdmin, async (req, re
             }
         });
 
+        // Logger l'action AVANT la suppression
+        const propertyInfo = await client.query('SELECT title, owner_id FROM properties WHERE id = $1', [id]);
+        const property = propertyInfo.rows[0];
+        const ownerInfo = property ? await client.query('SELECT email, first_name, last_name FROM users WHERE id = $1', [property.owner_id]) : null;
+        const owner = ownerInfo?.rows[0];
+
         // Supprimer la propriété
         await client.query('DELETE FROM properties WHERE id = $1', [id]);
+
+        // Logger l'action
+        await logAdminAction(
+            client,
+            req.user.id,
+            'property_delete',
+            'property',
+            id,
+            owner?.email,
+            property?.title || null,
+            `Propriété "${property?.title || 'ID ' + id}" supprimée définitivement`,
+            { property_id: id, property_title: property?.title, owner_id: property?.owner_id },
+            req
+        );
 
         res.json({ message: 'Propriété supprimée avec succès' });
     } catch (error) {
         console.error('❌ Erreur suppression propriété:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    } finally {
+        client.release();
+    }
+});
+
+// =========================================
+// ROUTE: RÉCUPÉRER LES LOGS ADMINISTRATIFS
+// =========================================
+router.get('/logs', authenticateToken, requireAdmin, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { limit = 100, offset = 0, action_type, target_type } = req.query;
+        
+        let query = `
+            SELECT 
+                l.*,
+                u.email as admin_email,
+                u.first_name as admin_first_name,
+                u.last_name as admin_last_name
+            FROM admin_logs l
+            LEFT JOIN users u ON l.admin_id = u.id
+            WHERE 1=1
+        `;
+        const params = [];
+        let paramCount = 1;
+
+        if (action_type) {
+            query += ` AND l.action_type = $${paramCount}`;
+            params.push(action_type);
+            paramCount++;
+        }
+
+        if (target_type) {
+            query += ` AND l.target_type = $${paramCount}`;
+            params.push(target_type);
+            paramCount++;
+        }
+
+        query += ` ORDER BY l.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+        params.push(parseInt(limit), parseInt(offset));
+
+        const result = await client.query(query, params);
+
+        // Compter le total
+        let countQuery = `
+            SELECT COUNT(*) as total
+            FROM admin_logs
+            WHERE 1=1
+        `;
+        const countParams = [];
+        let countParamCount = 1;
+
+        if (action_type) {
+            countQuery += ` AND action_type = $${countParamCount}`;
+            countParams.push(action_type);
+            countParamCount++;
+        }
+
+        if (target_type) {
+            countQuery += ` AND target_type = $${countParamCount}`;
+            countParams.push(target_type);
+            countParamCount++;
+        }
+
+        const countResult = await client.query(countQuery, countParams);
+
+        res.json({
+            logs: result.rows,
+            total: parseInt(countResult.rows[0].total),
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+    } catch (error) {
+        console.error('❌ Erreur récupération logs:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     } finally {
         client.release();

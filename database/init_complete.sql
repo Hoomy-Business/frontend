@@ -511,6 +511,31 @@ CREATE TABLE owner_stripe_accounts (
 CREATE INDEX idx_owner_stripe_accounts_user ON owner_stripe_accounts(user_id);
 
 -- =========================================
+-- TABLE LOGS ADMINISTRATIFS
+-- =========================================
+DROP TABLE IF EXISTS admin_logs CASCADE;
+CREATE TABLE admin_logs (
+    id BIGSERIAL PRIMARY KEY,
+    admin_id BIGINT NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    action_type VARCHAR(50) NOT NULL,
+    target_type VARCHAR(50) NOT NULL,
+    target_id BIGINT,
+    target_email VARCHAR(100),
+    target_name VARCHAR(255),
+    description TEXT NOT NULL,
+    metadata JSONB,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_admin_logs_admin ON admin_logs(admin_id);
+CREATE INDEX idx_admin_logs_action ON admin_logs(action_type);
+CREATE INDEX idx_admin_logs_target_type ON admin_logs(target_type);
+CREATE INDEX idx_admin_logs_target_id ON admin_logs(target_id);
+CREATE INDEX idx_admin_logs_created_at ON admin_logs(created_at DESC);
+
+-- =========================================
 -- FONCTIONS ET TRIGGERS
 -- =========================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
