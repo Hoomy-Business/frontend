@@ -1,7 +1,15 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAuthToken } from "./auth";
 
-const API_BASE_URL = 'http://localhost:3000/api';
+// Use environment variable or fallback to localhost
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
+// Helper function to prevent double slashes in URLs
+function normalizeUrl(base: string, endpoint: string): string {
+  const baseClean = base.replace(/\/+$/, ''); // Remove trailing slashes
+  const endpointClean = endpoint.replace(/^\/+/, ''); // Remove leading slashes
+  return `${baseClean}/${endpointClean}`;
+}
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -33,7 +41,7 @@ export async function apiRequest<T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  const fullUrl = url.startsWith('http') ? url : normalizeUrl(API_BASE_URL, url);
 
   // Protection: bloquer les requêtes vers des endpoints invalides
   if (fullUrl.includes('/properties/create') || fullUrl.includes('/properties/edit')) {
@@ -97,7 +105,7 @@ export const getQueryFn: <T>(options: {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    const fullUrl = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+    const fullUrl = endpoint.startsWith('http') ? endpoint : normalizeUrl(API_BASE_URL, endpoint);
 
     // Protection: bloquer les requêtes vers des endpoints invalides (déjà fait plus haut, mais double vérification)
     if (fullUrl.includes('/properties/create') || fullUrl.includes('/properties/edit')) {

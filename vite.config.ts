@@ -44,6 +44,7 @@ export default defineConfig({
             '@radix-ui/react-dialog',
             '@radix-ui/react-dropdown-menu',
             '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
             '@radix-ui/react-toast',
             '@radix-ui/react-tooltip',
           ],
@@ -51,6 +52,9 @@ export default defineConfig({
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
+          if (!assetInfo.name) {
+            return `assets/[name]-[hash][extname]`;
+          }
           const info = assetInfo.name.split('.');
           const ext = info[info.length - 1];
           if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
@@ -72,6 +76,8 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    // Proxy désactivé - les requêtes vont directement vers https://backend.hoomy.site/api
+    // Le problème CORS doit être résolu côté backend avec les en-têtes appropriés
   },
   optimizeDeps: {
     include: [
@@ -79,6 +85,7 @@ export default defineConfig({
       'react-dom',
       'wouter',
       '@tanstack/react-query',
+      '@radix-ui/react-tabs',
     ],
   },
 });

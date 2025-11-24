@@ -1,6 +1,6 @@
 import { useRoute, useLocation, Link } from 'wouter';
 import { useMemo, useCallback, useState, useEffect } from 'react';
-import { MapPin, Home, Bath, Maximize, Calendar, Mail, Phone, CheckCircle2, ArrowLeft, Heart, Send } from 'lucide-react';
+import { MapPin, Home, Bath, Maximize, Calendar, Mail, Phone, CheckCircle2, ArrowLeft, Heart, Send, Shield, Star, Clock, Users, Sparkles } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,8 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
@@ -95,11 +97,13 @@ export default function PropertyDetail() {
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 15, // 15 minutes
+    refetchOnMount: true, // Toujours refetch pour avoir l'état à jour
   });
 
   const isFavorited = useMemo(() => {
     if (!favorites || !numericPropertyId) return false;
-    return favorites.some(fav => fav.id === numericPropertyId);
+    // Comparaison robuste en convertissant les deux en nombres
+    return favorites.some(fav => Number(fav.id) === Number(numericPropertyId));
   }, [favorites, numericPropertyId]);
 
   const addFavoriteMutation = useMutation({
@@ -109,7 +113,11 @@ export default function PropertyDetail() {
       const previousFavorites = queryClient.getQueryData<Property[]>(['/favorites']);
       
       if (previousFavorites && property) {
-        queryClient.setQueryData<Property[]>(['/favorites'], [...previousFavorites, property]);
+        // Vérifier que la propriété n'est pas déjà dans les favoris
+        const isAlreadyFavorite = previousFavorites.some(fav => Number(fav.id) === Number(propertyId));
+        if (!isAlreadyFavorite) {
+          queryClient.setQueryData<Property[]>(['/favorites'], [...previousFavorites, property]);
+        }
       }
       
       return { previousFavorites };
@@ -129,7 +137,9 @@ export default function PropertyDetail() {
         title: 'Success',
         description: 'Property added to favorites',
       });
+      // Invalider et refetch immédiatement pour avoir l'état à jour
       queryClient.invalidateQueries({ queryKey: ['/favorites'] });
+      queryClient.refetchQueries({ queryKey: ['/favorites'] });
     },
   });
 
@@ -140,9 +150,10 @@ export default function PropertyDetail() {
       const previousFavorites = queryClient.getQueryData<Property[]>(['/favorites']);
       
       if (previousFavorites) {
+        // Comparaison robuste en convertissant les deux en nombres
         queryClient.setQueryData<Property[]>(
           ['/favorites'],
-          previousFavorites.filter(p => p.id !== propertyId)
+          previousFavorites.filter(p => Number(p.id) !== Number(propertyId))
         );
       }
       
@@ -163,7 +174,9 @@ export default function PropertyDetail() {
         title: 'Success',
         description: 'Property removed from favorites',
       });
+      // Invalider et refetch immédiatement pour avoir l'état à jour
       queryClient.invalidateQueries({ queryKey: ['/favorites'] });
+      queryClient.refetchQueries({ queryKey: ['/favorites'] });
     },
   });
 
@@ -231,11 +244,22 @@ export default function PropertyDetail() {
   if (!property) {
     return (
       <MainLayout>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <h1 className="text-2xl font-bold mb-4">Property Not Found</h1>
-          <Link href="/properties">
-            <Button>Browse Properties</Button>
-          </Link>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="max-w-md mx-auto text-center">
+            <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
+              <Home className="h-12 w-12 text-muted-foreground" />
+            </div>
+            <h1 className="text-3xl font-bold mb-3">Propriété introuvable</h1>
+            <p className="text-muted-foreground mb-6">
+              La propriété que vous recherchez n'existe pas ou a été supprimée.
+            </p>
+            <Link href="/properties">
+              <Button size="lg">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Retour aux propriétés
+              </Button>
+            </Link>
+          </div>
         </div>
       </MainLayout>
     );
@@ -335,55 +359,135 @@ export default function PropertyDetail() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-primary" data-testid="text-property-price">
-                    CHF {property.price.toLocaleString()}
+                  <div className="flex items-baseline justify-end gap-2 mb-1">
+                    <div className="text-3xl font-bold text-primary" data-testid="text-property-price">
+                      CHF {property.price.toLocaleString()}
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Excellent prix
+                    </Badge>
                   </div>
-                  <div className="text-sm text-muted-foreground">per month</div>
+                  <div className="text-sm text-muted-foreground flex items-center justify-end gap-1">
+                    <Clock className="h-3 w-3" />
+                    par mois
+                  </div>
+                  {property.rooms && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      ≈ CHF {Math.round(property.price / (property.rooms || 1)).toLocaleString()}/pièce
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4 mb-4">
-                {property.rooms && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Home className="h-5 w-5" />
-                    <span>{property.rooms} rooms</span>
-                  </div>
-                )}
-                {property.bathrooms && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Bath className="h-5 w-5" />
-                    <span>{property.bathrooms} bathroom{property.bathrooms > 1 ? 's' : ''}</span>
-                  </div>
-                )}
-                {property.surface_area && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Maximize className="h-5 w-5" />
-                    <span>{property.surface_area}m²</span>
-                  </div>
-                )}
-                {property.available_from && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="h-5 w-5" />
-                    <span>Available from {new Date(property.available_from).toLocaleDateString()}</span>
-                  </div>
-                )}
-              </div>
+              <TooltipProvider>
+                <div className="flex flex-wrap gap-4 mb-4">
+                  {property.rooms && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-help">
+                          <Home className="h-5 w-5 text-primary" />
+                          <span className="font-medium">{property.rooms}</span>
+                          <span className="text-muted-foreground">pièce{property.rooms > 1 ? 's' : ''}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Nombre de pièces</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {property.bathrooms && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-help">
+                          <Bath className="h-5 w-5 text-primary" />
+                          <span className="font-medium">{property.bathrooms}</span>
+                          <span className="text-muted-foreground">salle{property.bathrooms > 1 ? 's' : ''} de bain</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Nombre de salles de bain</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {property.surface_area && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-help">
+                          <Maximize className="h-5 w-5 text-primary" />
+                          <span className="font-medium">{property.surface_area}</span>
+                          <span className="text-muted-foreground">m²</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Surface habitable</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {property.available_from && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-help">
+                          <Calendar className="h-5 w-5 text-primary" />
+                          <span className="text-muted-foreground">Disponible dès</span>
+                          <span className="font-medium">{new Date(property.available_from).toLocaleDateString('fr-CH')}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Date de disponibilité</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </TooltipProvider>
 
-              <div className="flex gap-2">
-                <Badge>{property.property_type}</Badge>
-                <Badge variant={property.status === 'available' ? 'default' : 'secondary'}>
-                  {property.status}
+              <div className="flex flex-wrap gap-2 items-center">
+                <Badge variant="outline" className="gap-1">
+                  <Home className="h-3 w-3" />
+                  {property.property_type}
                 </Badge>
+                <Badge variant={property.status === 'available' ? 'default' : 'secondary'} className="gap-1">
+                  {property.status === 'available' ? (
+                    <>
+                      <CheckCircle2 className="h-3 w-3" />
+                      Disponible
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-3 w-3" />
+                      {property.status}
+                    </>
+                  )}
+                </Badge>
+                {property.email_verified && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Shield className="h-3 w-3" />
+                    Propriétaire vérifié
+                  </Badge>
+                )}
               </div>
             </div>
 
             <Separator />
 
             <div>
-              <h2 className="text-xl font-semibold mb-3">{t('property.description')}</h2>
-              <p className="text-muted-foreground leading-relaxed font-serif" data-testid="text-description">
-                {property.description || t('property.description.empty')}
-              </p>
+              <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                <Star className="h-5 w-5 text-primary" />
+                {t('property.description')}
+              </h2>
+              {property.description ? (
+                <div className="prose prose-sm max-w-none">
+                  <p className="text-muted-foreground leading-relaxed font-serif whitespace-pre-wrap" data-testid="text-description">
+                    {property.description}
+                  </p>
+                </div>
+              ) : (
+                <Alert>
+                  <AlertDescription>
+                    <p className="text-muted-foreground italic">{t('property.description.empty')}</p>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </div>
 
@@ -431,20 +535,28 @@ export default function PropertyDetail() {
                 <Separator />
 
                 {canContact ? (
-                  <div className="space-y-3">
-                    {isAuthenticated && isStudent && (
-                      <Button
-                        className="w-full"
-                        variant={isFavorited ? "default" : "outline"}
-                        size="lg"
-                        onClick={handleFavoriteToggle}
-                        disabled={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
-                        data-testid="button-favorite-sidebar"
-                      >
-                        <Heart className={`h-4 w-4 mr-2 ${isFavorited ? 'fill-current' : ''}`} />
-                        {isFavorited ? t('property.favorite.remove') : t('property.favorite.add')}
-                      </Button>
-                    )}
+                  <TooltipProvider>
+                    <div className="space-y-3">
+                      {isAuthenticated && isStudent && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              className="w-full"
+                              variant={isFavorited ? "default" : "outline"}
+                              size="lg"
+                              onClick={handleFavoriteToggle}
+                              disabled={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
+                              data-testid="button-favorite-sidebar"
+                            >
+                              <Heart className={`h-4 w-4 mr-2 transition-all ${isFavorited ? 'fill-current animate-pulse' : ''}`} />
+                              {isFavorited ? t('property.favorite.remove') : t('property.favorite.add')}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{isFavorited ? 'Retirer des favoris' : 'Ajouter aux favoris'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
                       <DialogTrigger asChild>
                         <Button className="w-full" size="lg" data-testid="button-send-request">
@@ -454,7 +566,10 @@ export default function PropertyDetail() {
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>{t('property.request')}</DialogTitle>
+                          <DialogTitle className="flex items-center gap-2">
+                            <Send className="h-5 w-5 text-primary" />
+                            {t('property.request')}
+                          </DialogTitle>
                           <DialogDescription>
                             {t('property.request.message')}
                           </DialogDescription>
@@ -466,6 +581,9 @@ export default function PropertyDetail() {
                             onChange={(e) => setRequestMessage(e.target.value)}
                             className="min-h-[100px]"
                           />
+                          <p className="text-xs text-muted-foreground mt-2">
+                            💡 Soyez poli et mentionnez votre situation d'étudiant
+                          </p>
                         </div>
                         <DialogFooter>
                           <Button variant="outline" onClick={() => setIsRequestDialogOpen(false)}>
@@ -475,7 +593,17 @@ export default function PropertyDetail() {
                             onClick={handleSendRequest}
                             disabled={sendRequestMutation.isPending || !requestMessage.trim()}
                           >
-                            {sendRequestMutation.isPending ? t('property.request.sending') : t('property.request.send')}
+                            {sendRequestMutation.isPending ? (
+                              <>
+                                <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                {t('property.request.sending')}
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4 mr-2" />
+                                {t('property.request.send')}
+                              </>
+                            )}
                           </Button>
                         </DialogFooter>
                       </DialogContent>
@@ -491,20 +619,28 @@ export default function PropertyDetail() {
                       <Mail className="h-4 w-4 mr-2" />
                       {t('property.contact')}
                     </Button>
-                  </div>
+                    </div>
+                  </TooltipProvider>
                 ) : !isAuthenticated ? (
-                  <div className="text-center space-y-2">
-                    <p className="text-sm text-muted-foreground">{t('property.signin')}</p>
-                    <Link href="/login">
-                      <Button className="w-full" size="lg">
-                        {t('property.signin.button')}
-                      </Button>
-                    </Link>
-                  </div>
+                  <Alert>
+                    <Users className="h-4 w-4" />
+                    <AlertDescription className="text-center">
+                      <p className="font-medium mb-2">{t('property.signin')}</p>
+                      <Link href="/login">
+                        <Button className="w-full" size="lg">
+                          {t('property.signin.button')}
+                        </Button>
+                      </Link>
+                    </AlertDescription>
+                  </Alert>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center">
-                    {user?.id === property.owner_id ? t('property.owner.own') : t('property.owner.student')}
-                  </p>
+                  <Alert>
+                    <AlertDescription className="text-center">
+                      <p className="text-sm text-muted-foreground">
+                        {user?.id === property.owner_id ? t('property.owner.own') : t('property.owner.student')}
+                      </p>
+                    </AlertDescription>
+                  </Alert>
                 )}
               </CardContent>
             </Card>

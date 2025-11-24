@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Search, MapPin, Shield, CreditCard, CheckCircle, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Shield, CreditCard, CheckCircle, ArrowRight, Sparkles, TrendingUp, Users, Home, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { MainLayout } from '@/components/MainLayout';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api';
@@ -88,39 +89,57 @@ export default function Landing() {
               {t('landing.hero.subtitle')}
             </p>
 
-            <Card className="bg-background/95 backdrop-blur">
+            <Card className="bg-background/95 backdrop-blur border-2 shadow-2xl">
               <CardContent className="p-6">
+                <div className="mb-4 text-center">
+                  <Badge variant="secondary" className="mb-2">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Recherche rapide
+                  </Badge>
+                  <p className="text-sm text-muted-foreground">
+                    Trouvez votre logement étudiant en quelques clics
+                  </p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Select value={selectedCanton} onValueChange={setSelectedCanton}>
-                    <SelectTrigger data-testid="select-canton">
-                      <SelectValue placeholder={t('landing.search.canton')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cantons?.map((canton) => (
-                        <SelectItem key={canton.code} value={canton.code}>
-                          {getCantonName(canton)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Canton</label>
+                    <Select value={selectedCanton} onValueChange={setSelectedCanton}>
+                      <SelectTrigger data-testid="select-canton" className="h-12">
+                        <SelectValue placeholder={t('landing.search.canton')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cantons?.map((canton) => (
+                          <SelectItem key={canton.code} value={canton.code}>
+                            {getCantonName(canton)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                  <Input 
-                    type="number"
-                    placeholder={t('landing.search.budget')}
-                    value={maxBudget}
-                    onChange={(e) => setMaxBudget(e.target.value)}
-                    data-testid="input-budget"
-                  />
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Budget maximum</label>
+                    <Input 
+                      type="number"
+                      placeholder={t('landing.search.budget')}
+                      value={maxBudget}
+                      onChange={(e) => setMaxBudget(e.target.value)}
+                      data-testid="input-budget"
+                      className="h-12"
+                    />
+                  </div>
 
-                  <Button 
-                    onClick={handleSearch} 
-                    size="lg" 
-                    className="w-full"
-                    data-testid="button-search"
-                  >
-                    <Search className="h-4 w-4 mr-2" />
-                    {t('landing.search.button')}
-                  </Button>
+                  <div className="flex items-end">
+                    <Button 
+                      onClick={handleSearch} 
+                      size="lg" 
+                      className="w-full h-12"
+                      data-testid="button-search"
+                    >
+                      <Search className="h-4 w-4 mr-2" />
+                      {t('landing.search.button')}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -177,35 +196,50 @@ export default function Landing() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
-                <Search className="h-8 w-8" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">{t('landing.how.step1.title')}</h3>
-              <p className="text-muted-foreground">
-                {t('landing.how.step1.desc')}
-              </p>
-            </div>
+            <Card className="text-center hover-elevate transition-all border-2 hover:border-primary/50">
+              <CardContent className="p-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4 relative">
+                  <Search className="h-8 w-8" />
+                  <Badge variant="default" className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center text-xs">
+                    1
+                  </Badge>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">{t('landing.how.step1.title')}</h3>
+                <p className="text-muted-foreground">
+                  {t('landing.how.step1.desc')}
+                </p>
+              </CardContent>
+            </Card>
 
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
-                <Shield className="h-8 w-8" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">{t('landing.how.step2.title')}</h3>
-              <p className="text-muted-foreground">
-                {t('landing.how.step2.desc')}
-              </p>
-            </div>
+            <Card className="text-center hover-elevate transition-all border-2 hover:border-primary/50">
+              <CardContent className="p-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4 relative">
+                  <Shield className="h-8 w-8" />
+                  <Badge variant="default" className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center text-xs">
+                    2
+                  </Badge>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">{t('landing.how.step2.title')}</h3>
+                <p className="text-muted-foreground">
+                  {t('landing.how.step2.desc')}
+                </p>
+              </CardContent>
+            </Card>
 
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
-                <CreditCard className="h-8 w-8" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">{t('landing.how.step3.title')}</h3>
-              <p className="text-muted-foreground">
-                {t('landing.how.step3.desc')}
-              </p>
-            </div>
+            <Card className="text-center hover-elevate transition-all border-2 hover:border-primary/50">
+              <CardContent className="p-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4 relative">
+                  <CreditCard className="h-8 w-8" />
+                  <Badge variant="default" className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center text-xs">
+                    3
+                  </Badge>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">{t('landing.how.step3.title')}</h3>
+                <p className="text-muted-foreground">
+                  {t('landing.how.step3.desc')}
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -217,29 +251,45 @@ export default function Landing() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
-            <div className="flex flex-col items-center text-center">
-              <CheckCircle className="h-12 w-12 text-primary mb-3" />
-              <h3 className="font-semibold mb-2">{t('landing.why.verified')}</h3>
-              <p className="text-sm text-muted-foreground">{t('landing.why.verified.desc')}</p>
-            </div>
+            <Card className="flex flex-col items-center text-center hover-elevate transition-all">
+              <CardContent className="p-6">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-4">
+                  <Shield className="h-7 w-7" />
+                </div>
+                <h3 className="font-semibold mb-2">{t('landing.why.verified')}</h3>
+                <p className="text-sm text-muted-foreground">{t('landing.why.verified.desc')}</p>
+              </CardContent>
+            </Card>
 
-            <div className="flex flex-col items-center text-center">
-              <CheckCircle className="h-12 w-12 text-primary mb-3" />
-              <h3 className="font-semibold mb-2">{t('landing.why.secure')}</h3>
-              <p className="text-sm text-muted-foreground">{t('landing.why.secure.desc')}</p>
-            </div>
+            <Card className="flex flex-col items-center text-center hover-elevate transition-all">
+              <CardContent className="p-6">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-4">
+                  <CreditCard className="h-7 w-7" />
+                </div>
+                <h3 className="font-semibold mb-2">{t('landing.why.secure')}</h3>
+                <p className="text-sm text-muted-foreground">{t('landing.why.secure.desc')}</p>
+              </CardContent>
+            </Card>
 
-            <div className="flex flex-col items-center text-center">
-              <CheckCircle className="h-12 w-12 text-primary mb-3" />
-              <h3 className="font-semibold mb-2">{t('landing.why.locations')}</h3>
-              <p className="text-sm text-muted-foreground">{t('landing.why.locations.desc')}</p>
-            </div>
+            <Card className="flex flex-col items-center text-center hover-elevate transition-all">
+              <CardContent className="p-6">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-4">
+                  <MapPin className="h-7 w-7" />
+                </div>
+                <h3 className="font-semibold mb-2">{t('landing.why.locations')}</h3>
+                <p className="text-sm text-muted-foreground">{t('landing.why.locations.desc')}</p>
+              </CardContent>
+            </Card>
 
-            <div className="flex flex-col items-center text-center">
-              <CheckCircle className="h-12 w-12 text-primary mb-3" />
-              <h3 className="font-semibold mb-2">{t('landing.why.student')}</h3>
-              <p className="text-sm text-muted-foreground">{t('landing.why.student.desc')}</p>
-            </div>
+            <Card className="flex flex-col items-center text-center hover-elevate transition-all">
+              <CardContent className="p-6">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-4">
+                  <Users className="h-7 w-7" />
+                </div>
+                <h3 className="font-semibold mb-2">{t('landing.why.student')}</h3>
+                <p className="text-sm text-muted-foreground">{t('landing.why.student.desc')}</p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>

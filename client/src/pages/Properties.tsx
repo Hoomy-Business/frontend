@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearch, useLocation } from 'wouter';
 import { getAuthToken, useAuth } from '@/lib/auth';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Home, TrendingUp, Sparkles, Filter } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { apiRequest } from '@/lib/api';
@@ -25,12 +27,12 @@ export default function Properties() {
   const { t, getCantonName, getCityName } = useLanguage();
   
   const [selectedCanton, setSelectedCanton] = useState(params.get('canton') || '___all___');
-  const [selectedCity, setSelectedCity] = useState('___all___');
-  const [propertyType, setPropertyType] = useState('___all___');
-  const [maxPrice, setMaxPrice] = useState([5000]);
-  const [minRooms, setMinRooms] = useState('___all___');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [selectedCity, setSelectedCity] = useState(params.get('city_id') || '___all___');
+  const [propertyType, setPropertyType] = useState(params.get('property_type') || '___all___');
+  const [maxPrice, setMaxPrice] = useState([params.get('max_price') ? parseInt(params.get('max_price')!) : 5000]);
+  const [minRooms, setMinRooms] = useState(params.get('min_rooms') || '___all___');
+  const [searchQuery, setSearchQuery] = useState(params.get('search') || '');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(params.get('search') || '');
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Debounce search query
@@ -48,6 +50,38 @@ export default function Properties() {
       }
     };
   }, [searchQuery]);
+
+  // Update URL when filters change (debounced to avoid too many updates)
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    // Skip on initial mount to avoid overriding URL params
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    const timeoutId = setTimeout(() => {
+      const filters: Record<string, string> = {};
+      if (selectedCanton && selectedCanton !== '___all___') filters.canton = selectedCanton;
+      if (selectedCity && selectedCity !== '___all___') filters.city_id = selectedCity;
+      if (propertyType && propertyType !== '___all___') filters.property_type = propertyType;
+      if (maxPrice[0] < 5000) filters.max_price = maxPrice[0].toString();
+      if (minRooms && minRooms !== '___all___') filters.min_rooms = minRooms;
+      if (debouncedSearchQuery.trim()) filters.search = debouncedSearchQuery.trim();
+      
+      const queryString = new URLSearchParams(filters).toString();
+      const newPath = queryString ? `/properties?${queryString}` : '/properties';
+      const newSearch = queryString ? `?${queryString}` : '';
+      
+      // Only update if different from current location
+      const currentSearch = search || '';
+      if (currentSearch !== newSearch) {
+        setLocation(newPath);
+      }
+    }, 300); // Debounce URL updates
+    
+    return () => clearTimeout(timeoutId);
+  }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, debouncedSearchQuery, setLocation, search]);
 
   const { data: cantons } = useQuery<Canton[]>({
     queryKey: ['/locations/cantons'],
@@ -76,11 +110,12 @@ export default function Properties() {
     if (propertyType && propertyType !== '___all___') filters.property_type = propertyType;
     if (maxPrice[0] < 5000) filters.max_price = maxPrice[0].toString();
     if (minRooms && minRooms !== '___all___') filters.min_rooms = minRooms;
+    if (debouncedSearchQuery.trim()) filters.search = debouncedSearchQuery.trim();
     const queryString = new URLSearchParams(filters).toString();
     return queryString ? `?${queryString}` : '';
-  }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms]);
+  }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, debouncedSearchQuery]);
   
-  const { data: properties, isLoading } = useQuery<Property[]>({
+  const { data: properties, isLoading, error } = useQuery<Property[]>({
     queryKey: ['/properties', queryParams],
     // S'assurer que queryParams ne contient jamais "create"
     enabled: !queryParams.includes('create'),
@@ -91,7 +126,11 @@ export default function Properties() {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const url = `http://localhost:3000/api/properties${queryParams}`;
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const baseClean = apiBase.replace(/\/+$/, '');
+      const endpointClean = `/properties${queryParams}`.replace(/^\/+/, '');
+      const url = `${baseClean}/${endpointClean}`;
+      
       // Protection: bloquer les requêtes vers des endpoints invalides
       if (url.includes('/properties/create') || url.includes('/properties/edit')) {
         throw new Error(`Invalid API endpoint: ${url}`);
@@ -125,7 +164,9 @@ export default function Properties() {
         'Authorization': `Bearer ${token}`,
       };
       
-      const url = `http://localhost:3000/api/favorites`;
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const baseClean = apiBase.replace(/\/+$/, '');
+      const url = `${baseClean}/favorites`;
       const res = await fetch(url, { headers });
       
       if (!res.ok) {
@@ -371,30 +412,162 @@ export default function Properties() {
         {t('properties.clear')}
       </Button>
     </div>
-  ), [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, cantons, cities, handleCantonChange, handleClearFilters]);
+  ), [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, cantons, cities, handleCantonChange, handleClearFilters, t, getCantonName, getCityName]);
+
+  // Compter les filtres actifs
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (selectedCanton && selectedCanton !== '___all___') count++;
+    if (selectedCity && selectedCity !== '___all___') count++;
+    if (propertyType && propertyType !== '___all___') count++;
+    if (maxPrice[0] < 5000) count++;
+    if (minRooms && minRooms !== '___all___') count++;
+    if (debouncedSearchQuery.trim()) count++;
+    return count;
+  }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, debouncedSearchQuery]);
+
+  // Prix moyen des propriétés
+  const averagePrice = useMemo(() => {
+    if (!filteredProperties || filteredProperties.length === 0) return 0;
+    const sum = filteredProperties.reduce((acc, p) => acc + (p.price || 0), 0);
+    return Math.round(sum / filteredProperties.length);
+  }, [filteredProperties]);
 
   return (
     <MainLayout>
       <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         <div className="mb-4 sm:mb-6 md:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2" data-testid="text-page-title">{t('properties.title')}</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            {filteredProperties.length === 1 
-              ? t('properties.subtitle.singular', { count: filteredProperties.length })
-              : t('properties.subtitle.plural', { count: filteredProperties.length })}
-          </p>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 flex items-center gap-3" data-testid="text-page-title">
+                <Home className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+                {t('properties.title')}
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-pulse">Chargement...</span>
+                  </span>
+                ) : filteredProperties.length === 1 ? (
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    {t('properties.subtitle.singular', { count: filteredProperties.length })}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    {t('properties.subtitle.plural', { count: filteredProperties.length })}
+                    {averagePrice > 0 && (
+                      <span className="ml-2 text-primary font-semibold">
+                        • Prix moyen: CHF {averagePrice.toLocaleString()}/mois
+                      </span>
+                    )}
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Badges des filtres actifs */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <Badge variant="secondary" className="gap-1">
+                <Filter className="h-3 w-3" />
+                {activeFiltersCount} filtre{activeFiltersCount > 1 ? 's' : ''} actif{activeFiltersCount > 1 ? 's' : ''}
+              </Badge>
+              {selectedCanton && selectedCanton !== '___all___' && cantons && (
+                <Badge variant="outline" className="gap-1">
+                  {getCantonName(cantons.find(c => c.code === selectedCanton) || { code: selectedCanton, name_fr: selectedCanton, name_de: selectedCanton })}
+                  <button
+                    onClick={() => handleCantonChange('___all___')}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {selectedCity && selectedCity !== '___all___' && cities && (
+                <Badge variant="outline" className="gap-1">
+                  {getCityName(cities.find(c => c.id.toString() === selectedCity)?.name || '')}
+                  <button
+                    onClick={() => setSelectedCity('___all___')}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {propertyType && propertyType !== '___all___' && (
+                <Badge variant="outline" className="gap-1">
+                  {propertyType}
+                  <button
+                    onClick={() => setPropertyType('___all___')}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {maxPrice[0] < 5000 && (
+                <Badge variant="outline" className="gap-1">
+                  Max: CHF {maxPrice[0].toLocaleString()}
+                  <button
+                    onClick={() => setMaxPrice([5000])}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {minRooms && minRooms !== '___all___' && (
+                <Badge variant="outline" className="gap-1">
+                  {minRooms}+ pièces
+                  <button
+                    onClick={() => setMinRooms('___all___')}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {debouncedSearchQuery.trim() && (
+                <Badge variant="outline" className="gap-1">
+                  "{debouncedSearchQuery}"
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                className="h-6 text-xs"
+              >
+                Tout effacer
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
           <aside className="hidden lg:block w-64 flex-shrink-0">
-            <Card className="sticky top-20">
-              <CardHeader>
+            <Card className="sticky top-20 border-2">
+              <CardHeader className="bg-muted/50">
                 <CardTitle className="flex items-center gap-2">
-                  <SlidersHorizontal className="h-5 w-5" />
+                  <SlidersHorizontal className="h-5 w-5 text-primary" />
                   {t('properties.filters')}
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="default" className="ml-auto">
+                      {activeFiltersCount}
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 {filtersContent}
               </CardContent>
             </Card>
@@ -415,10 +588,15 @@ export default function Properties() {
               
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="outline" className="lg:hidden h-9 sm:h-10 active:scale-95 transition-transform duration-100">
+                  <Button variant="outline" className="lg:hidden h-9 sm:h-10 active:scale-95 transition-transform duration-100 relative">
                     <SlidersHorizontal className="h-4 w-4 mr-2" />
                     <span className="hidden xs:inline">{t('properties.filters')}</span>
                     <span className="xs:hidden">Filters</span>
+                    {activeFiltersCount > 0 && (
+                      <Badge variant="default" className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                        {activeFiltersCount}
+                      </Badge>
+                    )}
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left">
@@ -432,7 +610,28 @@ export default function Properties() {
               </Sheet>
             </div>
 
-            {isLoading ? (
+            {error ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold mb-1">Erreur de chargement</p>
+                      <p className="text-sm">{error instanceof Error ? error.message : 'Erreur inconnue'}</p>
+                      <p className="text-xs mt-2 text-muted-foreground">
+                        URL: {import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/properties{queryParams}
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => queryClient.invalidateQueries({ queryKey: ['/properties'] })}
+                    >
+                      Réessayer
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            ) : isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <Card key={i}>
@@ -446,9 +645,27 @@ export default function Properties() {
                 ))}
               </div>
             ) : filteredProperties.length === 0 ? (
-              <Card className="p-6 sm:p-8 md:p-12 text-center">
-                <p className="text-base sm:text-lg text-muted-foreground">{t('properties.empty')}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-2">{t('properties.empty.subtitle')}</p>
+              <Card className="p-6 sm:p-8 md:p-12 text-center border-dashed">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                    <Search className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">{t('properties.empty')}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">{t('properties.empty.subtitle')}</p>
+                    {activeFiltersCount > 0 && (
+                      <Alert className="max-w-md mx-auto mb-4">
+                        <AlertDescription className="text-center">
+                          Aucune propriété ne correspond à vos critères. Essayez de modifier vos filtres.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    <Button onClick={handleClearFilters} variant="outline">
+                      <X className="h-4 w-4 mr-2" />
+                      Réinitialiser les filtres
+                    </Button>
+                  </div>
+                </div>
               </Card>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">

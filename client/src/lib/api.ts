@@ -1,6 +1,14 @@
 import { getAuthToken } from './auth';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+// Use environment variable or fallback to localhost
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
+// Helper function to prevent double slashes in URLs
+function normalizeUrl(base: string, endpoint: string): string {
+  const baseClean = base.replace(/\/+$/, ''); // Remove trailing slashes
+  const endpointClean = endpoint.replace(/^\/+/, ''); // Remove leading slashes
+  return `${baseClean}/${endpointClean}`;
+}
 
 export async function apiRequest<T = any>(
   method: string,
@@ -25,7 +33,7 @@ export async function apiRequest<T = any>(
     config.body = JSON.stringify(data);
   }
 
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  const url = endpoint.startsWith('http') ? endpoint : normalizeUrl(API_BASE_URL, endpoint);
   
   // Protection: bloquer les requêtes vers des endpoints invalides
   if (url.includes('/properties/create') || url.includes('/properties/edit')) {
@@ -39,6 +47,13 @@ export async function apiRequest<T = any>(
   
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
+    
+    // Gestion spéciale pour les erreurs 429 (Too Many Requests)
+    if (response.status === 429) {
+      const retryAfter = errorData.retryAfter || 60;
+      throw new Error(`Trop de requêtes. Veuillez réessayer dans ${retryAfter} secondes.`);
+    }
+    
     throw new Error(errorData.error || errorData.message || 'Request failed');
   }
 
@@ -60,7 +75,7 @@ export async function uploadImage(file: File): Promise<{ url: string; filename: 
   const formData = new FormData();
   formData.append('image', file);
 
-  const response = await fetch(`${API_BASE_URL}/upload/image`, {
+  const response = await fetch(normalizeUrl(API_BASE_URL, '/upload/image'), {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -82,7 +97,7 @@ export async function uploadImages(files: File[]): Promise<{ images: { url: stri
     formData.append('images', file);
   });
 
-  const response = await fetch(`${API_BASE_URL}/upload/images`, {
+  const response = await fetch(normalizeUrl(API_BASE_URL, '/upload/images'), {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,

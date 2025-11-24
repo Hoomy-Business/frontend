@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function OwnerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('properties');
 
   const { data: properties, isLoading: propertiesLoading } = useQuery<Property[]>({
@@ -259,17 +260,17 @@ export default function OwnerDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {properties.map((property) => (
                   <div key={property.id} className="relative">
-                    <PropertyCard property={property} />
-                    <div className="absolute top-3 right-3 flex gap-2 z-10">
+                    <PropertyCard property={property} hideFavoriteButton={true} />
+                    <div className="absolute top-3 right-3 flex gap-2 z-50">
                       <Link href={`/properties/${property.id}/edit`}>
-                        <Button size="icon" variant="secondary" className="bg-background/90 backdrop-blur" data-testid={`button-edit-${property.id}`}>
+                        <Button size="icon" variant="secondary" className="bg-background/90 backdrop-blur shadow-md hover:shadow-lg" data-testid={`button-edit-${property.id}`}>
                           <Edit className="h-4 w-4" />
                         </Button>
                       </Link>
                       <Button 
                         size="icon" 
                         variant="secondary"
-                        className="bg-background/90 backdrop-blur hover:bg-destructive hover:text-destructive-foreground"
+                        className="bg-background/90 backdrop-blur hover:bg-destructive hover:text-destructive-foreground shadow-md hover:shadow-lg"
                         onClick={() => {
                           if (confirm('Are you sure you want to delete this property?')) {
                             deletePropertyMutation.mutate(property.id);
@@ -588,6 +589,7 @@ function ProfileEditForm({
   updateProfileMutation: any; 
   changePasswordMutation: any;
 }) {
+  const { t } = useLanguage();
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [profileData, setProfileData] = useState({

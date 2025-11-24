@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { Heart, MessageSquare, FileText, User, Building2, Inbox, X } from 'lucide-react';
+import { Heart, MessageSquare, FileText, User, Building2, Inbox, X, Sparkles, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth, getAuthToken } from '@/lib/auth';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
@@ -36,7 +37,9 @@ export default function StudentDashboard() {
         'Authorization': `Bearer ${token}`,
       };
       
-      const url = `http://localhost:3000/api/favorites`;
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const baseClean = apiBase.replace(/\/+$/, '');
+      const url = `${baseClean}/favorites`;
       const res = await fetch(url, { headers });
       
       if (!res.ok) {
@@ -101,10 +104,43 @@ export default function StudentDashboard() {
     <MainLayout>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2" data-testid="text-dashboard-title">
-            {t('dashboard.student.welcome', { name: user?.first_name || '' })}
-          </h1>
-          <p className="text-muted-foreground">{t('dashboard.student.manage')}</p>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2 flex items-center gap-3" data-testid="text-dashboard-title">
+                <Sparkles className="h-7 w-7 text-primary" />
+                {t('dashboard.student.welcome', { name: user?.first_name || '' })}
+              </h1>
+              <p className="text-muted-foreground flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                {t('dashboard.student.manage')}
+              </p>
+            </div>
+            {/* Statistiques rapides */}
+            <div className="hidden md:flex gap-3">
+              {favorites && favorites.length > 0 && (
+                <Card className="px-4 py-2 border-primary/20">
+                  <div className="flex items-center gap-2">
+                    <Heart className="h-4 w-4 text-primary" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Favoris</div>
+                      <div className="text-lg font-bold">{favorites.length}</div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+              {contracts && contracts.length > 0 && (
+                <Card className="px-4 py-2 border-primary/20">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Contrats</div>
+                      <div className="text-lg font-bold">{contracts.length}</div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -139,15 +175,25 @@ export default function StudentDashboard() {
               </CardHeader>
               <CardContent>
                 {favoritesError ? (
-                  <div className="text-center py-12">
-                    <p className="text-destructive mb-2">Error loading favorites</p>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {favoritesError instanceof Error ? favoritesError.message : 'Unknown error'}
-                    </p>
-                    <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['/favorites'] })}>
-                      Retry
-                    </Button>
-                  </div>
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold mb-1">Erreur de chargement</p>
+                          <p className="text-sm">
+                            {favoritesError instanceof Error ? favoritesError.message : 'Erreur inconnue'}
+                          </p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => queryClient.invalidateQueries({ queryKey: ['/favorites'] })}
+                        >
+                          Réessayer
+                        </Button>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
                 ) : favoritesLoading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[1, 2, 3].map((i) => (
@@ -156,13 +202,18 @@ export default function StudentDashboard() {
                   </div>
                 ) : !favorites || favorites.length === 0 ? (
                   <div className="text-center py-12">
-                    <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                      <Heart className="h-10 w-10 text-muted-foreground" />
+                    </div>
                     <h3 className="font-semibold text-lg mb-2">{t('dashboard.student.favorites.empty')}</h3>
-                    <p className="text-muted-foreground mb-4">
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                       {t('dashboard.student.favorites.empty.desc')}
                     </p>
                     <Link href="/properties">
-                      <Button>{t('messages.browse')}</Button>
+                      <Button size="lg">
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        {t('messages.browse')}
+                      </Button>
                     </Link>
                   </div>
                 ) : (
@@ -196,35 +247,45 @@ export default function StudentDashboard() {
                   </div>
                 ) : !sentRequests || sentRequests.length === 0 ? (
                   <div className="text-center py-12">
-                    <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                      <Inbox className="h-10 w-10 text-muted-foreground" />
+                    </div>
                     <h3 className="font-semibold text-lg mb-2">{t('dashboard.student.requests.empty')}</h3>
-                    <p className="text-muted-foreground mb-4">
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                       {t('dashboard.student.requests.empty.desc')}
                     </p>
                     <Link href="/properties">
-                      <Button>Browse Properties</Button>
+                      <Button size="lg">
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Browse Properties
+                      </Button>
                     </Link>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {sentRequests.map((req) => (
-                      <Card key={req.id}>
+                      <Card key={req.id} className="hover-elevate transition-all">
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex-1">
-                              <h4 className="font-semibold text-lg">{req.property_title}</h4>
-                              <p className="text-sm text-muted-foreground mb-2">
-                                {req.city_name} • CHF {req.price?.toLocaleString()}/month
+                              <h4 className="font-semibold text-lg mb-1">{req.property_title}</h4>
+                              <p className="text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                                <Building2 className="h-3 w-3" />
+                                {req.city_name} • CHF {req.price?.toLocaleString()}/mois
                               </p>
-                              <p className="text-sm bg-muted p-3 rounded-md">
-                                "{req.message}"
-                              </p>
+                              <div className="bg-muted/50 p-3 rounded-md border-l-4 border-primary">
+                                <p className="text-sm italic">
+                                  "{req.message}"
+                                </p>
+                              </div>
                             </div>
                             <Badge variant={
                               req.status === 'accepted' ? 'default' :
                               req.status === 'pending' ? 'secondary' :
                               'destructive'
-                            }>
+                            } className="gap-1">
+                              {req.status === 'accepted' && <CheckCircle2 className="h-3 w-3" />}
+                              {req.status === 'pending' && <Clock className="h-3 w-3" />}
                               {req.status}
                             </Badge>
                           </div>
@@ -270,13 +331,18 @@ export default function StudentDashboard() {
                   </div>
                 ) : !conversations || conversations.length === 0 ? (
                   <div className="text-center py-12">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                      <MessageSquare className="h-10 w-10 text-muted-foreground" />
+                    </div>
                     <h3 className="font-semibold text-lg mb-2">{t('dashboard.student.messages.empty')}</h3>
-                    <p className="text-muted-foreground mb-4">
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                       {t('dashboard.student.messages.empty.desc')}
                     </p>
                     <Link href="/properties">
-                      <Button>{t('messages.browse')}</Button>
+                      <Button size="lg">
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        {t('messages.browse')}
+                      </Button>
                     </Link>
                   </div>
                 ) : (
@@ -327,9 +393,11 @@ export default function StudentDashboard() {
                   </div>
                 ) : !contracts || contracts.length === 0 ? (
                   <div className="text-center py-12">
-                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                      <FileText className="h-10 w-10 text-muted-foreground" />
+                    </div>
                     <h3 className="font-semibold text-lg mb-2">{t('dashboard.student.contracts.empty')}</h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground max-w-md mx-auto">
                       {t('dashboard.student.contracts.empty.desc')}
                     </p>
                   </div>

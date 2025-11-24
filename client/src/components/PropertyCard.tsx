@@ -13,9 +13,10 @@ interface PropertyCardProps {
   property: Property;
   onFavoriteToggle?: (propertyId: number) => void;
   isFavorited?: boolean;
+  hideFavoriteButton?: boolean;
 }
 
-export const PropertyCard = memo(function PropertyCard({ property, onFavoriteToggle, isFavorited }: PropertyCardProps) {
+export const PropertyCard = memo(function PropertyCard({ property, onFavoriteToggle, isFavorited, hideFavoriteButton = false }: PropertyCardProps) {
   const imageUrl = normalizeImageUrl(property.main_photo);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -120,15 +121,17 @@ export const PropertyCard = memo(function PropertyCard({ property, onFavoriteTog
           </Badge>
         </div>
 
-        <button
-          type="button"
-          className="absolute top-3 right-3 z-30 rounded-full bg-white p-2 shadow-lg hover:bg-white hover:scale-110 transition-all border border-gray-300 flex items-center justify-center"
-          onClick={handleFavoriteClick}
-          data-testid={`button-favorite-${property.id}`}
-          aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-        >
-          <Heart className={`h-6 w-6 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
-        </button>
+        {!hideFavoriteButton && (
+          <button
+            type="button"
+            className="absolute top-3 right-3 z-30 rounded-full bg-white p-2 shadow-lg hover:bg-white hover:scale-110 transition-all border border-gray-300 flex items-center justify-center"
+            onClick={handleFavoriteClick}
+            data-testid={`button-favorite-${property.id}`}
+            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Heart className={`h-6 w-6 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
+          </button>
+        )}
       </div>
 
       <CardContent className="p-4">

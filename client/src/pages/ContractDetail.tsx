@@ -83,7 +83,9 @@ export default function ContractDetail() {
     if (contractId) {
       // Note: PDF generation route needs to be implemented in backend
       // For now, we'll show a message or redirect to contract details
-      window.open(`http://localhost:3000/api/contracts/${contractId}`, '_blank');
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const baseClean = apiBase.replace(/\/+$/, '');
+      window.open(`${baseClean}/contracts/${contractId}`, '_blank');
     }
   };
 
