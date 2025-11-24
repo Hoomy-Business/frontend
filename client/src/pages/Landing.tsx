@@ -11,10 +11,12 @@ import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api';
 import type { Canton } from '@shared/schema';
 import { useLanguage } from '@/lib/useLanguage';
+import { useAuth } from '@/lib/auth';
 
 export default function Landing() {
   const [, setLocation] = useLocation();
   const { t, getCantonName, getCityName } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const [selectedCanton, setSelectedCanton] = useState('');
   const [maxBudget, setMaxBudget] = useState('');
 
@@ -294,31 +296,33 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="py-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <Card className="bg-primary text-primary-foreground">
-            <CardContent className="p-12 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('landing.cta.title')}</h2>
-              <p className="text-lg mb-6 text-primary-foreground/90">
-                {t('landing.cta.subtitle')}
-              </p>
-              <div className="flex gap-4 justify-center flex-wrap">
-                <Link href="/register?role=student">
-                  <Button size="lg" variant="secondary" data-testid="button-student-signup">
-                    {t('landing.cta.student')}
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </Link>
-                <Link href="/register?role=owner">
-                  <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" data-testid="button-owner-signup">
-                    {t('landing.cta.owner')}
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+      {!isAuthenticated && (
+        <section className="py-16">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <Card className="bg-primary text-primary-foreground">
+              <CardContent className="p-12 text-center">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('landing.cta.title')}</h2>
+                <p className="text-lg mb-6 text-primary-foreground/90">
+                  {t('landing.cta.subtitle')}
+                </p>
+                <div className="flex gap-4 justify-center flex-wrap">
+                  <Link href="/register?role=student">
+                    <Button size="lg" variant="secondary" data-testid="button-student-signup">
+                      {t('landing.cta.student')}
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </Link>
+                  <Link href="/register?role=owner">
+                    <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" data-testid="button-owner-signup">
+                      {t('landing.cta.owner')}
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
     </MainLayout>
   );
 }
