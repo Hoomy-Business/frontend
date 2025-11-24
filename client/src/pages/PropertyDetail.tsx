@@ -200,14 +200,14 @@ export default function PropertyDetail() {
 
   // Move all hooks before any conditional returns
   const images = useMemo(() => {
-    if (!property) return ['/placeholder-property.jpg'];
+    if (!property) return ['data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16"%3EImage non disponible%3C/text%3E%3C/svg%3E'];
     if (property.photos && property.photos.length > 0) {
       return property.photos.map(p => normalizeImageUrl(p.photo_url));
     }
     if (property.main_photo) {
       return [normalizeImageUrl(property.main_photo)];
     }
-    return ['/placeholder-property.jpg'];
+    return ['data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16"%3EImage non disponible%3C/text%3E%3C/svg%3E'];
   }, [property?.photos, property?.main_photo]);
 
   const ownerInitials = useMemo(() => {
@@ -291,7 +291,10 @@ export default function PropertyDetail() {
                         // @ts-expect-error - fetchpriority is a valid HTML attribute but TypeScript types don't include it yet
                         fetchpriority={index === 0 ? 'high' : 'low'}
                         onError={(e) => {
-                          e.currentTarget.src = '/placeholder-property.jpg';
+                          const target = e.currentTarget;
+                          if (!target.src.includes('data:image')) {
+                            target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+                          }
                         }}
                       />
                     </div>
@@ -313,7 +316,10 @@ export default function PropertyDetail() {
                 fetchpriority="high"
                 sizes="100vw"
                 onError={(e) => {
-                  e.currentTarget.src = '/placeholder-property.jpg';
+                  const target = e.currentTarget;
+                  if (!target.src.includes('data:image')) {
+                    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+                  }
                 }}
               />
             </div>

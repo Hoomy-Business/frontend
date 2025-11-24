@@ -70,7 +70,7 @@ export default function Messages() {
         owner_id: parseInt(ownerIdParam),
       });
     }
-  }, [conversationIdParam, propertyIdParam, ownerIdParam, selectedConversation, createConversationMutation.isPending, createConversationMutation.isSuccess]);
+  }, [conversationIdParam, propertyIdParam, ownerIdParam, selectedConversation, createConversationMutation]);
 
   const { data: conversations, isLoading: conversationsLoading } = useQuery<Conversation[]>({
     queryKey: ['/conversations'],

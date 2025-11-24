@@ -77,9 +77,17 @@ export const PropertyCard = memo(function PropertyCard({ property, onFavoriteTog
   }, []);
 
   const handleImageError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.currentTarget;
+    // Si on a déjà essayé le placeholder, ne plus rien faire pour éviter la boucle
+    if (target.src.includes('placeholder') || target.src.includes('data:image')) {
+      setImageError(true);
+      setImageLoaded(true);
+      return;
+    }
     setImageError(true);
     setImageLoaded(true);
-    e.currentTarget.src = '/placeholder-property.jpg';
+    // Utiliser un placeholder SVG inline pour éviter les requêtes HTTP
+    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16"%3EImage non disponible%3C/text%3E%3C/svg%3E';
   }, []);
 
   return (
@@ -98,7 +106,7 @@ export const PropertyCard = memo(function PropertyCard({ property, onFavoriteTog
             {isVisible && (
               <img
                 ref={imageRef}
-                src={imageError ? '/placeholder-property.jpg' : imageUrl}
+                src={imageError ? 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16"%3EImage non disponible%3C/text%3E%3C/svg%3E' : imageUrl}
                 alt={property.title}
                 className={`w-full h-full object-cover transition-all duration-200 group-hover:scale-105 will-change-transform ${
                   imageLoaded ? 'opacity-100' : 'opacity-0'

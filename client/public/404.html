@@ -4,13 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://backend.hoomy.site" crossorigin>
-    <link rel="dns-prefetch" href="https://backend.hoomy.site">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>Hoomy - Find Your Perfect Student Home in Switzerland</title>
-    <meta name="description" content="Discover student housing across Switzerland. Browse verified properties in Zurich, Geneva, Lausanne, and more. Secure rentals with trusted landlords.">
     <script>
       // GitHub Pages redirige les routes non trouvées vers 404.html
       // On doit rediriger vers index.html pour que le router SPA prenne le relais
@@ -20,8 +14,23 @@
       
       // Ignorer les fichiers statiques
       if (!path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|json)$/i)) {
-        // Rediriger vers index.html en préservant le chemin pour le router SPA
-        window.location.replace('/index.html' + path.replace(/^\/index\.html/, '') + search + hash);
+        // Éviter les boucles : ne pas rediriger si on est déjà sur index.html ou /
+        if (path === '/' || path === '/index.html') {
+          return;
+        }
+        
+        // Si le chemin commence par /index.html/, extraire le chemin réel
+        if (path.startsWith('/index.html/')) {
+          const cleanPath = path.replace('/index.html', '');
+          window.location.replace(cleanPath + search + hash);
+          return;
+        }
+        
+        // Stocker le chemin original dans sessionStorage pour le router SPA
+        sessionStorage.setItem('redirectPath', path + search + hash);
+        
+        // Rediriger vers / pour charger index.html
+        window.location.replace('/');
       }
     </script>
   </head>
@@ -33,4 +42,3 @@
     </div>
   </body>
 </html>
-

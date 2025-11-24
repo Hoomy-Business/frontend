@@ -5,9 +5,9 @@ import { getBackendBaseURL } from './apiConfig';
  * Gère les différents formats : URLs complètes, chemins relatifs, ou juste le nom de fichier
  */
 export function normalizeImageUrl(url: string | null | undefined): string {
-  // Si pas d'URL, retourner le placeholder
+  // Si pas d'URL, retourner le placeholder SVG inline
   if (!url || url.trim() === '') {
-    return '/placeholder-property.jpg';
+    return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16"%3EImage non disponible%3C/text%3E%3C/svg%3E';
   }
 
   const trimmedUrl = url.trim();
@@ -86,7 +86,7 @@ export function normalizeImageUrl(url: string | null | undefined): string {
     return `${base}/api/image/${filename}`;
   }
 
-  // Par défaut, retourner le placeholder si on ne peut pas déterminer l'URL
-  return '/placeholder-property.jpg';
+  // Par défaut, retourner le placeholder SVG inline si on ne peut pas déterminer l'URL
+  return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16"%3EImage non disponible%3C/text%3E%3C/svg%3E';
 }
 

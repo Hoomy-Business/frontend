@@ -35,7 +35,7 @@ export default function StudentDashboard() {
         setLocation('/dashboard/owner');
       }
     }
-  }, [isAuthenticated, isStudent, user?.role]);
+  }, [isAuthenticated, isStudent, user?.role, setLocation]);
   const { toast } = useToast();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('favorites');

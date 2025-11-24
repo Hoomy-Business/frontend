@@ -76,9 +76,7 @@ export default function CreateProperty() {
       // Use image_urls if provided, otherwise fall back to photos
       const imageUrls = data.image_urls || data.photos || [];
       
-      // Debug: vérifier que les images sont présentes
       if (!imageUrls || imageUrls.length === 0) {
-        // Images will be handled by backend
         throw new Error('Au moins une image est requise');
       }
       

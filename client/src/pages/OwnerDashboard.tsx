@@ -39,7 +39,7 @@ export default function OwnerDashboard() {
         setLocation('/dashboard/student');
       }
     }
-  }, [isAuthenticated, isOwner, user?.role]);
+  }, [isAuthenticated, isOwner, user?.role, setLocation]);
   const { toast } = useToast();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('properties');

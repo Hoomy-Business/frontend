@@ -44,7 +44,7 @@ export default function AdminDashboard() {
         });
       }, 100);
     }
-  }, [isAuthenticated, isAdmin, setLocation]);
+  }, [isAuthenticated, isAdmin, setLocation, toast]);
 
   const { data: stats } = useQuery<{ stats: { pending_count: string; approved_count: string; rejected_count: string; total_count: string } }>({
     queryKey: ['/admin/kyc/stats'],
