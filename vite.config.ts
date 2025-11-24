@@ -37,7 +37,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router', 'wouter'],
+          'react-vendor': ['react', 'react-dom', 'wouter'],
           'query-vendor': ['@tanstack/react-query'],
           'ui-vendor': [
             '@radix-ui/react-accordion',
