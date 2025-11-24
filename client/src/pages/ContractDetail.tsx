@@ -83,7 +83,7 @@ export default function ContractDetail() {
     if (contractId) {
       // Note: PDF generation route needs to be implemented in backend
       // For now, we'll show a message or redirect to contract details
-      window.open(`http://localhost:3000/api/contracts/${contractId}`, '_blank');
+      window.open(`https://backend.hoomy.site/api/contracts/${contractId}`, '_blank');
     }
   };
 
