@@ -307,8 +307,8 @@ export default function PropertyDetail() {
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <CarouselPrevious className="!left-4 md:!left-6 bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white border-0 shadow-lg h-10 w-10 z-20 hover:scale-110 active:scale-95" />
-              <CarouselNext className="!right-4 md:!right-6 bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white border-0 shadow-lg h-10 w-10 z-20 hover:scale-110 active:scale-95" />
+              <CarouselPrevious className="!left-6 sm:!left-8 md:!left-12 lg:!left-16 bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white border-0 shadow-lg h-10 w-10 z-20 hover:scale-110 active:scale-95" />
+              <CarouselNext className="!right-6 sm:!right-8 md:!right-12 lg:!right-16 bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white border-0 shadow-lg h-10 w-10 z-20 hover:scale-110 active:scale-95" />
             </Carousel>
           ) : (
             <div className="aspect-[16/9] md:aspect-[21/9] overflow-hidden rounded-lg bg-muted">
