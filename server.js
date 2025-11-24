@@ -127,6 +127,9 @@ if (!fs.existsSync(uploadsDir)) {
 // =========================================
 // MIDDLEWARE DE SÉCURITÉ ET PERFORMANCE
 // =========================================
+// Trust proxy pour express-rate-limit (nécessaire derrière un reverse proxy)
+app.set('trust proxy', true);
+
 // Helmet pour sécurité
 app.use(helmet({
     contentSecurityPolicy: false, // Désactivé pour permettre les uploads

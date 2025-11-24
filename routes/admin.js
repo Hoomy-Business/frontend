@@ -327,7 +327,7 @@ async function ensureModerationColumns(client) {
 router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
     const client = await pool.connect();
     try {
-        const [usersStats, propertiesStats, contractsStats] = await Promise.all([
+        const [usersStats, propertiesStats] = await Promise.all([
             client.query(`
                 SELECT 
                     COUNT(*) as total_users,
@@ -343,12 +343,22 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
                     COUNT(*) FILTER (WHERE status = 'pending') as pending_properties,
                     COUNT(*) FILTER (WHERE status = 'rented') as rented_properties
                 FROM properties
-            `),
-            client.query(`
-                SELECT COUNT(*) as total_contracts
-                FROM contracts
             `)
         ]);
+
+        // Vérifier si la table contracts existe
+        let contractsCount = 0;
+        try {
+            const contractsCheck = await client.query(`
+                SELECT COUNT(*) as total_contracts
+                FROM contracts
+            `);
+            contractsCount = parseInt(contractsCheck.rows[0].total_contracts || 0);
+        } catch (contractsError) {
+            // Table contracts n'existe pas encore, utiliser 0
+            console.log('⚠️ Table contracts n\'existe pas encore, utilisation de 0');
+            contractsCount = 0;
+        }
 
         res.json({
             total_users: parseInt(usersStats.rows[0].total_users),
@@ -356,7 +366,7 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
             total_owners: parseInt(usersStats.rows[0].total_owners),
             total_properties: parseInt(propertiesStats.rows[0].total_properties),
             active_properties: parseInt(propertiesStats.rows[0].active_properties),
-            total_contracts: parseInt(contractsStats.rows[0].total_contracts || 0)
+            total_contracts: contractsCount
         });
     } catch (error) {
         console.error('❌ Erreur statistiques générales:', error);
