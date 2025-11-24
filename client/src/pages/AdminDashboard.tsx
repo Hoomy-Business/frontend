@@ -256,7 +256,13 @@ export default function AdminDashboard() {
                                 alt="Carte d'identité recto"
                                 className="w-full h-auto max-h-64 object-contain"
                                 onError={(e) => {
-                                  e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+                                  // Si l'image ne charge pas, essayer avec HTTPS
+                                  const target = e.currentTarget;
+                                  if (target.src.startsWith('http://')) {
+                                    target.src = target.src.replace('http://', 'https://');
+                                  } else {
+                                    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+                                  }
                                 }}
                               />
                               <div className="absolute top-2 right-2">
@@ -282,7 +288,13 @@ export default function AdminDashboard() {
                                 alt="Carte d'identité verso"
                                 className="w-full h-auto max-h-64 object-contain"
                                 onError={(e) => {
-                                  e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+                                  // Si l'image ne charge pas, essayer avec HTTPS
+                                  const target = e.currentTarget;
+                                  if (target.src.startsWith('http://')) {
+                                    target.src = target.src.replace('http://', 'https://');
+                                  } else {
+                                    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+                                  }
                                 }}
                               />
                               <div className="absolute top-2 right-2">

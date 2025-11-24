@@ -345,13 +345,27 @@ export function KYCVerification() {
                     </Button>
                   </label>
                   {idCardFront && (
-                    <span className="text-sm text-muted-foreground">{idCardFront.name}</span>
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={URL.createObjectURL(idCardFront)}
+                        alt="Prévisualisation recto"
+                        className="h-20 w-auto rounded border object-cover"
+                      />
+                      <span className="text-sm text-muted-foreground">{idCardFront.name}</span>
+                    </div>
                   )}
                   {kycStatus?.id_card_front_url && !idCardFront && (
                     <img
                       src={kycStatus.id_card_front_url}
                       alt="Carte d'identité recto"
                       className="h-20 w-auto rounded border"
+                      onError={(e) => {
+                        // Si l'image ne charge pas, essayer avec HTTPS
+                        const target = e.currentTarget;
+                        if (target.src.startsWith('http://')) {
+                          target.src = target.src.replace('http://', 'https://');
+                        }
+                      }}
                     />
                   )}
                 </div>
@@ -380,13 +394,27 @@ export function KYCVerification() {
                     </Button>
                   </label>
                   {idCardBack && (
-                    <span className="text-sm text-muted-foreground">{idCardBack.name}</span>
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={URL.createObjectURL(idCardBack)}
+                        alt="Prévisualisation verso"
+                        className="h-20 w-auto rounded border object-cover"
+                      />
+                      <span className="text-sm text-muted-foreground">{idCardBack.name}</span>
+                    </div>
                   )}
                   {kycStatus?.id_card_back_url && !idCardBack && (
                     <img
                       src={kycStatus.id_card_back_url}
                       alt="Carte d'identité verso"
                       className="h-20 w-auto rounded border"
+                      onError={(e) => {
+                        // Si l'image ne charge pas, essayer avec HTTPS
+                        const target = e.currentTarget;
+                        if (target.src.startsWith('http://')) {
+                          target.src = target.src.replace('http://', 'https://');
+                        }
+                      }}
                     />
                   )}
                 </div>
@@ -493,33 +521,47 @@ export function KYCVerification() {
                   )}
 
                   {selfieFile && !showCamera && (
-                    <div className="flex items-center gap-4">
+                    <div className="mt-4 flex items-center gap-4">
                       <img
                         src={URL.createObjectURL(selfieFile)}
-                        alt="Selfie"
-                        className="h-32 w-auto rounded border"
+                        alt="Prévisualisation selfie"
+                        className="h-32 w-auto rounded border object-cover"
                       />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelfieFile(null);
-                          setShowCamera(true);
-                        }}
-                        disabled={isPending}
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Reprendre
-                      </Button>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{selfieFile.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(selfieFile.size / 1024).toFixed(1)} KB
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => setSelfieFile(null)}
+                          disabled={isPending}
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Supprimer
+                        </Button>
+                      </div>
                     </div>
                   )}
 
                   {kycStatus?.selfie_url && !selfieFile && !showCamera && (
-                    <img
-                      src={kycStatus.selfie_url}
-                      alt="Selfie soumis"
-                      className="h-32 w-auto rounded border"
-                    />
+                    <div className="mt-4">
+                      <img
+                        src={kycStatus.selfie_url}
+                        alt="Selfie soumis"
+                        className="h-32 w-auto rounded border"
+                        onError={(e) => {
+                          // Si l'image ne charge pas, essayer avec HTTPS
+                          const target = e.currentTarget;
+                          if (target.src.startsWith('http://')) {
+                            target.src = target.src.replace('http://', 'https://');
+                          }
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               </div>

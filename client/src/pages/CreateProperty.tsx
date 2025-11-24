@@ -64,9 +64,9 @@ export default function CreateProperty() {
       postal_code: '',
       canton_code: '',
       price: 0,
-      rooms: 0,
-      bathrooms: 0,
-      surface_area: 0,
+      rooms: undefined,
+      bathrooms: undefined,
+      surface_area: undefined,
       available_from: '',
     },
   });
@@ -160,9 +160,9 @@ export default function CreateProperty() {
 
     createPropertyMutation.mutate({
       ...data,
-      rooms: data.rooms || 0,
-      bathrooms: data.bathrooms || 0,
-      surface_area: data.surface_area || 0,
+      rooms: data.rooms ?? undefined,
+      bathrooms: data.bathrooms ?? undefined,
+      surface_area: data.surface_area ?? undefined,
       available_from: data.available_from || null,
       image_urls: imageUrls
     } as any);
@@ -294,7 +294,11 @@ export default function CreateProperty() {
                               {...field} 
                               type="number" 
                               placeholder="1500"
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? undefined : parseFloat(val) || undefined);
+                              }}
                               data-testid="input-price"
                             />
                           </FormControl>
@@ -404,7 +408,11 @@ export default function CreateProperty() {
                               type="number" 
                               step="0.5"
                               placeholder="2.5"
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? undefined : parseFloat(val) || undefined);
+                              }}
                               data-testid="input-rooms"
                             />
                           </FormControl>
@@ -424,7 +432,11 @@ export default function CreateProperty() {
                               {...field} 
                               type="number"
                               placeholder="1"
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? undefined : parseInt(val) || undefined);
+                              }}
                               data-testid="input-bathrooms"
                             />
                           </FormControl>
@@ -444,7 +456,11 @@ export default function CreateProperty() {
                               {...field} 
                               type="number"
                               placeholder="65"
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? undefined : parseInt(val) || undefined);
+                              }}
                               data-testid="input-surface"
                             />
                           </FormControl>

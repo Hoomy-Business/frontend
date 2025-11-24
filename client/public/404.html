@@ -4,8 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://backend.hoomy.site https://api.stripe.com; script-src 'self' 'unsafe-inline' 'unsafe-eval';" />
-    <!-- Preconnect to external resources for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://backend.hoomy.site" crossorigin>
@@ -13,9 +11,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>Hoomy - Find Your Perfect Student Home in Switzerland</title>
     <meta name="description" content="Discover student housing across Switzerland. Browse verified properties in Zurich, Geneva, Lausanne, and more. Secure rentals with trusted landlords.">
+    <script>
+      // GitHub Pages redirige les routes non trouvées vers 404.html
+      // On doit rediriger vers index.html pour que le router SPA prenne le relais
+      const path = window.location.pathname;
+      const search = window.location.search;
+      const hash = window.location.hash;
+      
+      // Ignorer les fichiers statiques
+      if (!path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|json)$/i)) {
+        // Rediriger vers index.html en préservant le chemin pour le router SPA
+        window.location.replace('/index.html' + path.replace(/^\/index\.html/, '') + search + hash);
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="root">
+      <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: system-ui;">
+        <p>Redirection...</p>
+      </div>
+    </div>
   </body>
 </html>
+
