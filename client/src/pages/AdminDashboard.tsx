@@ -55,6 +55,8 @@ export default function AdminDashboard() {
   const [propertySearchQuery, setPropertySearchQuery] = useState('');
   const [userFilterRole, setUserFilterRole] = useState<string>('all');
   const [propertyFilterStatus, setPropertyFilterStatus] = useState<string>('all');
+  const [logActionFilter, setLogActionFilter] = useState<string>('all');
+  const [logTargetFilter, setLogTargetFilter] = useState<string>('all');
   
   // Dialogs state
   const [banDialogOpen, setBanDialogOpen] = useState(false);
@@ -152,6 +154,41 @@ export default function AdminDashboard() {
     queryKey: ['/admin/properties'],
     queryFn: async () => {
       return apiRequest('GET', '/admin/properties');
+    },
+    refetchInterval: 30000,
+  });
+
+  // ==================== LOGS ====================
+  const { data: logsData, isLoading: logsLoading } = useQuery<{
+    logs: Array<{
+      id: number;
+      admin_id: number;
+      action_type: string;
+      target_type: string;
+      target_id: number | null;
+      target_email: string | null;
+      target_name: string | null;
+      description: string;
+      metadata: any;
+      ip_address: string | null;
+      user_agent: string | null;
+      created_at: string;
+      admin_email: string | null;
+      admin_first_name: string | null;
+      admin_last_name: string | null;
+    }>;
+    total: number;
+    limit: number;
+    offset: number;
+  }>({
+    queryKey: ['/admin/logs', logActionFilter, logTargetFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (logActionFilter !== 'all') params.append('action_type', logActionFilter);
+      if (logTargetFilter !== 'all') params.append('target_type', logTargetFilter);
+      params.append('limit', '100');
+      const queryString = params.toString();
+      return apiRequest('GET', `/admin/logs${queryString ? `?${queryString}` : ''}`);
     },
     refetchInterval: 30000,
   });
@@ -1050,13 +1087,159 @@ export default function AdminDashboard() {
                 <CardTitle>Logs d'Activité</CardTitle>
                 <CardDescription>Historique des actions administratives</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Alert>
-                  <FileText className="h-4 w-4" />
-                  <AlertDescription>
-                    Le système de logs sera implémenté prochainement. Cette fonctionnalité permettra de suivre toutes les actions administratives effectuées sur la plateforme.
-                  </AlertDescription>
-                </Alert>
+              <CardContent className="space-y-4">
+                <div className="flex gap-4 flex-col sm:flex-row">
+                  <Select value={logActionFilter} onValueChange={setLogActionFilter}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Filtrer par action" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les actions</SelectItem>
+                      <SelectItem value="kyc_approve">Approbation KYC</SelectItem>
+                      <SelectItem value="kyc_reject">Rejet KYC</SelectItem>
+                      <SelectItem value="user_ban">Bannissement</SelectItem>
+                      <SelectItem value="user_unban">Débannissement</SelectItem>
+                      <SelectItem value="user_mute">Mute</SelectItem>
+                      <SelectItem value="user_unmute">Démute</SelectItem>
+                      <SelectItem value="user_delete">Suppression utilisateur</SelectItem>
+                      <SelectItem value="property_delete">Suppression propriété</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={logTargetFilter} onValueChange={setLogTargetFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filtrer par type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les types</SelectItem>
+                      <SelectItem value="user">Utilisateurs</SelectItem>
+                      <SelectItem value="property">Propriétés</SelectItem>
+                      <SelectItem value="kyc">KYC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {logsLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Skeleton key={i} className="h-20 w-full" />
+                    ))}
+                  </div>
+                ) : !logsData || logsData.logs.length === 0 ? (
+                  <Alert>
+                    <FileText className="h-4 w-4" />
+                    <AlertDescription>
+                      Aucun log d'activité trouvé.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="space-y-3">
+                    {logsData.logs.map((log) => {
+                      const getActionIcon = () => {
+                        switch (log.action_type) {
+                          case 'kyc_approve':
+                            return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+                          case 'kyc_reject':
+                            return <XCircle className="h-4 w-4 text-red-600" />;
+                          case 'user_ban':
+                            return <Ban className="h-4 w-4 text-red-600" />;
+                          case 'user_unban':
+                            return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+                          case 'user_mute':
+                            return <VolumeX className="h-4 w-4 text-orange-600" />;
+                          case 'user_unmute':
+                            return <Volume2 className="h-4 w-4 text-green-600" />;
+                          case 'user_delete':
+                          case 'property_delete':
+                            return <Trash2 className="h-4 w-4 text-red-600" />;
+                          default:
+                            return <FileText className="h-4 w-4 text-muted-foreground" />;
+                        }
+                      };
+
+                      const getActionBadge = () => {
+                        const actionLabels: Record<string, string> = {
+                          'kyc_approve': 'Approbation KYC',
+                          'kyc_reject': 'Rejet KYC',
+                          'user_ban': 'Bannissement',
+                          'user_unban': 'Débannissement',
+                          'user_mute': 'Mute',
+                          'user_unmute': 'Démute',
+                          'user_delete': 'Suppression utilisateur',
+                          'property_delete': 'Suppression propriété',
+                        };
+                        return actionLabels[log.action_type] || log.action_type;
+                      };
+
+                      return (
+                        <Card key={log.id} className="border-l-4 border-l-primary">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  {getActionIcon()}
+                                  <Badge variant="outline">{getActionBadge()}</Badge>
+                                  <Badge variant="secondary">{log.target_type}</Badge>
+                                </div>
+                                <p className="text-sm font-medium mb-1">{log.description}</p>
+                                <div className="flex flex-wrap gap-4 text-xs text-muted-foreground mt-2">
+                                  <span className="flex items-center gap-1">
+                                    <Users className="h-3 w-3" />
+                                    Admin: {log.admin_first_name && log.admin_last_name 
+                                      ? `${log.admin_first_name} ${log.admin_last_name}` 
+                                      : log.admin_email || 'Inconnu'}
+                                  </span>
+                                  {log.target_name && (
+                                    <span className="flex items-center gap-1">
+                                      <Eye className="h-3 w-3" />
+                                      Cible: {log.target_name}
+                                    </span>
+                                  )}
+                                  {log.target_email && (
+                                    <span className="flex items-center gap-1">
+                                      <Mail className="h-3 w-3" />
+                                      {log.target_email}
+                                    </span>
+                                  )}
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {new Date(log.created_at).toLocaleString('fr-FR', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                  {log.ip_address && (
+                                    <span className="flex items-center gap-1">
+                                      <Shield className="h-3 w-3" />
+                                      IP: {log.ip_address}
+                                    </span>
+                                  )}
+                                </div>
+                                {log.metadata && Object.keys(log.metadata).length > 0 && (
+                                  <details className="mt-2">
+                                    <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                                      Détails supplémentaires
+                                    </summary>
+                                    <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto">
+                                      {JSON.stringify(log.metadata, null, 2)}
+                                    </pre>
+                                  </details>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                    {logsData.total > logsData.logs.length && (
+                      <div className="text-center text-sm text-muted-foreground pt-4">
+                        Affichage de {logsData.logs.length} sur {logsData.total} logs
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
