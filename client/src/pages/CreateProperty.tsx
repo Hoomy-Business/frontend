@@ -611,7 +611,7 @@ export default function CreateProperty() {
 
                     {selectedFiles.length > 0 && (
                       <div className="mt-4">
-                        <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border-2 border-border group">
+                        <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border-2 border-border">
                           <img
                             src={URL.createObjectURL(selectedFiles[currentImageIndex])}
                             alt={`Preview ${currentImageIndex + 1}`}
@@ -642,14 +642,15 @@ export default function CreateProperty() {
                               type="button"
                               size="icon"
                               variant="secondary"
-                              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-lg"
+                              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/60 hover:bg-black/80 text-white border-0 shadow-xl h-10 w-10 rounded-full transition-all"
                               onClick={() => {
                                 setCurrentImageIndex((prev) => 
                                   prev === 0 ? selectedFiles.length - 1 : prev - 1
                                 );
                               }}
+                              aria-label="Image précédente"
                             >
-                              <ChevronLeft className="h-6 w-6" />
+                              <ChevronLeft className="h-5 w-5" />
                             </Button>
                           )}
 
@@ -659,14 +660,15 @@ export default function CreateProperty() {
                               type="button"
                               size="icon"
                               variant="secondary"
-                              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-lg"
+                              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/60 hover:bg-black/80 text-white border-0 shadow-xl h-10 w-10 rounded-full transition-all"
                               onClick={() => {
                                 setCurrentImageIndex((prev) => 
                                   prev === selectedFiles.length - 1 ? 0 : prev + 1
                                 );
                               }}
+                              aria-label="Image suivante"
                             >
-                              <ChevronRight className="h-6 w-6" />
+                              <ChevronRight className="h-5 w-5" />
                             </Button>
                           )}
                         </div>

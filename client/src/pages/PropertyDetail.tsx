@@ -307,8 +307,8 @@ export default function PropertyDetail() {
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <CarouselPrevious className="left-4" />
-              <CarouselNext className="right-4" />
+              <CarouselPrevious className="left-4 bg-black/60 hover:bg-black/80 text-white border-0 shadow-xl h-10 w-10" />
+              <CarouselNext className="right-4 bg-black/60 hover:bg-black/80 text-white border-0 shadow-xl h-10 w-10" />
             </Carousel>
           ) : (
             <div className="aspect-[16/9] md:aspect-[21/9] overflow-hidden rounded-lg bg-muted">
