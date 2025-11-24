@@ -36,7 +36,7 @@ export default function StudentDashboard() {
         'Authorization': `Bearer ${token}`,
       };
       
-      const url = `http://localhost:3000/api/favorites`;
+      const url = `https://backend.hoomy.site/api/favorites`;
       const res = await fetch(url, { headers });
       
       if (!res.ok) {
