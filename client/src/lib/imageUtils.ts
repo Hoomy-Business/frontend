@@ -16,7 +16,7 @@ export function normalizeImageUrl(url: string | null | undefined): string {
   }
 
   // Si c'est déjà une URL complète vers le backend, la retourner
-  if (trimmedUrl.startsWith('http://localhost:3000') || trimmedUrl.startsWith('https://backend.hoomy.site')) {
+  if (trimmedUrl.startsWith('https://backend.hoomy.site') || trimmedUrl.startsWith('https://backend.hoomy.site')) {
     return trimmedUrl;
   }
 
@@ -25,12 +25,12 @@ export function normalizeImageUrl(url: string | null | undefined): string {
     // Extraire le nom de fichier depuis l'URL
     const urlMatch = trimmedUrl.match(/\/api\/image\/([^\/\?]+)/);
     if (urlMatch) {
-      return `http://localhost:3000/api/image/${urlMatch[1]}`;
+      return `http://https://backend.hoomy.site/api/image/${urlMatch[1]}`;
     }
     // Si l'URL contient un nom de fichier à la fin
     const filenameMatch = trimmedUrl.match(/\/([^\/\?]+\.(jpg|jpeg|png|gif|webp))$/i);
     if (filenameMatch) {
-      return `http://localhost:3000/api/image/${filenameMatch[1]}`;
+      return `https://backend.hoomy.site/api/image/${filenameMatch[1]}`;
     }
     // Si on ne peut pas extraire, retourner tel quel (peut-être une URL externe valide)
     return trimmedUrl;
@@ -38,7 +38,7 @@ export function normalizeImageUrl(url: string | null | undefined): string {
 
   // Si c'est un chemin relatif qui commence par /api/image/, construire l'URL complète
   if (trimmedUrl.startsWith('/api/image/')) {
-    return `http://localhost:3000${trimmedUrl}`;
+    return `https://backend.hoomy.site${trimmedUrl}`;
   }
 
   // Si c'est juste un nom de fichier, extraire le nom et construire l'URL
@@ -55,18 +55,18 @@ export function normalizeImageUrl(url: string | null | undefined): string {
   
   // Si le filename contient déjà l'extension et ressemble à un nom de fichier valide
   if (filename && /\.(jpg|jpeg|png|gif|webp)$/i.test(filename)) {
-    return `http://localhost:3000/api/image/${filename}`;
+    return `https://backend.hoomy.site/api/image/${filename}`;
   }
 
   // Si c'est un chemin qui contient "api/image", extraire le filename
   const match = trimmedUrl.match(/\/api\/image\/([^\/\?]+)/);
   if (match) {
-    return `http://localhost:3000/api/image/${match[1]}`;
+    return `https://backend.hoomy.site/api/image/${match[1]}`;
   }
 
   // Si le filename n'a pas d'extension mais ressemble à un nom de fichier (contient des caractères alphanumériques)
   if (filename && /^[a-zA-Z0-9_-]+$/.test(filename)) {
-    return `http://localhost:3000/api/image/${filename}`;
+    return `https://backend.hoomy.site/api/image/${filename}`;
   }
 
   // Par défaut, retourner le placeholder si on ne peut pas déterminer l'URL
