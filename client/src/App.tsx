@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Base path for GitHub Pages
+// Base path for routing
 const basePath = import.meta.env.BASE_URL || '/';
 
 // Lazy load all page components for code splitting

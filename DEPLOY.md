@@ -5,7 +5,7 @@ Ce projet est configuré pour être déployé automatiquement sur GitHub Pages.
 ## Configuration
 
 Le projet est configuré avec :
-- **Base path** : `/frontend/` (pour GitHub Pages)
+- **Base path** : `/` (racine du domaine)
 - **Workflow GitHub Actions** : Déploiement automatique à chaque push sur `main`
 - **Build output** : Dossier `dist/`
 
@@ -53,12 +53,11 @@ npm run deploy
 ## URL du site
 
 Une fois déployé, votre site sera accessible à :
-**https://hoomy-business.github.io/frontend/**
+**https://hoomy.site/**
 
 ## Notes importantes
 
-- Le base path `/frontend/` est automatiquement configuré en production
-- En développement local (`npm run dev`), le base path est `/`
+- Le base path est `/` (racine du domaine)
 - Les assets (images, CSS, JS) sont automatiquement préfixés avec le base path
 - Le workflow GitHub Actions build et déploie automatiquement à chaque push sur `main`
 
@@ -67,5 +66,5 @@ Une fois déployé, votre site sera accessible à :
 Si le site ne se charge pas correctement :
 1. Vérifiez que GitHub Pages est activé dans les paramètres du repository
 2. Vérifiez que le workflow GitHub Actions s'est exécuté avec succès
-3. Vérifiez que le base path dans `vite.config.ts` correspond au nom de votre repository
+3. Vérifiez que le base path dans `vite.config.ts` est configuré sur `/`
 
