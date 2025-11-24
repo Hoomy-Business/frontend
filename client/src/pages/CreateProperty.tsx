@@ -611,7 +611,7 @@ export default function CreateProperty() {
 
                     {selectedFiles.length > 0 && (
                       <div className="mt-4">
-                        <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border-2 border-border">
+                        <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border-2 border-border group">
                           <img
                             src={URL.createObjectURL(selectedFiles[currentImageIndex])}
                             alt={`Preview ${currentImageIndex + 1}`}
@@ -642,7 +642,7 @@ export default function CreateProperty() {
                               type="button"
                               size="icon"
                               variant="secondary"
-                              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white hover:bg-white/90 text-black border-2 border-black/20 shadow-2xl h-12 w-12 rounded-full transition-all hover:scale-110 active:scale-95"
+                              className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white border-0 shadow-lg h-10 w-10 rounded-full transition-all hover:scale-110 active:scale-95 group-hover:bg-black/70"
                               onClick={() => {
                                 setCurrentImageIndex((prev) => 
                                   prev === 0 ? selectedFiles.length - 1 : prev - 1
@@ -650,7 +650,7 @@ export default function CreateProperty() {
                               }}
                               aria-label="Image précédente"
                             >
-                              <ChevronLeft className="h-7 w-7 font-bold" strokeWidth={3} />
+                              <ChevronLeft className="h-5 w-5" strokeWidth={2.5} />
                             </Button>
                           )}
 
@@ -660,7 +660,7 @@ export default function CreateProperty() {
                               type="button"
                               size="icon"
                               variant="secondary"
-                              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white hover:bg-white/90 text-black border-2 border-black/20 shadow-2xl h-12 w-12 rounded-full transition-all hover:scale-110 active:scale-95"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white border-0 shadow-lg h-10 w-10 rounded-full transition-all hover:scale-110 active:scale-95 group-hover:bg-black/70"
                               onClick={() => {
                                 setCurrentImageIndex((prev) => 
                                   prev === selectedFiles.length - 1 ? 0 : prev + 1
@@ -668,7 +668,7 @@ export default function CreateProperty() {
                               }}
                               aria-label="Image suivante"
                             >
-                              <ChevronRight className="h-7 w-7 font-bold" strokeWidth={3} />
+                              <ChevronRight className="h-5 w-5" strokeWidth={2.5} />
                             </Button>
                           )}
                         </div>
