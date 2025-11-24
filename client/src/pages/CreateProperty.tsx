@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, Link } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Upload, X } from 'lucide-react';
+import { ArrowLeft, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,22 +16,32 @@ import { createPropertySchema, type CreatePropertyInput } from '@shared/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest, uploadImages } from '@/lib/api';
 import type { Canton, City } from '@shared/schema';
+import { useLanguage } from '@/lib/useLanguage';
 
 export default function CreateProperty() {
   const [, setLocation] = useLocation();
   const { isOwner } = useAuth();
+  const { getCantonName, getCityName } = useLanguage();
   const [error, setError] = useState<string>('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [selectedCanton, setSelectedCanton] = useState('');
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const { data: cantons } = useQuery<Canton[]>({
     queryKey: ['/locations/cantons'],
+    queryFn: async () => {
+      return apiRequest<Canton[]>('GET', '/locations/cantons');
+    },
   });
 
   const { data: cities } = useQuery<City[]>({
     queryKey: ['/locations/cities', selectedCanton],
     enabled: !!selectedCanton,
+    queryFn: async () => {
+      if (!selectedCanton) throw new Error('Canton required');
+      return apiRequest<City[]>('GET', `/locations/cities?canton=${selectedCanton}`);
+    },
   });
 
   const form = useForm<CreatePropertyInput>({
@@ -53,8 +63,25 @@ export default function CreateProperty() {
   });
 
   const createPropertyMutation = useMutation({
-    mutationFn: async (data: CreatePropertyInput & { photos?: string[] }) => {
-      return apiRequest('POST', '/properties', data);
+    mutationFn: async (data: CreatePropertyInput & { photos?: string[]; image_urls?: string[] }) => {
+      // Use image_urls if provided, otherwise fall back to photos
+      const imageUrls = data.image_urls || data.photos || [];
+      
+      // Debug: vérifier que les images sont présentes
+      if (!imageUrls || imageUrls.length === 0) {
+        console.error('❌ No images in payload:', { image_urls: data.image_urls, photos: data.photos });
+        throw new Error('Au moins une image est requise');
+      }
+      
+      const payload = {
+        ...data,
+        image_urls: imageUrls
+      };
+      // Remove photos from payload as backend expects image_urls
+      delete (payload as any).photos;
+      
+      console.log('📤 Sending property creation request with', imageUrls.length, 'images');
+      return apiRequest('POST', '/properties', payload);
     },
     onSuccess: () => {
       setLocation('/dashboard/owner');
@@ -72,24 +99,64 @@ export default function CreateProperty() {
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles(prev => {
+      const newFiles = prev.filter((_, i) => i !== index);
+      // Ajuster l'index si nécessaire
+      if (currentImageIndex >= newFiles.length && newFiles.length > 0) {
+        setCurrentImageIndex(newFiles.length - 1);
+      } else if (newFiles.length === 0) {
+        setCurrentImageIndex(0);
+      }
+      return newFiles;
+    });
   };
+
+  // Réinitialiser l'index quand les fichiers changent
+  useEffect(() => {
+    if (currentImageIndex >= selectedFiles.length && selectedFiles.length > 0) {
+      setCurrentImageIndex(selectedFiles.length - 1);
+    } else if (selectedFiles.length === 0) {
+      setCurrentImageIndex(0);
+    }
+  }, [selectedFiles.length, currentImageIndex]);
 
   const onSubmit = async (data: CreatePropertyInput) => {
     setError('');
     
+    // Vérifier qu'au moins une image est sélectionnée
+    if (selectedFiles.length === 0) {
+      setError('Au moins une image est requise');
+      return;
+    }
+    
     let imageUrls: string[] = [];
-    if (selectedFiles.length > 0) {
-      try {
-        const result = await uploadImages(selectedFiles);
-        imageUrls = result.images.map(img => img.url);
-      } catch (err) {
-        setError('Failed to upload images');
+    try {
+      console.log('📤 Uploading', selectedFiles.length, 'images...');
+      const result = await uploadImages(selectedFiles);
+      console.log('✅ Upload result:', result);
+      imageUrls = result.images.map(img => img.url);
+      console.log('✅ Image URLs:', imageUrls);
+      
+      // Vérifier que l'upload a réussi
+      if (!imageUrls || imageUrls.length === 0) {
+        console.error('❌ No image URLs returned from upload');
+        setError('Échec du téléchargement des images');
         return;
       }
+    } catch (err) {
+      console.error('❌ Upload error:', err);
+      setError('Échec du téléchargement des images: ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
+      return;
     }
 
-    createPropertyMutation.mutate({ ...data, photos: imageUrls } as any);
+    createPropertyMutation.mutate({
+      ...data,
+      rooms: data.rooms || 0,
+      bathrooms: data.bathrooms || 0,
+      surface_area: data.surface_area || 0,
+      available_from: data.available_from || null,
+      image_urls: imageUrls
+    } as any);
   };
 
   if (!isOwner) {
@@ -156,7 +223,7 @@ export default function CreateProperty() {
                             {...field} 
                             placeholder="Describe your property, amenities, nearby facilities..."
                             rows={6}
-                            className="font-serif"
+                            className="resize-none"
                             data-testid="input-description"
                           />
                         </FormControl>
@@ -250,7 +317,7 @@ export default function CreateProperty() {
                             <SelectContent>
                               {cantons?.map((canton) => (
                                 <SelectItem key={canton.code} value={canton.code}>
-                                  {canton.code}
+                                  {getCantonName(canton)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -275,7 +342,7 @@ export default function CreateProperty() {
                             <SelectContent>
                               {cities?.map((city) => (
                                 <SelectItem key={city.id} value={city.name}>
-                                  {city.name}
+                                  {getCityName(city.name)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -400,25 +467,85 @@ export default function CreateProperty() {
                     </div>
 
                     {selectedFiles.length > 0 && (
-                      <div className="mt-4 grid grid-cols-3 gap-4">
-                        {selectedFiles.map((file, index) => (
-                          <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-muted">
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={`Preview ${index + 1}`}
-                              className="w-full h-full object-cover"
-                            />
+                      <div className="mt-4">
+                        <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border-2 border-border group">
+                          <img
+                            src={URL.createObjectURL(selectedFiles[currentImageIndex])}
+                            alt={`Preview ${currentImageIndex + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          
+                          {/* Bouton de suppression */}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="destructive"
+                            className="absolute top-2 right-2 z-10"
+                            onClick={() => {
+                              removeFile(currentImageIndex);
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+
+                          {/* Compteur d'images */}
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white px-3 py-1.5 rounded-md text-sm font-medium z-10">
+                            {currentImageIndex + 1} / {selectedFiles.length}
+                          </div>
+
+                          {/* Flèche gauche */}
+                          {selectedFiles.length > 1 && (
                             <Button
                               type="button"
                               size="icon"
-                              variant="destructive"
-                              className="absolute top-2 right-2"
-                              onClick={() => removeFile(index)}
+                              variant="secondary"
+                              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-lg"
+                              onClick={() => {
+                                setCurrentImageIndex((prev) => 
+                                  prev === 0 ? selectedFiles.length - 1 : prev - 1
+                                );
+                              }}
                             >
-                              <X className="h-4 w-4" />
+                              <ChevronLeft className="h-6 w-6" />
                             </Button>
+                          )}
+
+                          {/* Flèche droite */}
+                          {selectedFiles.length > 1 && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="secondary"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-lg"
+                              onClick={() => {
+                                setCurrentImageIndex((prev) => 
+                                  prev === selectedFiles.length - 1 ? 0 : prev + 1
+                                );
+                              }}
+                            >
+                              <ChevronRight className="h-6 w-6" />
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Indicateurs de points (optionnel) */}
+                        {selectedFiles.length > 1 && (
+                          <div className="flex justify-center gap-2 mt-3">
+                            {selectedFiles.map((_, index) => (
+                              <button
+                                key={index}
+                                type="button"
+                                onClick={() => setCurrentImageIndex(index)}
+                                className={`h-2 rounded-full transition-all ${
+                                  currentImageIndex === index
+                                    ? 'w-8 bg-primary'
+                                    : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                                }`}
+                                aria-label={`Go to image ${index + 1}`}
+                              />
+                            ))}
                           </div>
-                        ))}
+                        )}
                       </div>
                     )}
                   </div>

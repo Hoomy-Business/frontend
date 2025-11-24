@@ -2,6 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Performance optimizations */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img {
+  content-visibility: auto;
+}
+
+/* Ultra-responsive optimizations */
+* {
+  /* Optimize touch interactions */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Smooth scrolling with momentum on iOS */
+html {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Optimize button interactions */
+button, a {
+  /* Reduce touch delay on mobile */
+  touch-action: manipulation;
+  /* Improve tap responsiveness */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Optimize input interactions */
+input, textarea, select {
+  touch-action: manipulation;
+  /* Prevent zoom on focus on iOS */
+  font-size: 16px;
+}
+
+@media (max-width: 640px) {
+  input, textarea, select {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);
@@ -173,6 +217,26 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  /* Performance optimizations */
+  img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  /* Optimize scrolling */
+  * {
+    scroll-behavior: smooth;
+  }
+
+  /* GPU acceleration for transforms */
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  .will-change-opacity {
+    will-change: opacity;
+  }
 }
 
 /**
@@ -270,11 +334,35 @@
   .hover-elevate:hover:not(.no-default-hover-elevate)::after,
   .active-elevate:active:not(.no-default-active-elevate)::after {
     background-color: var(--elevate-1);
+    transition: background-color 0.1s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
   .active-elevate-2:active:not(.no-default-active-elevate)::after {
     background-color: var(--elevate-2);
+    transition: background-color 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Ultra-smooth transitions for hover-elevate elements - optimized for GPU */
+  .hover-elevate::after,
+  .hover-elevate-2::after,
+  .active-elevate::after,
+  .active-elevate-2::after {
+    transition: background-color 0.1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: background-color, opacity;
+  }
+
+  /* Optimize for touch devices */
+  @media (hover: none) and (pointer: coarse) {
+    .hover-elevate:active::after,
+    .hover-elevate-2:active::after {
+      background-color: var(--elevate-1);
+      transition: background-color 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-elevate-2:active::after {
+      background-color: var(--elevate-2);
+    }
   }
 
   /* If there's a 1px border, adjust the inset so that it covers that parent's border */

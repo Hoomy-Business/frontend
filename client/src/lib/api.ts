@@ -27,6 +27,14 @@ export async function apiRequest<T = any>(
 
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
   
+  // Protection: bloquer les requêtes vers des endpoints invalides
+  if (url.includes('/properties/create') || url.includes('/properties/edit')) {
+    console.error('🚫 BLOCKED invalid API request in apiRequest:', url);
+    console.error('Method:', method, 'Endpoint:', endpoint);
+    console.error('Stack trace:', new Error().stack);
+    throw new Error(`Invalid API endpoint: ${endpoint}. This appears to be a frontend route, not an API endpoint.`);
+  }
+  
   const response = await fetch(url, config);
   
   if (!response.ok) {

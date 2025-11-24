@@ -1,5 +1,5 @@
 import { Link, useParams } from 'wouter';
-import { ArrowLeft, FileText, Download, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { ArrowLeft, FileText, Download, CheckCircle2, XCircle, Clock, CreditCard, History } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,32 +7,83 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import type { Contract } from '@shared/schema';
 import { apiRequest } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ContractDetail() {
   const params = useParams();
   const contractId = params.id ? parseInt(params.id) : null;
   const { user, isStudent, isOwner } = useAuth();
+  const { toast } = useToast();
 
-  const { data: contract, isLoading } = useQuery<Contract>({
+  const { data: contractData, isLoading } = useQuery<{ success: boolean; contract: Contract }>({
     queryKey: ['/contracts', contractId],
     enabled: !!contractId,
+    queryFn: async () => {
+      if (!contractId) throw new Error('Contract ID required');
+      return apiRequest<{ success: boolean; contract: Contract }>('GET', `/contracts/${contractId}`);
+    },
   });
 
+  const contract = contractData?.contract;
+
   const signContractMutation = useMutation({
-    mutationFn: () => apiRequest('POST', `/contracts/${contractId}/sign`),
+    mutationFn: () => {
+      // Update contract status to active when signed
+      return apiRequest('PUT', `/contracts/${contractId}/status`, { status: 'active' });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/contracts', contractId] });
+      queryClient.invalidateQueries({ queryKey: ['/contracts/my-contracts'] });
+      toast({ title: 'Success', description: 'Contract signed successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const createSubscriptionMutation = useMutation({
+    mutationFn: () => apiRequest<{ success: boolean; checkout_url: string }>('POST', '/contracts/create-subscription', { contract_id: contractId }),
+    onSuccess: (data) => {
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const cancelSubscriptionMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/contracts/cancel-subscription', { contract_id: contractId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/contracts', contractId] });
+      toast({ title: 'Success', description: 'Subscription cancelled successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const { data: paymentsData } = useQuery<{ success: boolean; payments: any[] }>({
+    queryKey: ['/contracts/payments', contractId],
+    enabled: !!contractId && contract?.status === 'active',
+    queryFn: async () => {
+      if (!contractId) throw new Error('Contract ID required');
+      return apiRequest<{ success: boolean; payments: any[] }>('GET', `/contracts/payments/${contractId}`);
     },
   });
 
   const handleDownloadPDF = () => {
     if (contractId) {
-      window.open(`http://localhost:3000/api/contracts/${contractId}/pdf`, '_blank');
+      // Note: PDF generation route needs to be implemented in backend
+      // For now, we'll show a message or redirect to contract details
+      window.open(`http://localhost:3000/api/contracts/${contractId}`, '_blank');
     }
   };
 
@@ -216,27 +267,116 @@ export default function ContractDetail() {
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-4">
-                <Button
-                  onClick={handleDownloadPDF}
-                  variant="outline"
-                  className="flex-1"
-                  data-testid="button-download-pdf"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
-                </Button>
-                {canSign && (
-                  <Button
-                    onClick={() => signContractMutation.mutate()}
-                    disabled={signContractMutation.isPending}
-                    className="flex-1"
-                    data-testid="button-sign"
-                  >
-                    {signContractMutation.isPending ? 'Signing...' : 'Sign Contract'}
-                  </Button>
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  {contract?.status === 'active' && (
+                    <>
+                      <TabsTrigger value="payments">
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Payments
+                      </TabsTrigger>
+                      <TabsTrigger value="history">
+                        <History className="h-4 w-4 mr-2" />
+                        History
+                      </TabsTrigger>
+                    </>
+                  )}
+                </TabsList>
+
+                <TabsContent value="details" className="space-y-4">
+                  <div className="flex gap-4 pt-4">
+                    <Button
+                      onClick={handleDownloadPDF}
+                      variant="outline"
+                      className="flex-1"
+                      data-testid="button-download-pdf"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download PDF
+                    </Button>
+                    {canSign && (
+                      <Button
+                        onClick={() => signContractMutation.mutate()}
+                        disabled={signContractMutation.isPending}
+                        className="flex-1"
+                        data-testid="button-sign"
+                      >
+                        {signContractMutation.isPending ? 'Signing...' : 'Sign Contract'}
+                      </Button>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {contract?.status === 'active' && (
+                  <>
+                    <TabsContent value="payments" className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold mb-3">Payment Setup</h3>
+                        {!contract.stripe_subscription_id ? (
+                          <Alert>
+                            <AlertDescription className="flex items-center justify-between">
+                              <span>Set up automatic monthly payments</span>
+                              <Button
+                                onClick={() => createSubscriptionMutation.mutate()}
+                                disabled={createSubscriptionMutation.isPending}
+                              >
+                                {createSubscriptionMutation.isPending ? 'Setting up...' : 'Set Up Payments'}
+                              </Button>
+                            </AlertDescription>
+                          </Alert>
+                        ) : (
+                          <Alert>
+                            <AlertDescription className="flex items-center justify-between">
+                              <span>Subscription is active. Payments will be processed automatically.</span>
+                              <Button
+                                variant="destructive"
+                                onClick={() => {
+                                  if (confirm('Are you sure you want to cancel the subscription?')) {
+                                    cancelSubscriptionMutation.mutate();
+                                  }
+                                }}
+                                disabled={cancelSubscriptionMutation.isPending}
+                              >
+                                {cancelSubscriptionMutation.isPending ? 'Cancelling...' : 'Cancel Subscription'}
+                              </Button>
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="history" className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold mb-3">Payment History</h3>
+                        {!paymentsData?.payments || paymentsData.payments.length === 0 ? (
+                          <p className="text-muted-foreground">No payment history available</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {paymentsData.payments.map((payment) => (
+                              <Card key={payment.id}>
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-center">
+                                    <div>
+                                      <p className="font-medium">CHF {payment.amount?.toLocaleString()}</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {new Date(payment.created_at).toLocaleDateString()}
+                                      </p>
+                                    </div>
+                                    <Badge variant={payment.status === 'completed' ? 'default' : 'secondary'}>
+                                      {payment.status}
+                                    </Badge>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </>
                 )}
-              </div>
+              </Tabs>
             </CardContent>
           </Card>
         </div>

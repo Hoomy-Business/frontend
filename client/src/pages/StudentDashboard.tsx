@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { Heart, MessageSquare, FileText, User, Building2 } from 'lucide-react';
+import { Heart, MessageSquare, FileText, User, Building2, Inbox, X } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -8,26 +8,66 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/lib/auth';
+import { useAuth, getAuthToken } from '@/lib/auth';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import type { Property, Contract, Conversation } from '@shared/schema';
 import { apiRequest } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/lib/useLanguage';
 
 export default function StudentDashboard() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isStudent } = useAuth();
+  const { toast } = useToast();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('favorites');
 
-  const { data: favorites, isLoading: favoritesLoading } = useQuery<Property[]>({
+  const { data: favorites, isLoading: favoritesLoading, error: favoritesError } = useQuery<Property[]>({
     queryKey: ['/favorites'],
+    enabled: isAuthenticated && isStudent,
+    retry: false,
+    queryFn: async () => {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token');
+      }
+      
+      const headers: HeadersInit = {
+        'Authorization': `Bearer ${token}`,
+      };
+      
+      const url = `http://localhost:3000/api/favorites`;
+      const res = await fetch(url, { headers });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(errorData.error || errorData.message || res.statusText);
+      }
+      
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 15, // 15 minutes
   });
 
-  const { data: contracts, isLoading: contractsLoading } = useQuery<Contract[]>({
+  const { data: contracts, isLoading: contractsLoading } = useQuery<{ success: boolean; contracts: Contract[] }, Error, Contract[]>({
     queryKey: ['/contracts/my-contracts'],
+    queryFn: async () => {
+      return apiRequest<{ success: boolean; contracts: Contract[] }>('GET', '/contracts/my-contracts');
+    },
+    select: (data) => data?.contracts || [],
+    staleTime: 1000 * 60 * 5, // 5 minutes - contracts don't change often
+    gcTime: 1000 * 60 * 15, // 15 minutes
   });
 
   const { data: conversations, isLoading: conversationsLoading } = useQuery<Conversation[]>({
-    queryKey: ['/messages/conversations'],
+    queryKey: ['/conversations'],
+    queryFn: async () => {
+      return apiRequest<Conversation[]>('GET', '/conversations');
+    },
+    staleTime: 1000 * 30, // 30 seconds - conversations can change frequently
+    gcTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const removeFavoriteMutation = useMutation({
@@ -37,44 +77,78 @@ export default function StudentDashboard() {
     },
   });
 
+  const { data: sentRequests, isLoading: sentRequestsLoading } = useQuery<any[]>({
+    queryKey: ['/requests/sent'],
+    queryFn: async () => {
+      return apiRequest<any[]>('GET', '/requests/sent');
+    },
+    staleTime: 1000 * 30, // 30 seconds - requests can change frequently
+    gcTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const deleteRequestMutation = useMutation({
+    mutationFn: (requestId: number) => apiRequest('DELETE', `/requests/${requestId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/requests/sent'] });
+      toast({ title: 'Success', description: 'Request cancelled successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
   return (
     <MainLayout>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2" data-testid="text-dashboard-title">
-            Welcome back, {user?.first_name}!
+            {t('dashboard.student.welcome', { name: user?.first_name || '' })}
           </h1>
-          <p className="text-muted-foreground">Manage your favorites, messages, and rental contracts</p>
+          <p className="text-muted-foreground">{t('dashboard.student.manage')}</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="favorites" className="gap-2" data-testid="tab-favorites">
               <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">Favorites</span>
+              <span className="hidden sm:inline">{t('dashboard.student.favorites')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="requests" className="gap-2" data-testid="tab-requests">
+              <Inbox className="h-4 w-4" />
+              <span className="hidden sm:inline">{t('dashboard.student.requests')}</span>
             </TabsTrigger>
             <TabsTrigger value="messages" className="gap-2" data-testid="tab-messages">
               <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Messages</span>
+              <span className="hidden sm:inline">{t('dashboard.student.messages')}</span>
             </TabsTrigger>
             <TabsTrigger value="contracts" className="gap-2" data-testid="tab-contracts">
               <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Contracts</span>
+              <span className="hidden sm:inline">{t('dashboard.student.contracts')}</span>
             </TabsTrigger>
             <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
               <User className="h-4 w-4" />
-              <span className="hidden sm:inline">Profile</span>
+              <span className="hidden sm:inline">{t('dashboard.profile.title')}</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="favorites" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Saved Properties</CardTitle>
-                <CardDescription>Properties you've favorited</CardDescription>
+                <CardTitle>{t('dashboard.student.favorites')}</CardTitle>
+                <CardDescription>{t('dashboard.student.favorites.desc')}</CardDescription>
               </CardHeader>
               <CardContent>
-                {favoritesLoading ? (
+                {favoritesError ? (
+                  <div className="text-center py-12">
+                    <p className="text-destructive mb-2">Error loading favorites</p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {favoritesError instanceof Error ? favoritesError.message : 'Unknown error'}
+                    </p>
+                    <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['/favorites'] })}>
+                      Retry
+                    </Button>
+                  </div>
+                ) : favoritesLoading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[1, 2, 3].map((i) => (
                       <Skeleton key={i} className="h-80 w-full" />
@@ -83,12 +157,12 @@ export default function StudentDashboard() {
                 ) : !favorites || favorites.length === 0 ? (
                   <div className="text-center py-12">
                     <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="font-semibold text-lg mb-2">No favorites yet</h3>
+                    <h3 className="font-semibold text-lg mb-2">{t('dashboard.student.favorites.empty')}</h3>
                     <p className="text-muted-foreground mb-4">
-                      Start browsing properties and save your favorites
+                      {t('dashboard.student.favorites.empty.desc')}
                     </p>
                     <Link href="/properties">
-                      <Button>Browse Properties</Button>
+                      <Button>{t('messages.browse')}</Button>
                     </Link>
                   </div>
                 ) : (
@@ -107,11 +181,85 @@ export default function StudentDashboard() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="requests" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('dashboard.student.requests.title')}</CardTitle>
+                <CardDescription>{t('dashboard.student.requests.desc')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {sentRequestsLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2].map((i) => (
+                      <Skeleton key={i} className="h-32 w-full" />
+                    ))}
+                  </div>
+                ) : !sentRequests || sentRequests.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="font-semibold text-lg mb-2">{t('dashboard.student.requests.empty')}</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {t('dashboard.student.requests.empty.desc')}
+                    </p>
+                    <Link href="/properties">
+                      <Button>Browse Properties</Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {sentRequests.map((req) => (
+                      <Card key={req.id}>
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-lg">{req.property_title}</h4>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {req.city_name} • CHF {req.price?.toLocaleString()}/month
+                              </p>
+                              <p className="text-sm bg-muted p-3 rounded-md">
+                                "{req.message}"
+                              </p>
+                            </div>
+                            <Badge variant={
+                              req.status === 'accepted' ? 'default' :
+                              req.status === 'pending' ? 'secondary' :
+                              'destructive'
+                            }>
+                              {req.status}
+                            </Badge>
+                          </div>
+                          
+                          {req.status === 'pending' && (
+                            <div className="flex gap-2 justify-end">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm('Are you sure you want to cancel this request?')) {
+                                    deleteRequestMutation.mutate(req.id);
+                                  }
+                                }}
+                                disabled={deleteRequestMutation.isPending}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Cancel Request
+                              </Button>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="messages" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Conversations</CardTitle>
-                <CardDescription>Messages with property owners</CardDescription>
+                <CardTitle>{t('messages.conversations')}</CardTitle>
+                <CardDescription>{t('dashboard.student.messages.desc')}</CardDescription>
               </CardHeader>
               <CardContent>
                 {conversationsLoading ? (
@@ -123,12 +271,12 @@ export default function StudentDashboard() {
                 ) : !conversations || conversations.length === 0 ? (
                   <div className="text-center py-12">
                     <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="font-semibold text-lg mb-2">No messages yet</h3>
+                    <h3 className="font-semibold text-lg mb-2">{t('dashboard.student.messages.empty')}</h3>
                     <p className="text-muted-foreground mb-4">
-                      Contact property owners to start a conversation
+                      {t('dashboard.student.messages.empty.desc')}
                     </p>
                     <Link href="/properties">
-                      <Button>Browse Properties</Button>
+                      <Button>{t('messages.browse')}</Button>
                     </Link>
                   </div>
                 ) : (
@@ -167,8 +315,8 @@ export default function StudentDashboard() {
           <TabsContent value="contracts" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Rental Contracts</CardTitle>
-                <CardDescription>Your active and past rental agreements</CardDescription>
+                <CardTitle>{t('dashboard.student.contracts.title')}</CardTitle>
+                <CardDescription>{t('dashboard.student.contracts.desc')}</CardDescription>
               </CardHeader>
               <CardContent>
                 {contractsLoading ? (
@@ -180,9 +328,9 @@ export default function StudentDashboard() {
                 ) : !contracts || contracts.length === 0 ? (
                   <div className="text-center py-12">
                     <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="font-semibold text-lg mb-2">No contracts yet</h3>
+                    <h3 className="font-semibold text-lg mb-2">{t('dashboard.student.contracts.empty')}</h3>
                     <p className="text-muted-foreground">
-                      Your rental contracts will appear here once created
+                      {t('dashboard.student.contracts.empty.desc')}
                     </p>
                   </div>
                 ) : (
@@ -234,35 +382,35 @@ export default function StudentDashboard() {
           <TabsContent value="profile" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-                <CardDescription>Your account details</CardDescription>
+                <CardTitle>{t('dashboard.profile.title')}</CardTitle>
+                <CardDescription>{t('dashboard.profile.desc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">First Name</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.first_name')}</p>
                     <p className="font-medium">{user?.first_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Last Name</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.last_name')}</p>
                     <p className="font-medium">{user?.last_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Email</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.email')}</p>
                     <p className="font-medium">{user?.email}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Phone</p>
-                    <p className="font-medium">{user?.phone || 'Not provided'}</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.phone')}</p>
+                    <p className="font-medium">{user?.phone || t('dashboard.phone.not_provided')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Account Type</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.account_type')}</p>
                     <Badge>{user?.role}</Badge>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Email Verified</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.email_verified')}</p>
                     <Badge variant={user?.email_verified ? 'default' : 'secondary'}>
-                      {user?.email_verified ? 'Verified' : 'Not Verified'}
+                      {user?.email_verified ? t('dashboard.profile.verified') : t('dashboard.profile.not_verified')}
                     </Badge>
                   </div>
                 </div>

@@ -24,13 +24,20 @@ export default function CreateContract() {
   const [error, setError] = useState<string>('');
 
   const { data: property, isLoading: propertyLoading } = useQuery<Property>({
-    queryKey: ['/properties', propertyId],
+    queryKey: [`/properties/${propertyId}`],
     enabled: !!propertyId,
+    queryFn: async () => {
+      if (!propertyId) throw new Error('Property ID required');
+      return apiRequest<Property>('GET', `/properties/${propertyId}`);
+    },
   });
 
   const { data: students } = useQuery<User[]>({
     queryKey: ['/users/students'],
     enabled: isOwner,
+    queryFn: async () => {
+      return apiRequest<User[]>('GET', '/users/students');
+    },
   });
 
   const form = useForm<CreateContractInput>({
@@ -54,10 +61,10 @@ export default function CreateContract() {
 
   const createContractMutation = useMutation({
     mutationFn: (data: CreateContractInput) => {
-      return apiRequest('POST', '/contracts', data);
+      return apiRequest<{ success: boolean; contract: { id: number } }>('POST', '/contracts/create', data);
     },
-    onSuccess: (data: { contract_id: number }) => {
-      setLocation(`/contracts/${data.contract_id}`);
+    onSuccess: (data) => {
+      setLocation(`/contracts/${data.contract.id}`);
     },
     onError: (err: Error) => {
       setError(err.message || 'Failed to create contract');

@@ -166,10 +166,10 @@ export default function VerifyEmail() {
             <div className="mt-6 text-center text-sm">
               <p className="text-muted-foreground mb-2">Didn't receive the code?</p>
               <Button 
-                variant="link" 
+                variant="ghost" 
                 onClick={handleResend}
                 disabled={resendMutation.isPending}
-                className="p-0 h-auto"
+                className="p-0 h-auto underline"
                 data-testid="button-resend"
               >
                 {resendMutation.isPending ? 'Sending...' : 'Resend verification code'}
