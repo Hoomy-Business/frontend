@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, CheckCircle2, XCircle, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Camera, Upload, CheckCircle2, XCircle, AlertCircle, Loader2, RefreshCw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
