@@ -93,6 +93,10 @@ export async function uploadImage(file: File): Promise<{ url: string; filename: 
 
 export async function uploadImages(files: File[]): Promise<{ images: { url: string; filename: string }[] }> {
   const token = getAuthToken();
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+  
   const formData = new FormData();
   files.forEach(file => {
     formData.append('images', file);
@@ -102,12 +106,21 @@ export async function uploadImages(files: File[]): Promise<{ images: { url: stri
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
+      // Ne pas définir Content-Type - le navigateur le fera automatiquement avec le boundary pour FormData
     },
     body: formData,
   });
 
   if (!response.ok) {
-    throw new Error('Images upload failed');
+    let errorMessage = 'Images upload failed';
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorData.message || errorMessage;
+    } catch {
+      // Si la réponse n'est pas du JSON, utiliser le statusText
+      errorMessage = response.statusText || errorMessage;
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
