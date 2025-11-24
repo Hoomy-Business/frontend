@@ -123,7 +123,7 @@ export async function uploadImages(files: File[]): Promise<{ images: { url: stri
           // Si ce n'est pas du JSON, essayer d'extraire le message d'erreur du HTML
           if (text.includes('MulterError')) {
             if (text.includes('File too large')) {
-              errorMessage = 'Fichier trop volumineux. La taille maximale est de 10 MB par image. Veuillez réduire la taille de vos images.';
+              errorMessage = 'Fichier trop volumineux. La taille maximale est de 10 MB par image. Les images sont automatiquement compressées, mais si elles restent trop grandes, veuillez les réduire manuellement avant de les uploader.';
             } else {
               // Extraire le type d'erreur Multer
               const multerMatch = text.match(/MulterError: ([^<]+)/);
@@ -133,6 +133,9 @@ export async function uploadImages(files: File[]): Promise<{ images: { url: stri
                 errorMessage = text.substring(0, 200) || errorMessage;
               }
             }
+          } else if (text.includes('ValidationError') && text.includes('trust proxy')) {
+            // Erreur de configuration backend - informer l'utilisateur
+            errorMessage = 'Erreur de configuration serveur. Veuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.';
           } else {
             // Si ce n'est pas du HTML avec MulterError, utiliser le texte brut (limité)
             errorMessage = text.length > 200 ? text.substring(0, 200) + '...' : text;

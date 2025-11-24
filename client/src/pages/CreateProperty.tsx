@@ -100,32 +100,106 @@ export default function CreateProperty() {
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB en bytes
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Fonction pour compresser une image
+  const compressImage = (file: File, maxWidth: number = 1920, maxHeight: number = 1920, quality: number = 0.85): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Redimensionner si nécessaire
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            } else {
+              width = (width * maxHeight) / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Impossible de créer le contexte canvas'));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Échec de la compression'));
+                return;
+              }
+              // Créer un nouveau File avec le blob compressé
+              const compressedFile = new File([blob], file.name, {
+                type: file.type,
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            file.type,
+            quality
+          );
+        };
+        img.onerror = () => reject(new Error('Erreur lors du chargement de l\'image'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Erreur lors de la lecture du fichier'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
+      setError(''); // Clear any previous errors
       
-      // Vérifier la taille de chaque fichier
-      const oversizedFiles: File[] = [];
-      const validFiles: File[] = [];
-      
-      files.forEach(file => {
-        if (file.size > MAX_FILE_SIZE) {
-          oversizedFiles.push(file);
-        } else {
-          validFiles.push(file);
+      try {
+        const processedFiles: File[] = [];
+        
+        for (const file of files) {
+          // Vérifier que c'est bien une image
+          if (!file.type.startsWith('image/')) {
+            setError(`Le fichier "${file.name}" n'est pas une image valide.`);
+            return;
+          }
+
+          let fileToAdd = file;
+          
+          // Si le fichier est trop grand, essayer de le compresser
+          if (file.size > MAX_FILE_SIZE) {
+            try {
+              fileToAdd = await compressImage(file);
+              
+              // Si après compression c'est encore trop grand, rejeter
+              if (fileToAdd.size > MAX_FILE_SIZE) {
+                const maxSizeMB = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
+                setError(`L'image "${file.name}" est trop volumineuse même après compression (${(fileToAdd.size / (1024 * 1024)).toFixed(1)} MB). La taille maximale est de ${maxSizeMB} MB. Veuillez utiliser une image plus petite.`);
+                return;
+              }
+            } catch (compressError) {
+              const maxSizeMB = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
+              setError(`Impossible de compresser "${file.name}". Veuillez réduire manuellement la taille de l'image (max ${maxSizeMB} MB).`);
+              return;
+            }
+          }
+          
+          processedFiles.push(fileToAdd);
         }
-      });
-      
-      if (oversizedFiles.length > 0) {
-        const fileNames = oversizedFiles.map(f => f.name).join(', ');
-        const maxSizeMB = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
-        setError(`Les fichiers suivants sont trop volumineux (max ${maxSizeMB} MB par image) : ${fileNames}. Veuillez réduire leur taille avant de les uploader.`);
-        return;
-      }
-      
-      if (validFiles.length > 0) {
-        setSelectedFiles(prev => [...prev, ...validFiles]);
-        setError(''); // Clear any previous errors
+        
+        if (processedFiles.length > 0) {
+          setSelectedFiles(prev => [...prev, ...processedFiles]);
+        }
+      } catch (error) {
+        setError('Erreur lors du traitement des fichiers: ' + (error instanceof Error ? error.message : 'Erreur inconnue'));
       }
     }
   };
