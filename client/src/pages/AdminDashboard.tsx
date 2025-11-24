@@ -256,12 +256,16 @@ export default function AdminDashboard() {
                                 alt="Carte d'identité recto"
                                 className="w-full h-auto max-h-64 object-contain"
                                 onError={(e) => {
-                                  // Si l'image ne charge pas, essayer avec HTTPS
+                                  // Si l'image ne charge pas, essayer avec HTTPS une seule fois
                                   const target = e.currentTarget;
-                                  if (target.src.startsWith('http://')) {
+                                  if (target.src.startsWith('http://') && !target.dataset.httpsTried) {
+                                    target.dataset.httpsTried = 'true';
                                     target.src = target.src.replace('http://', 'https://');
                                   } else {
-                                    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+                                    // Si HTTPS a déjà été essayé ou si c'est déjà HTTPS, utiliser le placeholder
+                                    if (!target.src.includes('data:image')) {
+                                      target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+                                    }
                                   }
                                 }}
                               />
@@ -288,12 +292,16 @@ export default function AdminDashboard() {
                                 alt="Carte d'identité verso"
                                 className="w-full h-auto max-h-64 object-contain"
                                 onError={(e) => {
-                                  // Si l'image ne charge pas, essayer avec HTTPS
+                                  // Si l'image ne charge pas, essayer avec HTTPS une seule fois
                                   const target = e.currentTarget;
-                                  if (target.src.startsWith('http://')) {
+                                  if (target.src.startsWith('http://') && !target.dataset.httpsTried) {
+                                    target.dataset.httpsTried = 'true';
                                     target.src = target.src.replace('http://', 'https://');
                                   } else {
-                                    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+                                    // Si HTTPS a déjà été essayé ou si c'est déjà HTTPS, utiliser le placeholder
+                                    if (!target.src.includes('data:image')) {
+                                      target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+                                    }
                                   }
                                 }}
                               />

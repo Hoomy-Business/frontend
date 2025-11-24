@@ -56,6 +56,8 @@ export default function Messages() {
     },
   });
 
+  // Créer une conversation si nécessaire (une seule fois)
+  const hasTriedCreateConversation = useRef(false);
   useEffect(() => {
     if (
       !conversationIdParam &&
@@ -63,12 +65,18 @@ export default function Messages() {
       ownerIdParam &&
       !selectedConversation &&
       !createConversationMutation.isPending &&
-      !createConversationMutation.isSuccess
+      !createConversationMutation.isSuccess &&
+      !hasTriedCreateConversation.current
     ) {
+      hasTriedCreateConversation.current = true;
       createConversationMutation.mutate({
         property_id: parseInt(propertyIdParam),
         owner_id: parseInt(ownerIdParam),
       });
+    }
+    // Reset si les paramètres changent
+    if (!propertyIdParam || !ownerIdParam) {
+      hasTriedCreateConversation.current = false;
     }
   }, [conversationIdParam, propertyIdParam, ownerIdParam, selectedConversation, createConversationMutation]);
 
@@ -104,14 +112,25 @@ export default function Messages() {
     },
   });
 
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     // Only scroll if we have messages and the scroll area is mounted
     if (messages && messages.length > 0) {
+      // Clear any pending scroll
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
       // Use setTimeout to ensure DOM has updated
-      setTimeout(() => {
+      scrollTimeoutRef.current = setTimeout(() => {
         scrollToBottom();
+        scrollTimeoutRef.current = null;
       }, 100);
     }
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
   }, [messages]);
 
   const handleSendMessage = () => {

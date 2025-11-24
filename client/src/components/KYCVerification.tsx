@@ -554,9 +554,10 @@ export function KYCVerification() {
                         alt="Selfie soumis"
                         className="h-32 w-auto rounded border"
                         onError={(e) => {
-                          // Si l'image ne charge pas, essayer avec HTTPS
+                          // Si l'image ne charge pas, essayer avec HTTPS une seule fois
                           const target = e.currentTarget;
-                          if (target.src.startsWith('http://')) {
+                          if (target.src.startsWith('http://') && !target.dataset.httpsTried) {
+                            target.dataset.httpsTried = 'true';
                             target.src = target.src.replace('http://', 'https://');
                           }
                         }}

@@ -1,5 +1,5 @@
 import { useRoute, useLocation, Link } from 'wouter';
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { MapPin, Home, Bath, Maximize, Calendar, Mail, Phone, CheckCircle2, ArrowLeft, Heart, Send, Shield, Star, Clock, Users, Sparkles } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -36,16 +36,22 @@ export default function PropertyDetail() {
   const isValidPropertyId = propertyId && propertyId !== 'create' && !isNaN(Number(propertyId)) && Number(propertyId) > 0;
   const numericPropertyId = isValidPropertyId ? Number(propertyId) : null;
 
-  // Rediriger si l'ID est invalide
+  // Rediriger si l'ID est invalide (une seule fois)
+  const hasRedirected = useRef(false);
   useEffect(() => {
-    if (propertyId && !isValidPropertyId) {
+    if (propertyId && !isValidPropertyId && !hasRedirected.current) {
+      hasRedirected.current = true;
       if (propertyId === 'create') {
         setLocation('/properties/create');
       } else {
         setLocation('/properties');
       }
     }
-  }, [propertyId, isValidPropertyId, setLocation]);
+    // Reset si propertyId change
+    if (propertyId !== params?.id) {
+      hasRedirected.current = false;
+    }
+  }, [propertyId, isValidPropertyId, setLocation, params?.id]);
 
   const { data: property, isLoading } = useQuery<Property & { photos?: PropertyPhoto[] }>({
     queryKey: [`/properties/${numericPropertyId}`],
