@@ -1,3 +1,5 @@
+import { getBackendBaseURL } from './apiConfig';
+
 /**
  * Normalise une URL d'image pour pointer vers le backend
  * Gère les différents formats : URLs complètes, chemins relatifs, ou juste le nom de fichier
@@ -16,8 +18,7 @@ export function normalizeImageUrl(url: string | null | undefined): string {
   }
 
   // Get API base URL
-  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-  const imageBaseUrl = apiBase.replace(/\/api$/, '') || 'http://localhost:3000';
+  const imageBaseUrl = getBackendBaseURL();
 
   // Si c'est déjà une URL complète vers le backend, la retourner
   if (trimmedUrl.startsWith('http://localhost:3000') || trimmedUrl.startsWith('https://backend.hoomy.site')) {

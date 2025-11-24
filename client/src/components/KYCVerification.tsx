@@ -9,6 +9,7 @@ import { apiRequest } from '@/lib/api';
 import { getAuthToken } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import type { KYCStatus } from '@shared/schema';
+import { getAPIBaseURL } from '@/lib/apiConfig';
 
 export function KYCVerification() {
   const { toast } = useToast();
@@ -35,7 +36,7 @@ export function KYCVerification() {
       const token = getAuthToken();
       if (!token) throw new Error('Non authentifié');
 
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const apiBase = getAPIBaseURL();
       const baseClean = apiBase.replace(/\/+$/, '');
       const url = `${baseClean}/kyc/submit`;
 
@@ -400,7 +401,7 @@ export function KYCVerification() {
                   {!showCamera && !selfieFile && (
                     <div className="space-y-2">
                       <div className="flex gap-2 flex-wrap">
-                        {navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (
+                        {typeof navigator !== 'undefined' && 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices && (
                           <Button
                             variant="outline"
                             onClick={() => setShowCamera(true)}
@@ -428,7 +429,7 @@ export function KYCVerification() {
                           <Button variant="outline" asChild disabled={isPending}>
                             <span>
                               <Upload className="h-4 w-4 mr-2" />
-                              {navigator.mediaDevices && navigator.mediaDevices.getUserMedia 
+                              {typeof navigator !== 'undefined' && 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices 
                                 ? 'Ou uploader depuis la galerie' 
                                 : 'Uploader une photo'}
                             </span>

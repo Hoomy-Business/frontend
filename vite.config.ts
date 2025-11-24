@@ -34,6 +34,8 @@ export default defineConfig({
     sourcemap: false,
     minify: 'esbuild',
     cssMinify: true,
+    // Copier 404.html pour GitHub Pages SPA routing
+    copyPublicDir: true,
     rollupOptions: {
       output: {
         manualChunks: {

@@ -16,6 +16,7 @@ import type { Property, Contract, Conversation } from '@shared/schema';
 import { apiRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/useLanguage';
+import { getAPIBaseURL } from '@/lib/apiConfig';
 
 export default function StudentDashboard() {
   const { user, isAuthenticated, isStudent } = useAuth();
@@ -53,7 +54,7 @@ export default function StudentDashboard() {
         'Authorization': `Bearer ${token}`,
       };
       
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const apiBase = getAPIBaseURL();
       const baseClean = apiBase.replace(/\/+$/, '');
       const url = `${baseClean}/favorites`;
       const res = await fetch(url, { headers });

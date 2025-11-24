@@ -18,6 +18,7 @@ import { queryClient } from '@/lib/queryClient';
 import { apiRequest } from '@/lib/api';
 import type { Property, Canton, City } from '@shared/schema';
 import { useLanguage } from '@/lib/useLanguage';
+import { getAPIBaseURL } from '@/lib/apiConfig';
 
 export default function Properties() {
   const search = useSearch();
@@ -126,7 +127,7 @@ export default function Properties() {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const apiBase = getAPIBaseURL();
       const baseClean = apiBase.replace(/\/+$/, '');
       const endpointClean = `/properties${queryParams}`.replace(/^\/+/, '');
       const url = `${baseClean}/${endpointClean}`;
@@ -164,7 +165,7 @@ export default function Properties() {
         'Authorization': `Bearer ${token}`,
       };
       
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const apiBase = getAPIBaseURL();
       const baseClean = apiBase.replace(/\/+$/, '');
       const url = `${baseClean}/favorites`;
       const res = await fetch(url, { headers });
@@ -618,7 +619,7 @@ export default function Properties() {
                       <p className="font-semibold mb-1">Erreur de chargement</p>
                       <p className="text-sm">{error instanceof Error ? error.message : 'Erreur inconnue'}</p>
                       <p className="text-xs mt-2 text-muted-foreground">
-                        URL: {import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/properties{queryParams}
+                        URL: {getAPIBaseURL()}/properties{queryParams}
                       </p>
                     </div>
                     <Button 

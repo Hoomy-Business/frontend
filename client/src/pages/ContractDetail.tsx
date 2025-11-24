@@ -14,6 +14,7 @@ import { queryClient } from '@/lib/queryClient';
 import type { Contract } from '@shared/schema';
 import { apiRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { getAPIBaseURL } from '@/lib/apiConfig';
 
 export default function ContractDetail() {
   const params = useParams();
@@ -83,7 +84,7 @@ export default function ContractDetail() {
     if (contractId) {
       // Note: PDF generation route needs to be implemented in backend
       // For now, we'll show a message or redirect to contract details
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const apiBase = getAPIBaseURL();
       const baseClean = apiBase.replace(/\/+$/, '');
       window.open(`${baseClean}/contracts/${contractId}`, '_blank');
     }

@@ -1,27 +1,6 @@
 import { getAuthToken } from './auth';
 import { logger } from './logger';
-
-// Use environment variable or detect IP from current hostname
-function getAPIBaseURL() {
-  // Si VITE_API_BASE_URL est défini, l'utiliser
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-  
-  // En développement, détecter l'IP depuis le hostname actuel
-  if (import.meta.env.DEV) {
-    const hostname = window.location.hostname;
-    // Si on est sur localhost, essayer de détecter l'IP locale
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:3000/api';
-    }
-    // Sinon utiliser le hostname actuel (qui sera l'IP locale si on accède via LAN)
-    return `http://${hostname}:3000/api`;
-  }
-  
-  // En production, utiliser localhost par défaut
-  return 'http://localhost:3000/api';
-}
+import { getAPIBaseURL } from './apiConfig';
 
 const API_BASE_URL = getAPIBaseURL();
 

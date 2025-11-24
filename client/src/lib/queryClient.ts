@@ -1,9 +1,9 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAuthToken } from "./auth";
 import { logger } from "./logger";
+import { getAPIBaseURL } from "./apiConfig";
 
-// Use environment variable or fallback to localhost
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = getAPIBaseURL();
 
 // Helper function to prevent double slashes in URLs
 function normalizeUrl(base: string, endpoint: string): string {
