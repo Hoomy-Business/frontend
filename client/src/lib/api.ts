@@ -120,8 +120,23 @@ export async function uploadImages(files: File[]): Promise<{ images: { url: stri
           const errorData = JSON.parse(text);
           errorMessage = errorData.error || errorData.message || errorMessage;
         } catch {
-          // Si ce n'est pas du JSON, utiliser le texte brut
-          errorMessage = text || errorMessage;
+          // Si ce n'est pas du JSON, essayer d'extraire le message d'erreur du HTML
+          if (text.includes('MulterError')) {
+            if (text.includes('File too large')) {
+              errorMessage = 'Fichier trop volumineux. La taille maximale est de 10 MB par image. Veuillez réduire la taille de vos images.';
+            } else {
+              // Extraire le type d'erreur Multer
+              const multerMatch = text.match(/MulterError: ([^<]+)/);
+              if (multerMatch) {
+                errorMessage = `Erreur d'upload: ${multerMatch[1]}`;
+              } else {
+                errorMessage = text.substring(0, 200) || errorMessage;
+              }
+            }
+          } else {
+            // Si ce n'est pas du HTML avec MulterError, utiliser le texte brut (limité)
+            errorMessage = text.length > 200 ? text.substring(0, 200) + '...' : text;
+          }
         }
       }
     } catch (e) {

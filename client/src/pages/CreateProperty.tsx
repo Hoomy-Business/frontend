@@ -98,10 +98,35 @@ export default function CreateProperty() {
     },
   });
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB en bytes
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      setSelectedFiles(prev => [...prev, ...files]);
+      
+      // Vérifier la taille de chaque fichier
+      const oversizedFiles: File[] = [];
+      const validFiles: File[] = [];
+      
+      files.forEach(file => {
+        if (file.size > MAX_FILE_SIZE) {
+          oversizedFiles.push(file);
+        } else {
+          validFiles.push(file);
+        }
+      });
+      
+      if (oversizedFiles.length > 0) {
+        const fileNames = oversizedFiles.map(f => f.name).join(', ');
+        const maxSizeMB = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
+        setError(`Les fichiers suivants sont trop volumineux (max ${maxSizeMB} MB par image) : ${fileNames}. Veuillez réduire leur taille avant de les uploader.`);
+        return;
+      }
+      
+      if (validFiles.length > 0) {
+        setSelectedFiles(prev => [...prev, ...validFiles]);
+        setError(''); // Clear any previous errors
+      }
     }
   };
 
@@ -151,8 +176,14 @@ export default function CreateProperty() {
         return;
       }
     } catch (err) {
-      // Upload error handled by toast
-      setError('Échec du téléchargement des images: ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
+      // Upload error - afficher le message d'erreur détaillé
+      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+      setError('Échec du téléchargement des images: ' + errorMessage);
+      
+      // Si c'est une erreur de taille de fichier, donner des conseils
+      if (errorMessage.includes('trop volumineux') || errorMessage.includes('File too large')) {
+        setError('Échec du téléchargement des images: Les fichiers sont trop volumineux. La taille maximale est de 10 MB par image. Veuillez compresser ou réduire la taille de vos images avant de les uploader.');
+      }
       return;
     }
 
