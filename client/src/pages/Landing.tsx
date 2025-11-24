@@ -44,27 +44,27 @@ export default function Landing() {
     { 
       name: 'Genève', 
       code: 'GE', 
-      image: '../src/assets/images/geneva.webp'
+      image: '../client/src/assets/images/geneva.webp'
     },
     { 
       name: 'Lausanne', 
       code: 'VD', 
-      image: '../src/assets/images/lausanne.webp'
+      image: '../client/src/assets/images/lausanne.webp'
     },
     { 
       name: 'Berne', 
       code: 'BE', 
-      image: '../src/assets/images/bern.webp'
+      image: '../client/src/assets/images/bern.webp'
     },
     { 
       name: 'Bâle', 
       code: 'BS', 
-      image: '../src/assets/images/basel.webp'
+      image: '../client/src/assets/images/basel.webp'
     },
     { 
       name: 'Lugano', 
       code: 'TI', 
-      image: '../src/assets/images/lugano.webp'
+      image: '../client/src/assets/images/lugano.webp'
     },
   ], []);
 
