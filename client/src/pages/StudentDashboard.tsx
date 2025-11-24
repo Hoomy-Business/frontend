@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'wouter';
+import { useState, useEffect } from 'react';
+import { Link, useLocation } from 'wouter';
 import { Heart, MessageSquare, FileText, User, Building2, Inbox, X, Sparkles, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -19,6 +19,22 @@ import { useLanguage } from '@/lib/useLanguage';
 
 export default function StudentDashboard() {
   const { user, isAuthenticated, isStudent } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLocation('/login');
+      return;
+    }
+    if (!isStudent) {
+      // Si admin, rediriger vers admin dashboard
+      if (user?.role === 'admin') {
+        setLocation('/admin/dashboard');
+      } else {
+        setLocation('/dashboard/owner');
+      }
+    }
+  }, [isAuthenticated, isStudent, user?.role]);
   const { toast } = useToast();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('favorites');

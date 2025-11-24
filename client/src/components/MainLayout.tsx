@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Home, Search, MessageSquare, User, LogOut, Building2, FileText } from 'lucide-react';
+import { Home, Search, MessageSquare, User, LogOut, Building2, FileText, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -80,6 +80,19 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                     </Link>
                   )}
 
+                  {user.role === 'admin' && (
+                    <Link href="/admin/dashboard" data-testid="link-dashboard-admin">
+                      <Button 
+                        variant="ghost"
+                        size="sm"
+                        className={`${location.startsWith('/admin/dashboard') ? 'bg-accent' : ''} hidden sm:flex active:scale-95 transition-transform duration-100 border-primary/20`}
+                      >
+                        <Shield className="h-4 w-4 mr-1.5 sm:mr-2" />
+                        <span className="hidden lg:inline">Admin</span>
+                      </Button>
+                    </Link>
+                  )}
+
                   <Link href="/messages" data-testid="link-messages">
                     <Button 
                       variant="ghost" 
@@ -106,12 +119,37 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                         <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                       <DropdownMenuSeparator />
+                      {isStudent && (
+                        <Link href="/dashboard/student" data-testid="link-dashboard-student-mobile">
+                          <DropdownMenuItem className="cursor-pointer">
+                            <User className="h-4 w-4 mr-2" />
+                            {t('nav.dashboard')}
+                          </DropdownMenuItem>
+                        </Link>
+                      )}
                       {isOwner && (
                         <>
+                          <Link href="/dashboard/owner" data-testid="link-dashboard-owner-mobile">
+                            <DropdownMenuItem className="cursor-pointer">
+                              <Building2 className="h-4 w-4 mr-2" />
+                              {t('nav.dashboard')}
+                            </DropdownMenuItem>
+                          </Link>
                           <Link href="/properties/create" data-testid="link-create-property">
                             <DropdownMenuItem className="cursor-pointer">
                               <Building2 className="h-4 w-4 mr-2" />
                               {t('dashboard.properties.add')}
+                            </DropdownMenuItem>
+                          </Link>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      {user.role === 'admin' && (
+                        <>
+                          <Link href="/admin/dashboard" data-testid="link-dashboard-admin-mobile">
+                            <DropdownMenuItem className="cursor-pointer">
+                              <Shield className="h-4 w-4 mr-2" />
+                              Panneau Admin
                             </DropdownMenuItem>
                           </Link>
                           <DropdownMenuSeparator />

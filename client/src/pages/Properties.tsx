@@ -232,7 +232,7 @@ export default function Properties() {
       if (context?.previousFavorites) {
         queryClient.setQueryData(['/favorites'], context.previousFavorites);
       }
-      console.error('Error adding favorite:', err);
+      // Error handled by toast
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['/favorites'] });
@@ -265,7 +265,7 @@ export default function Properties() {
       if (context?.previousFavorites) {
         queryClient.setQueryData(['/favorites'], context.previousFavorites);
       }
-      console.error('Error removing favorite:', err);
+      // Error handled by toast
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['/favorites'] });

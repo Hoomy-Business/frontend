@@ -71,7 +71,7 @@ export default defineConfig({
   },
   server: {
     port: 5000,
-    host: 'localhost',
+    host: '0.0.0.0', // Écoute sur toutes les interfaces réseau (LAN)
     fs: {
       strict: true,
       deny: ["**/.*"],

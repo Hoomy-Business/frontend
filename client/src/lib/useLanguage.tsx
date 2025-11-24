@@ -30,8 +30,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const t = (key: string, params?: Record<string, any>) => {
     const result = getTranslation(key, language, params);
-    // Debug: log if translation is missing
-    if (result === key && !translations[language]?.[key]) {
+    // Debug: log if translation is missing (only in dev)
+    if (result === key && !translations[language]?.[key] && import.meta.env.DEV) {
       console.warn(`Missing translation for key "${key}" in language "${language}"`);
     }
     return result;

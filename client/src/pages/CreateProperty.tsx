@@ -15,8 +15,9 @@ import { useAuth } from '@/lib/auth';
 import { createPropertySchema, type CreatePropertyInput } from '@shared/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest, uploadImages } from '@/lib/api';
-import type { Canton, City } from '@shared/schema';
+import type { Canton, City, KYCStatus } from '@shared/schema';
 import { useLanguage } from '@/lib/useLanguage';
+import { AlertCircle } from 'lucide-react';
 
 export default function CreateProperty() {
   const [, setLocation] = useLocation();
@@ -44,6 +45,14 @@ export default function CreateProperty() {
     },
   });
 
+  const { data: kycStatus } = useQuery<KYCStatus>({
+    queryKey: ['/kyc/status'],
+    queryFn: async () => {
+      return apiRequest<KYCStatus>('GET', '/kyc/status');
+    },
+    enabled: isOwner,
+  });
+
   const form = useForm<CreatePropertyInput>({
     resolver: zodResolver(createPropertySchema),
     defaultValues: {
@@ -69,7 +78,7 @@ export default function CreateProperty() {
       
       // Debug: vérifier que les images sont présentes
       if (!imageUrls || imageUrls.length === 0) {
-        console.error('❌ No images in payload:', { image_urls: data.image_urls, photos: data.photos });
+        // Images will be handled by backend
         throw new Error('Au moins une image est requise');
       }
       
@@ -80,7 +89,7 @@ export default function CreateProperty() {
       // Remove photos from payload as backend expects image_urls
       delete (payload as any).photos;
       
-      console.log('📤 Sending property creation request with', imageUrls.length, 'images');
+      // Sending property creation request
       return apiRequest('POST', '/properties', payload);
     },
     onSuccess: () => {
@@ -131,20 +140,20 @@ export default function CreateProperty() {
     
     let imageUrls: string[] = [];
     try {
-      console.log('📤 Uploading', selectedFiles.length, 'images...');
+      // Uploading images
       const result = await uploadImages(selectedFiles);
-      console.log('✅ Upload result:', result);
+        // Upload successful
       imageUrls = result.images.map(img => img.url);
-      console.log('✅ Image URLs:', imageUrls);
+        // Image URLs received
       
       // Vérifier que l'upload a réussi
       if (!imageUrls || imageUrls.length === 0) {
-        console.error('❌ No image URLs returned from upload');
+        // No image URLs returned
         setError('Échec du téléchargement des images');
         return;
       }
     } catch (err) {
-      console.error('❌ Upload error:', err);
+      // Upload error handled by toast
       setError('Échec du téléchargement des images: ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
       return;
     }
@@ -193,6 +202,21 @@ export default function CreateProperty() {
               {error && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {kycStatus && !kycStatus.is_verified && !kycStatus.kyc_verified && (
+                <Alert className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                    <strong>Vérification KYC requise</strong>
+                    <br />
+                    Vous devez compléter la vérification KYC avant de pouvoir publier des annonces.
+                    <br />
+                    <Link href="/dashboard/owner?tab=profile" className="underline font-medium mt-2 inline-block">
+                      Compléter la vérification dans votre profil
+                    </Link>
+                  </AlertDescription>
                 </Alert>
               )}
 
@@ -554,7 +578,7 @@ export default function CreateProperty() {
                     <Button
                       type="submit"
                       size="lg"
-                      disabled={createPropertyMutation.isPending}
+                      disabled={createPropertyMutation.isPending || (kycStatus && !kycStatus.is_verified && !kycStatus.kyc_verified)}
                       className="flex-1"
                       data-testid="button-submit"
                     >

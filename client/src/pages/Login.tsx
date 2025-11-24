@@ -31,7 +31,13 @@ export default function Login() {
     onSuccess: (data) => {
       login(data.token, data.user);
       const role = data.user.role;
-      setLocation(role === 'student' ? '/dashboard/student' : '/dashboard/owner');
+      if (role === 'admin') {
+        setLocation('/admin/dashboard');
+      } else if (role === 'student') {
+        setLocation('/dashboard/student');
+      } else {
+        setLocation('/dashboard/owner');
+      }
     },
     onError: (err: Error) => {
       if (err.message.includes('EMAIL_NOT_VERIFIED')) {

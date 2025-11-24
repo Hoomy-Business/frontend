@@ -1,5 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAuthToken } from "./auth";
+import { logger } from "./logger";
 
 // Use environment variable or fallback to localhost
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
@@ -45,9 +46,9 @@ export async function apiRequest<T = any>(
 
   // Protection: bloquer les requêtes vers des endpoints invalides
   if (fullUrl.includes('/properties/create') || fullUrl.includes('/properties/edit')) {
-    console.error('🚫 BLOCKED invalid API request in queryClient.apiRequest:', fullUrl);
-    console.error('Method:', method, 'URL:', url);
-    console.error('Stack trace:', new Error().stack);
+    logger.error('🚫 BLOCKED invalid API request in queryClient.apiRequest:', fullUrl);
+    logger.error('Method:', method, 'URL:', url);
+    logger.error('Stack trace:', new Error().stack);
     throw new Error(`Invalid API endpoint: ${url}. This appears to be a frontend route, not an API endpoint.`);
   }
 
@@ -91,9 +92,9 @@ export const getQueryFn: <T>(options: {
     
     if (hasInvalidPattern) {
       // Log avec stack trace pour identifier la source
-      console.error('🚫 BLOCKED invalid API request:', endpoint);
-      console.error('QueryKey:', queryKey);
-      console.error('Stack trace:', new Error().stack);
+      logger.error('🚫 BLOCKED invalid API request:', endpoint);
+      logger.error('QueryKey:', queryKey);
+      logger.error('Stack trace:', new Error().stack);
       // Retourner une promesse rejetée au lieu de throw pour éviter les erreurs non gérées
       return Promise.reject(new Error(`Invalid API endpoint: ${endpoint}. This appears to be a frontend route, not an API endpoint.`));
     }
@@ -109,7 +110,7 @@ export const getQueryFn: <T>(options: {
 
     // Protection: bloquer les requêtes vers des endpoints invalides (déjà fait plus haut, mais double vérification)
     if (fullUrl.includes('/properties/create') || fullUrl.includes('/properties/edit')) {
-      console.error('🚫 BLOCKED invalid API request in getQueryFn:', fullUrl);
+      logger.error('🚫 BLOCKED invalid API request in getQueryFn:', fullUrl);
       return Promise.reject(new Error(`Invalid API endpoint: ${endpoint}. This appears to be a frontend route, not an API endpoint.`));
     }
 
@@ -144,8 +145,8 @@ export const queryClient = new QueryClient({
       // Cela empêche les requêtes accidentelles vers des routes invalides
       queryFn: async ({ queryKey }) => {
         const keyStr = JSON.stringify(queryKey);
-        console.error('❌ Query without explicit queryFn:', keyStr);
-        console.error('Stack trace:', new Error().stack);
+        logger.error('❌ Query without explicit queryFn:', keyStr);
+        logger.error('Stack trace:', new Error().stack);
         throw new Error(`Query missing explicit queryFn. QueryKey: ${keyStr}. All queries must provide a queryFn.`);
       },
       refetchInterval: false,

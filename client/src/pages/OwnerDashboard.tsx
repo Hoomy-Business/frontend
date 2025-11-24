@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'wouter';
+import { useState, useEffect } from 'react';
+import { Link, useLocation } from 'wouter';
 import { Building2, MessageSquare, FileText, User, Plus, Edit, Trash2, CreditCard, Check, X, Inbox, Lock } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -20,9 +20,26 @@ import { queryClient } from '@/lib/queryClient';
 import type { Property, Contract, Conversation, StripeAccountStatus } from '@shared/schema';
 import { apiRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { KYCVerification } from '@/components/KYCVerification';
 
 export default function OwnerDashboard() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isOwner } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLocation('/login');
+      return;
+    }
+    if (!isOwner) {
+      // Si admin, rediriger vers admin dashboard
+      if (user?.role === 'admin') {
+        setLocation('/admin/dashboard');
+      } else {
+        setLocation('/dashboard/student');
+      }
+    }
+  }, [isAuthenticated, isOwner, user?.role]);
   const { toast } = useToast();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('properties');
@@ -199,7 +216,7 @@ export default function OwnerDashboard() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="properties" className="gap-2" data-testid="tab-properties">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">{t('dashboard.properties')}</span>
@@ -573,6 +590,10 @@ export default function OwnerDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* KYC Verification Section */}
+            <KYCVerification />
+
           </TabsContent>
         </Tabs>
       </div>

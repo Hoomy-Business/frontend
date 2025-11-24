@@ -41,7 +41,13 @@ export default function VerifyEmail() {
     onSuccess: (data) => {
       login(data.token, data.user);
       const role = data.user.role;
-      setLocation(role === 'student' ? '/dashboard/student' : '/dashboard/owner');
+      if (role === 'admin') {
+        setLocation('/admin/dashboard');
+      } else if (role === 'student') {
+        setLocation('/dashboard/student');
+      } else {
+        setLocation('/dashboard/owner');
+      }
     },
     onError: (err: Error) => {
       setError(err.message || 'Verification failed. Please check your code.');

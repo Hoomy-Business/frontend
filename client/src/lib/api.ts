@@ -1,7 +1,29 @@
 import { getAuthToken } from './auth';
+import { logger } from './logger';
 
-// Use environment variable or fallback to localhost
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+// Use environment variable or detect IP from current hostname
+function getAPIBaseURL() {
+  // Si VITE_API_BASE_URL est défini, l'utiliser
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // En développement, détecter l'IP depuis le hostname actuel
+  if (import.meta.env.DEV) {
+    const hostname = window.location.hostname;
+    // Si on est sur localhost, essayer de détecter l'IP locale
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:3000/api';
+    }
+    // Sinon utiliser le hostname actuel (qui sera l'IP locale si on accède via LAN)
+    return `http://${hostname}:3000/api`;
+  }
+  
+  // En production, utiliser localhost par défaut
+  return 'http://localhost:3000/api';
+}
+
+const API_BASE_URL = getAPIBaseURL();
 
 // Helper function to prevent double slashes in URLs
 function normalizeUrl(base: string, endpoint: string): string {
@@ -37,9 +59,9 @@ export async function apiRequest<T = any>(
   
   // Protection: bloquer les requêtes vers des endpoints invalides
   if (url.includes('/properties/create') || url.includes('/properties/edit')) {
-    console.error('🚫 BLOCKED invalid API request in apiRequest:', url);
-    console.error('Method:', method, 'Endpoint:', endpoint);
-    console.error('Stack trace:', new Error().stack);
+    logger.error('🚫 BLOCKED invalid API request in apiRequest:', url);
+    logger.error('Method:', method, 'Endpoint:', endpoint);
+    logger.error('Stack trace:', new Error().stack);
     throw new Error(`Invalid API endpoint: ${endpoint}. This appears to be a frontend route, not an API endpoint.`);
   }
   

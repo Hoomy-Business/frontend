@@ -210,6 +210,42 @@ export type CreateContractInput = z.infer<typeof createContractSchema>;
 
 export type StripeAccountStatus = z.infer<typeof stripeAccountStatusSchema>;
 
+// ==================== KYC SCHEMAS ====================
+export const kycStatusSchema = z.object({
+  id: z.number().optional(),
+  status: z.enum(['not_submitted', 'pending', 'approved', 'rejected']),
+  is_verified: z.boolean(),
+  kyc_verified: z.boolean(),
+  id_card_front_url: z.string().nullable().optional(),
+  id_card_back_url: z.string().nullable().optional(),
+  selfie_url: z.string().nullable().optional(),
+  rejection_reason: z.string().nullable().optional(),
+  submitted_at: z.string().nullable().optional(),
+  reviewed_at: z.string().nullable().optional(),
+});
+
+export type KYCStatus = z.infer<typeof kycStatusSchema>;
+
+// ==================== ADMIN KYC SCHEMAS ====================
+export const adminKYCSchema = z.object({
+  id: z.number(),
+  user_id: z.number(),
+  first_name: z.string(),
+  last_name: z.string(),
+  email: z.string(),
+  role: z.string(),
+  id_card_front_url: z.string().nullable(),
+  id_card_back_url: z.string().nullable(),
+  selfie_url: z.string().nullable(),
+  status: z.enum(['pending', 'approved', 'rejected']),
+  rejection_reason: z.string().nullable(),
+  submitted_at: z.string(),
+  reviewed_at: z.string().nullable(),
+  user_created_at: z.string(),
+});
+
+export type AdminKYC = z.infer<typeof adminKYCSchema>;
+
 // ==================== AUTH RESPONSE TYPES ====================
 export interface AuthResponse {
   message: string;
