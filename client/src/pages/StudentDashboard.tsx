@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Heart, MessageSquare, FileText, User, Building2, Inbox, X, Sparkles, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
+import { Heart, MessageSquare, FileText, User, Building2, Inbox, X, Sparkles, TrendingUp, Clock, CheckCircle2, Camera } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -9,14 +9,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth, getAuthToken } from '@/lib/auth';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import type { Property, Contract, Conversation } from '@shared/schema';
-import { apiRequest } from '@/lib/api';
+import { apiRequest, uploadImage } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/useLanguage';
 import { getAPIBaseURL } from '@/lib/apiConfig';
+import { normalizeImageUrl } from '@/lib/imageUtils';
 
 export default function StudentDashboard() {
   const { user, isAuthenticated, isStudent } = useAuth();
@@ -116,6 +120,59 @@ export default function StudentDashboard() {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
+
+  const updateProfileMutation = useMutation({
+    mutationFn: (data: { first_name?: string; last_name?: string; phone?: string; profile_picture?: string }) =>
+      apiRequest('PUT', '/users/profile', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/auth/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/auth/user'] });
+      toast({ title: 'Success', description: 'Profile updated successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Erreur',
+        description: 'Le fichier doit être une image',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const result = await uploadImage(file);
+      const imageUrl = result.url;
+      
+      // Mettre à jour le profil avec la nouvelle photo
+      await updateProfileMutation.mutateAsync({
+        profile_picture: imageUrl,
+      });
+      
+      toast({
+        title: 'Succès',
+        description: 'Photo de profil mise à jour',
+      });
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Erreur lors de l\'upload de la photo',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   return (
     <MainLayout>
@@ -471,6 +528,37 @@ export default function StudentDashboard() {
                 <CardDescription>{t('dashboard.profile.desc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Profile Picture Section */}
+                <div className="flex items-center gap-4 pb-4 border-b">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={user?.profile_picture ? normalizeImageUrl(user.profile_picture) : undefined} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                      {user?.first_name?.[0]}{user?.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <Label htmlFor="profile-picture-upload-student" className="cursor-pointer">
+                      <Button variant="outline" asChild disabled={uploadingPhoto}>
+                        <span>
+                          <Camera className="h-4 w-4 mr-2" />
+                          {uploadingPhoto ? 'Upload en cours...' : 'Changer la photo de profil'}
+                        </span>
+                      </Button>
+                    </Label>
+                    <Input
+                      id="profile-picture-upload-student"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                      disabled={uploadingPhoto}
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Formats acceptés: JPG, PNG, WEBP (max 10 MB)
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.first_name')}</p>

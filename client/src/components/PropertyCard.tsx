@@ -137,7 +137,7 @@ export const PropertyCard = memo(function PropertyCard({ property, onFavoriteTog
             data-testid={`button-favorite-${property.id}`}
             aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
           >
-            <Heart className={`h-6 w-6 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
+            <Heart className={`h-6 w-6 ${isFavorited ? 'fill-primary text-primary' : 'text-gray-700'}`} />
           </button>
         )}
       </div>

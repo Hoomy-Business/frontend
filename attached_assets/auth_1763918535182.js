@@ -53,6 +53,39 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: 'Vous devez accepter les conditions d\'utilisation' });
         }
 
+        // Vérification email temporaire
+        const temporaryEmailDomains = [
+            'temp-mail.org', 'tempmail.com', 'guerrillamail.com', 'mailinator.com',
+            '10minutemail.com', 'throwaway.email', 'tempail.com', 'mohmal.com',
+            'getnada.com', 'maildrop.cc', 'yopmail.com', 'sharklasers.com',
+            'grr.la', 'guerrillamailblock.com', 'pokemail.net', 'spam4.me',
+            'bccto.me', 'chitthi.in', 'dispostable.com', 'mintemail.com',
+            'mytrashmail.com', 'tempinbox.com', 'trashmail.com', 'trashmailer.com',
+            'throwawaymail.com', 'getairmail.com', 'tempmailo.com', 'fakeinbox.com',
+            'emailondeck.com', 'mailcatch.com', 'meltmail.com', 'melt.li',
+            'mox.do', 'temp-mail.io', 'temp-mail.ru', 'tempail.com',
+            'tempr.email', 'tmpmail.org', 'tmpmail.net', 'tmpmail.com',
+            'tmpmail.io', 'tmpmail.me', '0-mail.com', '33mail.com',
+            '4warding.com', '4warding.net', '4warding.org', 'armyspy.com',
+            'cuvox.de', 'dayrep.com', 'einrot.com', 'fleckens.hu',
+            'gustr.com', 'jourrapide.com', 'rhyta.com', 'superrito.com',
+            'teleworm.us', 'emailfake.com', 'fakemailgenerator.com',
+            'mailnesia.com', 'mailcatch.com', 'mintemail.com', 'mytrashmail.com',
+            'tempinbox.co.uk', 'tempinbox.com', 'trashmail.com', 'trashmail.net',
+            'trashmail.org', 'trashmailer.com', 'throwawaymail.com'
+        ];
+        
+        const emailDomain = email.toLowerCase().split('@')[1];
+        const isTemporaryEmail = temporaryEmailDomains.some(domain => 
+            emailDomain === domain || emailDomain.endsWith(`.${domain}`)
+        );
+        
+        if (isTemporaryEmail) {
+            return res.status(400).json({ 
+                error: 'Les adresses email temporaires ne sont pas autorisées. Veuillez utiliser une adresse email permanente.' 
+            });
+        }
+
         // Vérification âge (18 ans)
         const birthDate = new Date(date_of_birth);
         const ageDifMs = Date.now() - birthDate.getTime();

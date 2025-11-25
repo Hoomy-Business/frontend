@@ -6,6 +6,116 @@ export const propertyTypes = ['apartment', 'house', 'studio', 'room', 'other'] a
 export const propertyStatuses = ['available', 'pending', 'rented'] as const;
 export const contractStatuses = ['pending', 'active', 'completed', 'cancelled'] as const;
 
+// ==================== TEMPORARY EMAIL DOMAINS ====================
+// Liste des domaines d'emails temporaires à bloquer
+export const TEMPORARY_EMAIL_DOMAINS = [
+  'temp-mail.org',
+  'tempmail.com',
+  'guerrillamail.com',
+  'mailinator.com',
+  '10minutemail.com',
+  'throwaway.email',
+  'tempail.com',
+  'mohmal.com',
+  'getnada.com',
+  'maildrop.cc',
+  'yopmail.com',
+  'sharklasers.com',
+  'grr.la',
+  'guerrillamailblock.com',
+  'pokemail.net',
+  'spam4.me',
+  'bccto.me',
+  'chitthi.in',
+  'dispostable.com',
+  'mintemail.com',
+  'mytrashmail.com',
+  'tempinbox.com',
+  'trashmail.com',
+  'trashmailer.com',
+  'throwawaymail.com',
+  'getairmail.com',
+  'tempmailo.com',
+  'fakeinbox.com',
+  'emailondeck.com',
+  'mailcatch.com',
+  'meltmail.com',
+  'melt.li',
+  'mox.do',
+  'temp-mail.io',
+  'temp-mail.ru',
+  'tempail.com',
+  'tempr.email',
+  'tmpmail.org',
+  'tmpmail.net',
+  'tmpmail.com',
+  'tmpmail.io',
+  'tmpmail.me',
+  'tmpmail.org',
+  'tmpmail.net',
+  'tmpmail.com',
+  'tmpmail.io',
+  'tmpmail.me',
+  '0-mail.com',
+  '33mail.com',
+  '4warding.com',
+  '4warding.net',
+  '4warding.org',
+  'armyspy.com',
+  'cuvox.de',
+  'dayrep.com',
+  'einrot.com',
+  'fleckens.hu',
+  'gustr.com',
+  'jourrapide.com',
+  'rhyta.com',
+  'superrito.com',
+  'teleworm.us',
+  'emailfake.com',
+  'fakemailgenerator.com',
+  'mailnesia.com',
+  'mailcatch.com',
+  'mintemail.com',
+  'mytrashmail.com',
+  'tempinbox.co.uk',
+  'tempinbox.com',
+  'trashmail.com',
+  'trashmail.net',
+  'trashmail.org',
+  'trashmailer.com',
+  'throwawaymail.com',
+  'getairmail.com',
+  'tempmailo.com',
+  'fakeinbox.com',
+  'emailondeck.com',
+  'mailcatch.com',
+  'meltmail.com',
+  'melt.li',
+  'mox.do',
+  'temp-mail.io',
+  'temp-mail.ru',
+  'tempail.com',
+  'tempr.email',
+  'tmpmail.org',
+  'tmpmail.net',
+  'tmpmail.com',
+  'tmpmail.io',
+  'tmpmail.me',
+] as const;
+
+/**
+ * Vérifie si un email provient d'un domaine temporaire
+ */
+export function isTemporaryEmail(email: string): boolean {
+  const domain = email.toLowerCase().split('@')[1];
+  if (!domain) return false;
+  
+  // Vérifier si le domaine est dans la liste noire
+  return TEMPORARY_EMAIL_DOMAINS.some(tempDomain => 
+    domain === tempDomain || domain.endsWith(`.${tempDomain}`)
+  );
+}
+
 // ==================== USER SCHEMAS ====================
 export const userSchema = z.object({
   id: z.number(),
@@ -22,7 +132,11 @@ export const userSchema = z.object({
 });
 
 export const registerSchema = z.object({
-  email: z.string().email(),
+  email: z.string()
+    .email('Adresse email invalide')
+    .refine((email) => !isTemporaryEmail(email), {
+      message: 'Les adresses email temporaires ne sont pas autorisées. Veuillez utiliser une adresse email permanente.',
+    }),
   password: z.string().min(8),
   first_name: z.string().min(1),
   last_name: z.string().min(1),

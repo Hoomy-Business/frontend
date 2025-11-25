@@ -8,10 +8,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/lib/auth';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useLanguage } from '@/lib/useLanguage';
+import { normalizeImageUrl } from '@/lib/imageUtils';
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -107,6 +108,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
                         <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.profile_picture ? normalizeImageUrl(user.profile_picture) : undefined} />
                           <AvatarFallback className="bg-primary text-primary-foreground">
                             {getInitials(user.first_name, user.last_name)}
                           </AvatarFallback>
@@ -220,7 +222,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 <li><a href="#" className="hover:text-foreground">{t('footer.company.about')}</a></li>
                 <li><a href="#" className="hover:text-foreground">{t('footer.company.contact')}</a></li>
                 <li><Link href="/cgu" className="hover:text-foreground">{t('footer.company.terms')}</Link></li>
-                <li><a href="#" className="hover:text-foreground">{t('footer.company.privacy')}</a></li>
+                <li><Link href="/privacy" className="hover:text-foreground">{t('footer.company.privacy')}</Link></li>
               </ul>
             </div>
           </div>

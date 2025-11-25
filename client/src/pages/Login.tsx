@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,8 +15,26 @@ import { apiRequest } from '@/lib/api';
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const { login } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const [error, setError] = useState<string>('');
+
+  // Rediriger si déjà connecté
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'admin') {
+        setLocation('/admin/dashboard');
+      } else if (user.role === 'student') {
+        setLocation('/dashboard/student');
+      } else {
+        setLocation('/dashboard/owner');
+      }
+    }
+  }, [isAuthenticated, user, setLocation]);
+
+  // Ne pas afficher le formulaire si déjà connecté
+  if (isAuthenticated && user) {
+    return null;
+  }
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),

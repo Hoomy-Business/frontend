@@ -13,13 +13,45 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { registerSchema, type RegisterInput } from '@shared/schema';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 
 export default function Register() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
   const roleParam = params.get('role');
+  const { isAuthenticated, user } = useAuth();
   const [error, setError] = useState<string>('');
+
+  const handleTermsClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLocation('/cgu');
+  };
+
+  const handlePrivacyClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLocation('/privacy');
+  };
+
+  // Rediriger si déjà connecté
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'admin') {
+        setLocation('/admin/dashboard');
+      } else if (user.role === 'student') {
+        setLocation('/dashboard/student');
+      } else {
+        setLocation('/dashboard/owner');
+      }
+    }
+  }, [isAuthenticated, user, setLocation]);
+
+  // Ne pas afficher le formulaire si déjà connecté
+  if (isAuthenticated && user) {
+    return null;
+  }
 
   const form = useForm<RegisterInput & { terms_accepted: boolean }>({
     resolver: zodResolver(registerSchema),
@@ -231,9 +263,9 @@ export default function Register() {
                       <div className="space-y-1 leading-none">
                         <FormLabel>
                           I accept the{' '}
-                          <a href="#" className="text-primary hover:underline">Terms of Service</a>
+                          <a href="/cgu" className="text-primary hover:underline" onClick={handleTermsClick}>Terms of Service</a>
                           {' '}and{' '}
-                          <a href="#" className="text-primary hover:underline">Privacy Policy</a>
+                          <a href="/privacy" className="text-primary hover:underline" onClick={handlePrivacyClick}>Privacy Policy</a>
                         </FormLabel>
                         <FormMessage />
                       </div>

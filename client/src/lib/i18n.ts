@@ -194,6 +194,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'register.have_account': 'Déjà un compte?',
     'register.login': 'Se connecter',
     'register.error': 'Échec de l\'inscription',
+    'register.error.temporary_email': 'Les adresses email temporaires ne sont pas autorisées. Veuillez utiliser une adresse email permanente.',
     
     // Messages
     'messages.title': 'Messages',
@@ -450,6 +451,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'register.have_account': 'Already have an account?',
     'register.login': 'Sign In',
     'register.error': 'Registration failed',
+    'register.error.temporary_email': 'Temporary email addresses are not allowed. Please use a permanent email address.',
     
     // Messages
     'messages.title': 'Messages',
@@ -706,6 +708,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'register.have_account': 'Hai già un account?',
     'register.login': 'Accedi',
     'register.error': 'Registrazione fallita',
+    'register.error.temporary_email': 'Gli indirizzi email temporanei non sono consentiti. Si prega di utilizzare un indirizzo email permanente.',
     
     // Messages
     'messages.title': 'Messaggi',
@@ -960,6 +963,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'register.have_account': 'Hesch scho en Account?',
     'register.login': 'Aamälde',
     'register.error': 'Registrierig fehlgschlage',
+    'register.error.temporary_email': 'Temporäri Email-Adresse sind nöd erlaubt. Bitte verwende e permanenti Email-Adresse.',
     'messages.title': 'Nachrichte',
     'messages.subtitle': 'Kommuniziere mit Vermieter und potenzielle Mieter',
     'messages.conversations': 'Konversatione',

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Building2, MessageSquare, FileText, User, Plus, Edit, Trash2, CreditCard, Check, X, Inbox, Lock } from 'lucide-react';
+import { Building2, MessageSquare, FileText, User, Plus, Edit, Trash2, CreditCard, Check, X, Inbox, Lock, Upload, Camera } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -13,14 +13,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/lib/auth';
 import { useLanguage } from '@/lib/useLanguage';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import type { Property, Contract, Conversation, StripeAccountStatus } from '@shared/schema';
-import { apiRequest } from '@/lib/api';
+import { apiRequest, uploadImage } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { KYCVerification } from '@/components/KYCVerification';
+import { normalizeImageUrl } from '@/lib/imageUtils';
 
 export default function OwnerDashboard() {
   const { user, isAuthenticated, isOwner } = useAuth();
@@ -155,6 +157,46 @@ export default function OwnerDashboard() {
     createOnboardingLinkMutation.mutate();
   };
 
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Erreur',
+        description: 'Le fichier doit être une image',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const result = await uploadImage(file);
+      const imageUrl = result.url;
+      
+      // Mettre à jour le profil avec la nouvelle photo
+      await updateProfileMutation.mutateAsync({
+        profile_picture: imageUrl,
+      });
+      
+      toast({
+        title: 'Succès',
+        description: 'Photo de profil mise à jour',
+      });
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Erreur lors de l\'upload de la photo',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const deletePropertyMutation = useMutation({
     mutationFn: (propertyId: number) => apiRequest('DELETE', `/properties/${propertyId}`),
     onSuccess: () => {
@@ -163,10 +205,11 @@ export default function OwnerDashboard() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: { first_name: string; last_name: string; phone?: string }) =>
+    mutationFn: (data: { first_name?: string; last_name?: string; phone?: string; profile_picture?: string }) =>
       apiRequest('PUT', '/users/profile', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/auth/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/auth/user'] });
       toast({ title: 'Success', description: 'Profile updated successfully' });
     },
     onError: (error: Error) => {
@@ -511,6 +554,37 @@ export default function OwnerDashboard() {
                 <CardDescription>Your account details</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Profile Picture Section */}
+                <div className="flex items-center gap-4 pb-4 border-b">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={user?.profile_picture ? normalizeImageUrl(user.profile_picture) : undefined} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                      {user?.first_name?.[0]}{user?.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <Label htmlFor="profile-picture-upload" className="cursor-pointer">
+                      <Button variant="outline" asChild disabled={uploadingPhoto}>
+                        <span>
+                          <Camera className="h-4 w-4 mr-2" />
+                          {uploadingPhoto ? 'Upload en cours...' : 'Changer la photo de profil'}
+                        </span>
+                      </Button>
+                    </Label>
+                    <Input
+                      id="profile-picture-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                      disabled={uploadingPhoto}
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Formats acceptés: JPG, PNG, WEBP (max 10 MB)
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.first_name')}</p>
@@ -546,6 +620,7 @@ export default function OwnerDashboard() {
                   user={user}
                   updateProfileMutation={updateProfileMutation}
                   changePasswordMutation={changePasswordMutation}
+                  onPhotoUpload={handlePhotoUpload}
                 />
 
                 <Separator />
@@ -604,11 +679,13 @@ export default function OwnerDashboard() {
 function ProfileEditForm({ 
   user, 
   updateProfileMutation, 
-  changePasswordMutation 
+  changePasswordMutation,
+  onPhotoUpload
 }: { 
   user: any; 
   updateProfileMutation: any; 
   changePasswordMutation: any;
+  onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
 }) {
   const { t } = useLanguage();
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -623,6 +700,16 @@ function ProfileEditForm({
     new_password: '',
     confirm_password: '',
   });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadingPhoto(true);
+    try {
+      await onPhotoUpload(e);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const handleUpdateProfile = () => {
     updateProfileMutation.mutate(profileData);
