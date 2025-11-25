@@ -12,7 +12,6 @@ import { apiRequest } from '@/lib/api';
 import type { Canton } from '@shared/schema';
 import { useLanguage } from '@/lib/useLanguage';
 import { useAuth } from '@/lib/auth';
-import backgroundVideo from '@/assets/video/background.mp4';
 
 export default function Landing() {
   const [, setLocation] = useLocation();
@@ -81,7 +80,7 @@ export default function Landing() {
           playsInline
           className="absolute inset-0 w-full h-full object-cover z-0"
         >
-          <source src={backgroundVideo} type="video/mp4" />
+          <source src="/video/background.mp4" type="video/mp4" />
         </video>
         <div 
           className="absolute inset-0 z-[1] bg-gradient-to-b from-black/40 to-black/60"
