@@ -25,7 +25,7 @@ import { KYCVerification } from '@/components/KYCVerification';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 
 export default function OwnerDashboard() {
-  const { user, isAuthenticated, isOwner } = useAuth();
+  const { user, isAuthenticated, isOwner, refreshUser } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -207,9 +207,11 @@ export default function OwnerDashboard() {
   const updateProfileMutation = useMutation({
     mutationFn: (data: { first_name?: string; last_name?: string; phone?: string; profile_picture?: string }) =>
       apiRequest('PUT', '/users/profile', data),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['/auth/profile'] });
       queryClient.invalidateQueries({ queryKey: ['/auth/user'] });
+      // Recharger le profil utilisateur pour avoir les dernières données
+      await refreshUser();
       toast({ title: 'Success', description: 'Profile updated successfully' });
     },
     onError: (error: Error) => {

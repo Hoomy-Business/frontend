@@ -1,12 +1,14 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import type { User } from '@shared/schema';
+import { apiRequest } from './api';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (token: string, user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
   isStudent: boolean;
   isOwner: boolean;
@@ -50,11 +52,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLocation('/');
   };
 
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const response = await apiRequest<{ user: User }>('GET', '/auth/profile');
+      if (response.user) {
+        setUser(response.user);
+        localStorage.setItem('auth_user', JSON.stringify(response.user));
+      }
+    } catch (error) {
+      console.error('Failed to refresh user profile:', error);
+      // Si le token est invalide, déconnecter l'utilisateur
+      if (error instanceof Error && error.message.includes('401')) {
+        logout();
+      }
+    }
+  };
+
+  // Recharger le profil utilisateur au montage si connecté
+  useEffect(() => {
+    if (token && user) {
+      refreshUser();
+    }
+  }, [token]); // Seulement au montage ou si le token change
+
   const value: AuthContextType = {
     user,
     token,
     login,
     logout,
+    refreshUser,
     isAuthenticated: !!user && !!token,
     isStudent: user?.role === 'student',
     isOwner: user?.role === 'owner',

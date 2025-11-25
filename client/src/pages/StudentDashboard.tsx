@@ -23,7 +23,7 @@ import { getAPIBaseURL } from '@/lib/apiConfig';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 
 export default function StudentDashboard() {
-  const { user, isAuthenticated, isStudent } = useAuth();
+  const { user, isAuthenticated, isStudent, refreshUser } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -124,9 +124,11 @@ export default function StudentDashboard() {
   const updateProfileMutation = useMutation({
     mutationFn: (data: { first_name?: string; last_name?: string; phone?: string; profile_picture?: string }) =>
       apiRequest('PUT', '/users/profile', data),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['/auth/profile'] });
       queryClient.invalidateQueries({ queryKey: ['/auth/user'] });
+      // Recharger le profil utilisateur pour avoir les dernières données
+      await refreshUser();
       toast({ title: 'Success', description: 'Profile updated successfully' });
     },
     onError: (error: Error) => {
