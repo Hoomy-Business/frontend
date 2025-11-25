@@ -236,9 +236,9 @@ export default function CreateProperty() {
   const onSubmit = async (data: CreatePropertyInput) => {
     setError('');
     
-    // Vérifier qu'une adresse valide a été sélectionnée
-    if (!selectedAddressData) {
-      setError('Veuillez sélectionner une adresse dans la liste proposée');
+    // Vérifier que les champs d'adresse sont remplis
+    if (!data.address || !data.city_name || !data.postal_code || !data.canton_code) {
+      setError('Veuillez remplir tous les champs d\'adresse (rue, canton, ville, code postal)');
       return;
     }
     
@@ -274,13 +274,20 @@ export default function CreateProperty() {
       return;
     }
 
-    // Utiliser les données de l'adresse sélectionnée
+    // Utiliser les données de l'adresse (soit depuis selectedAddressData, soit depuis le formulaire)
+    const addressData = selectedAddressData || {
+      address: data.address,
+      city_name: data.city_name,
+      postal_code: data.postal_code,
+      canton_code: data.canton_code,
+    };
+
     const submitData = {
       ...data,
-      address: selectedAddressData.address,
-      city_name: selectedAddressData.city_name,
-      postal_code: selectedAddressData.postal_code,
-      canton_code: selectedAddressData.canton_code,
+      address: addressData.address,
+      city_name: addressData.city_name,
+      postal_code: addressData.postal_code,
+      canton_code: addressData.canton_code,
       rooms: data.rooms ?? undefined,
       bathrooms: data.bathrooms ?? undefined,
       surface_area: data.surface_area ?? undefined,
@@ -463,7 +470,7 @@ export default function CreateProperty() {
                           />
                         </FormControl>
                         <FormDescription>
-                          Sélectionnez une adresse dans la liste proposée
+                          Saisissez une adresse (vous pouvez sélectionner depuis la liste ou saisir manuellement)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

@@ -113,10 +113,12 @@ export function AddressAutocomplete({
     }
   };
 
-  // Vérifier si la valeur actuelle correspond à une suggestion valide
+  // Permettre la saisie manuelle si aucune suggestion valide n'est disponible
+  // L'adresse sera considérée comme valide si elle est saisie manuellement
   const isValidAddress = selectedSuggestion !== null || 
     (inputValue && suggestions.some(s => s.full_address === inputValue)) ||
-    !inputValue || inputValue.trim().length === 0;
+    !inputValue || inputValue.trim().length === 0 ||
+    (inputValue.trim().length > 0 && suggestions.length === 0 && !queryError && !isLoading);
 
   return (
     <div className={cn("relative", className)}>
@@ -207,9 +209,9 @@ export function AddressAutocomplete({
           </Command>
         </PopoverContent>
       </Popover>
-      {!isValidAddress && inputValue.trim().length > 0 && (
+      {!isValidAddress && inputValue.trim().length > 0 && suggestions.length > 0 && (
         <p className="text-sm text-destructive mt-1">
-          Veuillez sélectionner une adresse dans la liste
+          Veuillez sélectionner une adresse dans la liste ou continuer à saisir manuellement
         </p>
       )}
     </div>
