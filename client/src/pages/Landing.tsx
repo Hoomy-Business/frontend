@@ -92,7 +92,8 @@ export default function Landing() {
               console.log('Video metadata loaded successfully');
             }}
           >
-            <source src="/video/background.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"' />
+            <source src="/video/background.webm" type="video/webm" />
+            <source src="/video/background.mp4" type="video/mp4" />
           </video>
         ) : (
           <div 
