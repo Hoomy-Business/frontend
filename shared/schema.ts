@@ -370,9 +370,57 @@ export const propertySchema = z.object({
   profile_picture: z.string().nullable().optional(),
 });
 
+/**
+ * Valide que la description semble correcte:
+ * - Contient des espaces (donc plusieurs mots)
+ * - N'est pas seulement des caractères répétés
+ * - A une longueur minimale significative
+ */
+function validateDescription(description: string): boolean {
+  // Vérifier la longueur minimale
+  if (description.length < 20) {
+    return false;
+  }
+
+  // Vérifier qu'il y a des espaces (donc plusieurs mots)
+  if (!description.includes(' ')) {
+    return false;
+  }
+
+  // Vérifier qu'il n'y a pas seulement des espaces
+  const trimmed = description.trim();
+  if (trimmed.length < 20) {
+    return false;
+  }
+
+  // Vérifier qu'il y a au moins 2 mots (séparés par des espaces)
+  const words = trimmed.split(/\s+/).filter(word => word.length > 0);
+  if (words.length < 2) {
+    return false;
+  }
+
+  // Vérifier qu'il n'y a pas seulement des caractères répétés (ex: "aaaaaaaaaa aaaaaaaa")
+  const uniqueChars = new Set(trimmed.replace(/\s/g, ''));
+  if (uniqueChars.size < 3) {
+    return false;
+  }
+
+  // Vérifier qu'il y a au moins quelques mots de longueur raisonnable
+  const meaningfulWords = words.filter(word => word.length >= 2);
+  if (meaningfulWords.length < 2) {
+    return false;
+  }
+
+  return true;
+}
+
 export const createPropertySchema = z.object({
   title: z.string().min(5),
-  description: z.string().min(20),
+  description: z.string()
+    .min(20, 'La description doit contenir au moins 20 caractères')
+    .refine(validateDescription, {
+      message: 'La description doit contenir plusieurs mots séparés par des espaces. Veuillez fournir une description détaillée de votre propriété.',
+    }),
   property_type: z.enum(propertyTypes),
   address: z.string().min(5),
   city_id: z.number().optional(),
