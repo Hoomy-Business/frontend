@@ -69,12 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Recharger le profil utilisateur au montage si connecté
+  // Recharger le profil utilisateur au montage si connecté (une seule fois)
   useEffect(() => {
     if (token && user) {
       refreshUser();
     }
-  }, [token]); // Seulement au montage ou si le token change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Seulement au montage
 
   const value: AuthContextType = {
     user,
