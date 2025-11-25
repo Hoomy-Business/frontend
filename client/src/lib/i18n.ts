@@ -896,7 +896,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'landing.search.canton': 'Kanton auswählen',
     'landing.search.budget.label': 'Maximales Budget',
     'landing.search.budget': 'Maximales Budget (CHF)',
-    'landing.search.button': 'Immobilien suchen',
+    'landing.search.button': 'Immobiliensuche',
     'landing.cities.title': 'Beliebte Universitätsstädte',
     'landing.cities.subtitle': 'Entdecke studentenfreundliche Wohnungen in den besten Städten der Schweiz',
     'landing.cities.canton': 'Kanton',
