@@ -56,7 +56,7 @@ export function AddressAutocomplete({
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedInputValue(inputValue);
-    }, 300); // 300ms de délai
+    }, 500); // 500ms de délai pour réduire les requêtes
 
     return () => clearTimeout(timer);
   }, [inputValue]);
@@ -70,15 +70,21 @@ export function AddressAutocomplete({
       }
 
       try {
-        // Construire la requête pour Nominatim
+        // Construire la requête pour Nominatim avec des paramètres optimisés
         const query = debouncedInputValue.trim();
+        
+        // Si la requête semble être une adresse (contient des chiffres ou mots-clés d'adresse)
+        const isAddressQuery = /\d/.test(query) || /\b(rue|strasse|str|via|chemin|route|avenue|av|platz|place)\b/i.test(query);
+        
         const params = new URLSearchParams({
           q: query,
           format: 'json',
           addressdetails: '1',
-          limit: '10',
+          limit: '8', // Réduire à 8 pour des résultats plus rapides
           countrycodes: 'ch', // Limiter à la Suisse
           'accept-language': 'fr',
+          namedetails: '0', // Pas besoin des noms alternatifs
+          extratags: '0', // Pas besoin de tags supplémentaires
         });
 
         // Ajouter le canton si spécifié (codes cantonaux suisses)
@@ -93,7 +99,8 @@ export function AddressAutocomplete({
         };
 
         if (cantonCode && cantonMap[cantonCode]) {
-          params.append('state', cantonMap[cantonCode]);
+          // Ajouter le canton dans la requête pour plus de précision
+          params.set('q', `${query}, ${cantonMap[cantonCode]}, Switzerland`);
         }
 
         // Faire la requête à Nominatim
@@ -114,8 +121,15 @@ export function AddressAutocomplete({
         const data = await response.json();
 
         // Mapper les résultats de Nominatim vers notre format
+        // Prioriser les résultats avec numéros de maison et codes postaux
         const mappedSuggestions: AddressSuggestion[] = data
-          .filter((item: any) => item.address && item.display_name)
+          .filter((item: any) => {
+            // Filtrer pour ne garder que les résultats pertinents
+            if (!item.address || !item.display_name) return false;
+            const addr = item.address;
+            // Prioriser les adresses avec route/street ET (numéro de maison OU code postal)
+            return (addr.road || addr.street) && (addr.house_number || addr.postcode);
+          })
           .map((item: any) => {
             const address = item.address;
             const road = address.road || address.street || '';
@@ -125,7 +139,7 @@ export function AddressAutocomplete({
             // Extraire le code postal
             const postalCode = address.postcode || '';
             
-            // Extraire la ville
+            // Extraire la ville (prioriser city, puis town, puis village)
             const city = address.city || address.town || address.village || address.municipality || '';
             
             // Extraire le canton (state en Suisse)
@@ -139,27 +153,45 @@ export function AddressAutocomplete({
               'Basel-Landschaft': 'BL', 'Schaffhausen': 'SH', 'Appenzell Ausserrhoden': 'AR',
               'Appenzell Innerrhoden': 'AI', 'St. Gallen': 'SG', 'Graubünden': 'GR',
               'Aargau': 'AG', 'Thurgau': 'TG', 'Ticino': 'TI', 'Vaud': 'VD',
-              'Valais': 'VS', 'Neuchâtel': 'NE', 'Genève': 'GE', 'Jura': 'JU'
+              'Valais': 'VS', 'Neuchâtel': 'NE', 'Genève': 'GE', 'Jura': 'JU',
+              'Basel': 'BS', 'Lausanne': 'VD', 'Genf': 'GE'
             };
             
             const code = Object.entries(cantonCodeMap).find(([name]) => 
-              cantonName.toLowerCase().includes(name.toLowerCase())
+              cantonName.toLowerCase().includes(name.toLowerCase()) || 
+              name.toLowerCase().includes(cantonName.toLowerCase())
             )?.[1] || '';
 
-            // Construire l'adresse complète
+            // Construire l'adresse complète de manière cohérente
             const fullAddress = streetAddress 
-              ? `${streetAddress}${city ? `, ${city}` : ''}${postalCode ? ` ${postalCode}` : ''}`.trim()
+              ? `${streetAddress}${postalCode && city ? `, ${postalCode} ${city}` : city ? `, ${city}` : postalCode ? `, ${postalCode}` : ''}`.trim()
               : item.display_name;
 
             return {
-              address: streetAddress || item.display_name.split(',')[0],
-              city_name: city || item.display_name.split(',')[0],
+              address: streetAddress || item.display_name.split(',')[0].trim(),
+              city_name: city || item.display_name.split(',')[0].trim(),
               postal_code: postalCode,
               canton_code: code,
               canton_name: cantonName,
               full_address: fullAddress,
               source: 'suggestion' as const,
             };
+          })
+          // Trier pour prioriser les résultats avec numéro de maison et code postal
+          .sort((a: AddressSuggestion, b: AddressSuggestion) => {
+            const aHasNumber = /\d/.test(a.address);
+            const bHasNumber = /\d/.test(b.address);
+            const aHasPostal = !!a.postal_code;
+            const bHasPostal = !!b.postal_code;
+            
+            // Prioriser : numéro de maison + code postal > numéro de maison > code postal > autre
+            if (aHasNumber && aHasPostal && !(bHasNumber && bHasPostal)) return -1;
+            if (bHasNumber && bHasPostal && !(aHasNumber && aHasPostal)) return 1;
+            if (aHasNumber && !bHasNumber) return -1;
+            if (bHasNumber && !aHasNumber) return 1;
+            if (aHasPostal && !bHasPostal) return -1;
+            if (bHasPostal && !aHasPostal) return 1;
+            return 0;
           })
           .filter((suggestion: AddressSuggestion) => suggestion.address && suggestion.postal_code);
 
@@ -169,9 +201,10 @@ export function AddressAutocomplete({
         return [];
       }
     },
-    enabled: debouncedInputValue.trim().length >= 2,
-    staleTime: 1000 * 60 * 5, // 5 minutes (Nominatim a des limites de taux)
+    enabled: debouncedInputValue.trim().length >= 3, // Augmenter à 3 caractères minimum
+    staleTime: 1000 * 60 * 10, // 10 minutes (augmenter le cache)
     retry: 1, // Réessayer une fois en cas d'erreur
+    gcTime: 1000 * 60 * 15, // Garder en cache 15 minutes
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,8 +212,8 @@ export function AddressAutocomplete({
     setInputValue(newValue);
     onChange(newValue);
     setSelectedSuggestion(null);
-    // Ouvrir le popover si l'utilisateur a tapé au moins 2 caractères
-    if (newValue.trim().length >= 2) {
+    // Ouvrir le popover si l'utilisateur a tapé au moins 3 caractères
+    if (newValue.trim().length >= 3) {
       setOpen(true);
     } else {
       setOpen(false);
@@ -208,7 +241,7 @@ export function AddressAutocomplete({
   };
 
   const handleFocus = () => {
-    if (inputValue.trim().length >= 2) {
+    if (inputValue.trim().length >= 3) {
       setOpen(true);
     }
   };
@@ -246,7 +279,7 @@ export function AddressAutocomplete({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (inputValue.trim().length >= 2) {
+                if (inputValue.trim().length >= 3) {
                   setOpen(!open);
                 }
               }}
@@ -275,7 +308,7 @@ export function AddressAutocomplete({
               ) : suggestions.length === 0 ? (
                 <div className="py-6 text-center text-sm text-muted-foreground">
                   {inputValue.trim().length < 2 
-                    ? "Tapez au moins 2 caractères" 
+                    ? "Tapez au moins 3 caractères" 
                     : "Aucune adresse trouvée"}
                 </div>
               ) : (
