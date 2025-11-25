@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Home, Search, MessageSquare, User, LogOut, FileText, Shield } from 'lucide-react';
+import { Home, Search, MessageSquare, User, LogOut, FileText, Shield, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import {
