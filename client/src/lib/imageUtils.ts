@@ -26,24 +26,44 @@ export function normalizeImageUrl(url: string | null | undefined): string {
     const isBackendUrl = 
       trimmedUrl.includes('localhost:3000') ||
       trimmedUrl.includes('backend.hoomy.site') ||
-      trimmedUrl.includes('/api/image/'); // Si ça contient /api/image/, c'est probablement notre backend
+      trimmedUrl.includes('/api/image/') || // Si ça contient /api/image/, c'est probablement notre backend
+      trimmedUrl.includes('/api/kyc/image/') || // URLs KYC
+      /^\d+\.\d+\.\d+\.\d+:\d+/.test(trimmedUrl); // IP avec port (ex: 165.227.164.39:3000)
     
     if (isBackendUrl) {
-      // Extraire le nom de fichier depuis l'URL
+      // Extraire le nom de fichier depuis l'URL KYC
+      const kycUrlMatch = trimmedUrl.match(/\/api\/kyc\/image\/([^\/\?]+)/);
+      if (kycUrlMatch) {
+        const base = imageBaseUrl.replace(/\/+$/, '');
+        return `${base}/api/kyc/image/${kycUrlMatch[1]}`;
+      }
+      
+      // Extraire le nom de fichier depuis l'URL image normale
       const urlMatch = trimmedUrl.match(/\/api\/image\/([^\/\?]+)/);
       if (urlMatch) {
         const base = imageBaseUrl.replace(/\/+$/, '');
         return `${base}/api/image/${urlMatch[1]}`;
       }
+      
       // Si l'URL contient un nom de fichier à la fin (fallback)
       const filenameMatch = trimmedUrl.match(/\/([^\/\?]+\.(jpg|jpeg|png|gif|webp))$/i);
       if (filenameMatch) {
         const base = imageBaseUrl.replace(/\/+$/, '');
+        // Essayer de deviner si c'est une image KYC ou normale
+        if (filenameMatch[1].startsWith('kyc-')) {
+          return `${base}/api/kyc/image/${filenameMatch[1]}`;
+        }
         return `${base}/api/image/${filenameMatch[1]}`;
       }
     }
     // Si c'est une URL externe valide (pas notre backend), la retourner tel quel
     return trimmedUrl;
+  }
+
+  // Si c'est un chemin relatif qui commence par /api/kyc/image/, construire l'URL complète
+  if (trimmedUrl.startsWith('/api/kyc/image/')) {
+    const base = imageBaseUrl.replace(/\/+$/, '');
+    return `${base}${trimmedUrl}`;
   }
 
   // Si c'est un chemin relatif qui commence par /api/image/, construire l'URL complète
@@ -67,7 +87,18 @@ export function normalizeImageUrl(url: string | null | undefined): string {
   // Si le filename contient déjà l'extension et ressemble à un nom de fichier valide
   if (filename && /\.(jpg|jpeg|png|gif|webp)$/i.test(filename)) {
     const base = imageBaseUrl.replace(/\/+$/, '');
+    // Si le filename commence par "kyc-", c'est une image KYC
+    if (filename.startsWith('kyc-')) {
+      return `${base}/api/kyc/image/${filename}`;
+    }
     return `${base}/api/image/${filename}`;
+  }
+
+  // Si c'est un chemin qui contient "api/kyc/image", extraire le filename
+  const kycMatch = trimmedUrl.match(/\/api\/kyc\/image\/([^\/\?]+)/);
+  if (kycMatch) {
+    const base = imageBaseUrl.replace(/\/+$/, '');
+    return `${base}/api/kyc/image/${kycMatch[1]}`;
   }
 
   // Si c'est un chemin qui contient "api/image", extraire le filename

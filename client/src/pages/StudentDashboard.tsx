@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/useLanguage';
 import { getAPIBaseURL } from '@/lib/apiConfig';
 import { normalizeImageUrl } from '@/lib/imageUtils';
+import { ImageCropDialog } from '@/components/ImageCropDialog';
 
 export default function StudentDashboard() {
   const { user, isAuthenticated, isStudent, refreshUser } = useAuth();
@@ -137,8 +138,10 @@ export default function StudentDashboard() {
   });
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -151,9 +154,32 @@ export default function StudentDashboard() {
       return;
     }
 
+    // Créer une URL d'aperçu pour le recadrage
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedImageSrc(reader.result as string);
+      setCropDialogOpen(true);
+    };
+    reader.onerror = () => {
+      toast({
+        title: 'Erreur',
+        description: 'Erreur lors de la lecture du fichier',
+        variant: 'destructive',
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
     setUploadingPhoto(true);
     try {
-      const result = await uploadImage(file);
+      // Convertir le blob en File pour l'upload
+      const croppedFile = new File([croppedImageBlob], 'profile-picture.png', {
+        type: 'image/png',
+        lastModified: Date.now(),
+      });
+
+      const result = await uploadImage(croppedFile);
       const imageUrl = result.url;
       
       // Mettre à jour le profil avec la nouvelle photo
@@ -173,6 +199,7 @@ export default function StudentDashboard() {
       });
     } finally {
       setUploadingPhoto(false);
+      setSelectedImageSrc(null);
     }
   };
 
@@ -555,6 +582,19 @@ export default function StudentDashboard() {
                       onChange={handlePhotoUpload}
                       disabled={uploadingPhoto}
                     />
+                    {selectedImageSrc && (
+                      <ImageCropDialog
+                        open={cropDialogOpen}
+                        onClose={() => {
+                          setCropDialogOpen(false);
+                          setSelectedImageSrc(null);
+                        }}
+                        imageSrc={selectedImageSrc}
+                        onCropComplete={handleCropComplete}
+                        aspectRatio={1}
+                        circularCrop={true}
+                      />
+                    )}
                     <p className="text-xs text-muted-foreground mt-2">
                       Formats acceptés: JPG, PNG, WEBP (max 10 MB)
                     </p>

@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/useLanguage';
 import type { AdminKYC, User, Property } from '@shared/schema';
 import { Skeleton } from '@/components/ui/skeleton';
+import { normalizeImageUrl } from '@/lib/imageUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -946,20 +947,9 @@ export default function AdminDashboard() {
                               {kyc.id_card_front_url ? (
                                 <div className="relative border rounded-lg overflow-hidden bg-muted">
                                   <img
-                                    src={kyc.id_card_front_url}
+                                    src={normalizeImageUrl(kyc.id_card_front_url)}
                                     alt="Carte d'identité recto"
                                     className="w-full h-auto max-h-64 object-contain"
-                                    onError={(e) => {
-                                      const target = e.currentTarget;
-                                      if (target.src.startsWith('http://') && !target.dataset.httpsTried) {
-                                        target.dataset.httpsTried = 'true';
-                                        target.src = target.src.replace('http://', 'https://');
-                                      } else {
-                                        if (!target.src.includes('data:image')) {
-                                          target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage non disponible%3C/text%3E%3C/svg%3E';
-                                        }
-                                      }
-                                    }}
                                   />
                                   <div className="absolute top-2 right-2">
                                     <Badge variant="secondary" className="bg-black/50 text-white">
@@ -980,20 +970,9 @@ export default function AdminDashboard() {
                               {kyc.id_card_back_url ? (
                                 <div className="relative border rounded-lg overflow-hidden bg-muted">
                                   <img
-                                    src={kyc.id_card_back_url}
+                                    src={normalizeImageUrl(kyc.id_card_back_url)}
                                     alt="Carte d'identité verso"
                                     className="w-full h-auto max-h-64 object-contain"
-                                    onError={(e) => {
-                                      const target = e.currentTarget;
-                                      if (target.src.startsWith('http://') && !target.dataset.httpsTried) {
-                                        target.dataset.httpsTried = 'true';
-                                        target.src = target.src.replace('http://', 'https://');
-                                      } else {
-                                        if (!target.src.includes('data:image')) {
-                                          target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage non disponible%3C/text%3E%3C/svg%3E';
-                                        }
-                                      }
-                                    }}
                                   />
                                   <div className="absolute top-2 right-2">
                                     <Badge variant="secondary" className="bg-black/50 text-white">
@@ -1014,20 +993,9 @@ export default function AdminDashboard() {
                               {kyc.selfie_url ? (
                                 <div className="relative border rounded-lg overflow-hidden bg-muted">
                                   <img
-                                    src={kyc.selfie_url}
+                                    src={normalizeImageUrl(kyc.selfie_url)}
                                     alt="Selfie"
                                     className="w-full h-auto max-h-64 object-contain"
-                                    onError={(e) => {
-                                      const target = e.currentTarget;
-                                      if (target.src.startsWith('http://') && !target.dataset.httpsTried) {
-                                        target.dataset.httpsTried = 'true';
-                                        target.src = target.src.replace('http://', 'https://');
-                                      } else {
-                                        if (!target.src.includes('data:image')) {
-                                          target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ESelfie non disponible%3C/text%3E%3C/svg%3E';
-                                        }
-                                      }
-                                    }}
                                   />
                                   <div className="absolute top-2 right-2">
                                     <Badge variant="secondary" className="bg-black/50 text-white">

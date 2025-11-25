@@ -10,6 +10,7 @@ import { getAuthToken } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import type { KYCStatus } from '@shared/schema';
 import { getAPIBaseURL } from '@/lib/apiConfig';
+import { normalizeImageUrl } from '@/lib/imageUtils';
 
 export function KYCVerification() {
   const { toast } = useToast();
@@ -356,7 +357,7 @@ export function KYCVerification() {
                   )}
                   {kycStatus?.id_card_front_url && !idCardFront && (
                     <img
-                      src={kycStatus.id_card_front_url}
+                      src={normalizeImageUrl(kycStatus.id_card_front_url)}
                       alt="Carte d'identité recto"
                       className="h-20 w-auto rounded border"
                       onError={(e) => {
@@ -405,7 +406,7 @@ export function KYCVerification() {
                   )}
                   {kycStatus?.id_card_back_url && !idCardBack && (
                     <img
-                      src={kycStatus.id_card_back_url}
+                      src={normalizeImageUrl(kycStatus.id_card_back_url)}
                       alt="Carte d'identité verso"
                       className="h-20 w-auto rounded border"
                       onError={(e) => {
@@ -550,7 +551,7 @@ export function KYCVerification() {
                   {kycStatus?.selfie_url && !selfieFile && !showCamera && (
                     <div className="mt-4">
                       <img
-                        src={kycStatus.selfie_url}
+                        src={normalizeImageUrl(kycStatus.selfie_url)}
                         alt="Selfie soumis"
                         className="h-32 w-auto rounded border"
                         onError={(e) => {
