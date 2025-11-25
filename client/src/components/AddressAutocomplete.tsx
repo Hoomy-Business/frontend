@@ -51,7 +51,7 @@ export function AddressAutocomplete({
   }, [value]);
 
   // Requête d'autocomplétion
-  const { data: suggestions = [], isLoading } = useQuery<AddressSuggestion[]>({
+  const { data: suggestions = [], isLoading, error: queryError } = useQuery<AddressSuggestion[]>({
     queryKey: ['/locations/addresses/autocomplete', inputValue, cantonCode],
     queryFn: async () => {
       if (!inputValue || inputValue.trim().length < 2) {
@@ -61,18 +61,30 @@ export function AddressAutocomplete({
       if (cantonCode) {
         params.append('canton_code', cantonCode);
       }
-      return apiRequest<AddressSuggestion[]>('GET', `/locations/addresses/autocomplete?${params.toString()}`);
+      try {
+        return await apiRequest<AddressSuggestion[]>('GET', `/locations/addresses/autocomplete?${params.toString()}`);
+      } catch (error) {
+        // Si l'endpoint n'existe pas ou retourne une erreur, retourner un tableau vide
+        console.warn('Erreur autocomplétion adresse:', error);
+        return [];
+      }
     },
-    enabled: inputValue.trim().length >= 2 && open,
+    enabled: inputValue.trim().length >= 2,
     staleTime: 1000 * 60, // 1 minute
+    retry: false, // Ne pas réessayer en cas d'erreur
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
     onChange(newValue);
-    setOpen(true);
     setSelectedSuggestion(null);
+    // Ouvrir le popover si l'utilisateur a tapé au moins 2 caractères
+    if (newValue.trim().length >= 2) {
+      setOpen(true);
+    } else {
+      setOpen(false);
+    }
   };
 
   const handleSelect = (suggestion: AddressSuggestion) => {
@@ -86,7 +98,7 @@ export function AddressAutocomplete({
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     // Ne pas fermer si le focus passe vers le popover
     const relatedTarget = e.relatedTarget as HTMLElement;
-    if (relatedTarget && relatedTarget.closest('[role="dialog"]')) {
+    if (relatedTarget && (relatedTarget.closest('[role="dialog"]') || relatedTarget.closest('[role="listbox"]'))) {
       return;
     }
     // Attendre un peu avant de fermer pour permettre le clic sur une suggestion
@@ -109,36 +121,40 @@ export function AddressAutocomplete({
   return (
     <div className={cn("relative", className)}>
       <Popover open={open} onOpenChange={setOpen}>
-        <div className="relative">
-          <Input
-            ref={inputRef}
-            value={inputValue}
-            onChange={handleInputChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            placeholder={placeholder}
-            disabled={disabled}
-            data-testid={dataTestId}
-            className={cn(
-              "pr-8",
-              error || (!isValidAddress && inputValue.trim().length > 0) 
-                ? "border-destructive" 
-                : ""
-            )}
-          />
-          <button
-            type="button"
-            onClick={() => {
-              if (inputValue.trim().length >= 2) {
-                setOpen(!open);
-              }
-            }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:outline-none"
-            tabIndex={-1}
-          >
-            <ChevronsUpDown className="h-4 w-4" />
-          </button>
-        </div>
+        <PopoverTrigger asChild>
+          <div className="relative">
+            <Input
+              ref={inputRef}
+              value={inputValue}
+              onChange={handleInputChange}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              placeholder={placeholder}
+              disabled={disabled}
+              data-testid={dataTestId}
+              className={cn(
+                "pr-8",
+                error || (!isValidAddress && inputValue.trim().length > 0) 
+                  ? "border-destructive" 
+                  : ""
+              )}
+            />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (inputValue.trim().length >= 2) {
+                  setOpen(!open);
+                }
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:outline-none"
+              tabIndex={-1}
+            >
+              <ChevronsUpDown className="h-4 w-4" />
+            </button>
+          </div>
+        </PopoverTrigger>
         <PopoverContent 
           className="w-[var(--radix-popover-trigger-width)] p-0 max-h-[400px] overflow-hidden" 
           align="start"
@@ -147,13 +163,19 @@ export function AddressAutocomplete({
           <Command shouldFilter={false}>
             <CommandList className="max-h-[400px] overflow-y-auto">
               {isLoading ? (
-                <CommandEmpty>Recherche en cours...</CommandEmpty>
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Recherche en cours...
+                </div>
+              ) : queryError ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Service d'autocomplétion non disponible
+                </div>
               ) : suggestions.length === 0 ? (
-                <CommandEmpty>
+                <div className="py-6 text-center text-sm text-muted-foreground">
                   {inputValue.trim().length < 2 
                     ? "Tapez au moins 2 caractères" 
                     : "Aucune adresse trouvée"}
-                </CommandEmpty>
+                </div>
               ) : (
                 <CommandGroup>
                   {suggestions.map((suggestion, index) => (
