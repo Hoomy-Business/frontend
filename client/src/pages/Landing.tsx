@@ -81,11 +81,18 @@ export default function Landing() {
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="auto"
             className="absolute inset-0 w-full h-full object-cover z-0"
-            onError={() => setVideoError(true)}
+            onError={(e) => {
+              console.error('Video loading error:', e);
+              setVideoError(true);
+            }}
+            onLoadedMetadata={() => {
+              // Vidéo chargée avec succès
+              console.log('Video metadata loaded successfully');
+            }}
           >
-            <source src="/video/background.mp4" type="video/mp4" />
+            <source src="/video/background.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"' />
           </video>
         ) : (
           <div 
