@@ -219,7 +219,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
               <h3 className="font-semibold mb-4">{t('footer.company.title')}</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link href="/about" className="hover:text-foreground">{t('footer.company.about')}</Link></li>
-                <li><Link href="/cgu#article41" className="hover:text-foreground">{t('footer.company.contact')}</Link></li>
+                <li><Link href="/cgu#contact" className="hover:text-foreground">{t('footer.company.contact')}</Link></li>
                 <li><Link href="/cgu" className="hover:text-foreground">{t('footer.company.terms')}</Link></li>
                 <li><Link href="/privacy" className="hover:text-foreground">{t('footer.company.privacy')}</Link></li>
               </ul>

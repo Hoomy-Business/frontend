@@ -1,25 +1,49 @@
 import { useEffect } from 'react';
-import { useLocation } from 'wouter';
 import { MainLayout } from '@/components/MainLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, FileText, Scale, Shield, AlertTriangle, Info, Lock, Server, Database, Users, FileSignature, Gavel, Mail, Phone, MapPin, Clock, Bot, Check, Calendar, Flag, MessageSquare } from 'lucide-react';
 
 export default function CGU() {
-  const [location] = useLocation();
-
   useEffect(() => {
     // Gérer le scroll vers l'ancre si présente dans l'URL
-    if (location.includes('#')) {
-      const hash = location.split('#')[1];
-      setTimeout(() => {
-        const element = document.getElementById(hash);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
-    }
-  }, [location]);
+    const handleHashScroll = () => {
+      const hash = window.location.hash;
+      if (hash) {
+        const id = hash.substring(1); // Enlever le #
+        // Essayer plusieurs fois pour s'assurer que le DOM est chargé
+        const tryScroll = (attempts = 0) => {
+          const element = document.getElementById(id);
+          if (element) {
+            const headerOffset = 120;
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+            
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+          } else if (attempts < 5) {
+            // Réessayer après un court délai si l'élément n'est pas encore chargé
+            setTimeout(() => tryScroll(attempts + 1), 200);
+          }
+        };
+        
+        // Démarrer après un court délai pour laisser le temps au contenu de se charger
+        setTimeout(() => tryScroll(), 100);
+      }
+    };
+
+    // Exécuter au chargement initial
+    handleHashScroll();
+
+    // Écouter les changements de hash
+    window.addEventListener('hashchange', handleHashScroll);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashScroll);
+    };
+  }, []);
 
   return (
     <MainLayout>
@@ -1959,7 +1983,7 @@ export default function CGU() {
                     Service Réclamations et Support
                   </h2>
 
-                  <h3 className="text-base sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-3 md:mb-4 leading-tight">41.1 Canaux de Contact</h3>
+                  <h3 id="contact" className="text-base sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-3 md:mb-4 leading-tight scroll-mt-20 sm:scroll-mt-24">41.1 Canaux de Contact</h3>
                   <p className="mb-3 sm:mb-4 text-sm md:text-base leading-relaxed">Pour toute réclamation, question ou demande d'assistance :</p>
                   <ul className="list-disc list-inside space-y-1.5 sm:space-y-2 mb-4 sm:mb-6 text-sm md:text-base ml-3 sm:ml-4 leading-relaxed">
                     <li><strong>Support général :</strong> <a href="mailto:contact@hoomy.site" className="text-primary hover:underline">contact@hoomy.site</a></li>
