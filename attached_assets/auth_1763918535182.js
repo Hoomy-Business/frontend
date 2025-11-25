@@ -191,7 +191,7 @@ router.post('/verify-email', async (req, res) => {
         if (!email || !code) return res.status(400).json({ error: 'Email et code requis' });
 
         const result = await client.query(`
-            SELECT id, first_name, last_name, role, email_verification_code, email_code_expires_at
+            SELECT id, first_name, last_name, role, email_verification_code, email_code_expires_at, profile_picture
             FROM users WHERE email = $1
         `, [email.toLowerCase()]);
 
@@ -238,7 +238,8 @@ router.post('/verify-email', async (req, res) => {
                 first_name: user.first_name,
                 last_name: user.last_name,
                 role: user.role,
-                email_verified: true
+                email_verified: true,
+                profile_picture: user.profile_picture
             }
         });
 
@@ -294,7 +295,7 @@ router.post('/login', async (req, res) => {
         if (!email || !password) return res.status(400).json({ error: 'Champs requis' });
 
         const result = await client.query(`
-            SELECT id, email, password_hash, first_name, last_name, role, email_verified, phone
+            SELECT id, email, password_hash, first_name, last_name, role, email_verified, phone, profile_picture
             FROM users WHERE email = $1
         `, [email.toLowerCase()]);
 
@@ -328,7 +329,8 @@ router.post('/login', async (req, res) => {
                 last_name: user.last_name,
                 role: user.role,
                 email_verified: true,
-                phone: user.phone
+                phone: user.phone,
+                profile_picture: user.profile_picture
             }
         });
 
@@ -347,7 +349,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
         const result = await client.query(`
-            SELECT id, email, first_name, last_name, role, phone, email_verified, date_of_birth
+            SELECT id, email, first_name, last_name, role, phone, email_verified, date_of_birth, profile_picture
             FROM users WHERE id = $1
         `, [req.user.id]);
 

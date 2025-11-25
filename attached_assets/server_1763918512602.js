@@ -278,7 +278,7 @@ app.get('/api/properties', async (req, res) => {
 
         let query = `
             SELECT p.*, 
-                   u.first_name, u.last_name, u.email, u.phone,
+                   u.first_name, u.last_name, u.email, u.phone, u.profile_picture,
                    sc.name_fr as canton_name,
                    (SELECT photo_url FROM property_photos WHERE property_id = p.id AND is_main = true LIMIT 1) as main_photo
             FROM properties p
@@ -373,7 +373,7 @@ app.get('/api/properties/:id', async (req, res) => {
         const { id } = req.params;
 
         const propertyResult = await client.query(`
-            SELECT p.*, u.first_name, u.last_name, u.email, u.phone, u.email_verified, u.phone_verified,
+            SELECT p.*, u.first_name, u.last_name, u.email, u.phone, u.email_verified, u.phone_verified, u.profile_picture,
                    sc.name_fr as canton_name
             FROM properties p
             JOIN users u ON p.owner_id = u.id
@@ -923,13 +923,46 @@ app.get('/api/messages/:conversation_id', authenticateToken, async (req, res) =>
 app.put('/api/users/profile', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
-        const { first_name, last_name, phone } = req.body;
+        const { first_name, last_name, phone, profile_picture } = req.body;
+
+        // Construire la requête dynamiquement pour ne mettre à jour que les champs fournis
+        const updates = [];
+        const values = [];
+        let paramCount = 1;
+
+        if (first_name !== undefined) {
+            updates.push(`first_name = $${paramCount}`);
+            values.push(first_name);
+            paramCount++;
+        }
+        if (last_name !== undefined) {
+            updates.push(`last_name = $${paramCount}`);
+            values.push(last_name);
+            paramCount++;
+        }
+        if (phone !== undefined) {
+            updates.push(`phone = $${paramCount}`);
+            values.push(phone);
+            paramCount++;
+        }
+        if (profile_picture !== undefined) {
+            updates.push(`profile_picture = $${paramCount}`);
+            values.push(profile_picture);
+            paramCount++;
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'Aucun champ à mettre à jour' });
+        }
+
+        updates.push(`updated_at = CURRENT_TIMESTAMP`);
+        values.push(req.user.id);
 
         const result = await client.query(`
-            UPDATE users SET first_name = $1, last_name = $2, phone = $3, updated_at = CURRENT_TIMESTAMP
-            WHERE id = $4
-            RETURNING id, first_name, last_name, email, phone, role, email_verified, phone_verified
-        `, [first_name, last_name, phone, req.user.id]);
+            UPDATE users SET ${updates.join(', ')}
+            WHERE id = $${paramCount}
+            RETURNING id, first_name, last_name, email, phone, role, email_verified, phone_verified, profile_picture
+        `, values);
 
         res.json({ user: result.rows[0] });
     } catch (error) {
