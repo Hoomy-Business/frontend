@@ -18,6 +18,7 @@ import { apiRequest, uploadImages } from '@/lib/api';
 import type { Canton, City, KYCStatus } from '@shared/schema';
 import { useLanguage } from '@/lib/useLanguage';
 import { AlertCircle } from 'lucide-react';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 export default function CreateProperty() {
   const [, setLocation] = useLocation();
@@ -28,6 +29,12 @@ export default function CreateProperty() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [selectedCanton, setSelectedCanton] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedAddressData, setSelectedAddressData] = useState<{
+    address: string;
+    city_name: string;
+    postal_code: string;
+    canton_code: string;
+  } | null>(null);
 
   const { data: cantons } = useQuery<Canton[]>({
     queryKey: ['/locations/cantons'],
@@ -229,6 +236,12 @@ export default function CreateProperty() {
   const onSubmit = async (data: CreatePropertyInput) => {
     setError('');
     
+    // Vérifier qu'une adresse valide a été sélectionnée
+    if (!selectedAddressData) {
+      setError('Veuillez sélectionner une adresse dans la liste proposée');
+      return;
+    }
+    
     // Vérifier qu'au moins une image est sélectionnée
     if (selectedFiles.length === 0) {
       setError('Au moins une image est requise');
@@ -261,14 +274,21 @@ export default function CreateProperty() {
       return;
     }
 
-    createPropertyMutation.mutate({
+    // Utiliser les données de l'adresse sélectionnée
+    const submitData = {
       ...data,
+      address: selectedAddressData.address,
+      city_name: selectedAddressData.city_name,
+      postal_code: selectedAddressData.postal_code,
+      canton_code: selectedAddressData.canton_code,
       rooms: data.rooms ?? undefined,
       bathrooms: data.bathrooms ?? undefined,
       surface_area: data.surface_area ?? undefined,
       available_from: data.available_from || null,
       image_urls: imageUrls
-    } as any);
+    };
+
+    createPropertyMutation.mutate(submitData as any);
   };
 
   if (!isOwner) {
@@ -354,7 +374,7 @@ export default function CreateProperty() {
                             data-testid="input-description"
                           />
                         </FormControl>
-                        <FormDescription>Minimum 20 characters</FormDescription>
+                        <FormDescription>Minimum 20 caractères avec plusieurs mots séparés par des espaces</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -418,8 +438,33 @@ export default function CreateProperty() {
                       <FormItem>
                         <FormLabel>Street Address</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Bahnhofstrasse 123" data-testid="input-address" />
+                          <AddressAutocomplete
+                            value={field.value}
+                            onChange={(value) => {
+                              field.onChange(value);
+                            }}
+                            onSelect={(suggestion) => {
+                              setSelectedAddressData({
+                                address: suggestion.address,
+                                city_name: suggestion.city_name,
+                                postal_code: suggestion.postal_code,
+                                canton_code: suggestion.canton_code,
+                              });
+                              // Mettre à jour automatiquement les champs liés si le canton correspond
+                              if (suggestion.canton_code === form.getValues('canton_code')) {
+                                form.setValue('city_name', suggestion.city_name);
+                                form.setValue('postal_code', suggestion.postal_code);
+                              }
+                            }}
+                            cantonCode={form.watch('canton_code')}
+                            placeholder="Entrez une adresse (ex: Rue Saint-Maurice 12)"
+                            error={!!form.formState.errors.address}
+                            data-testid="input-address"
+                          />
                         </FormControl>
+                        <FormDescription>
+                          Sélectionnez une adresse dans la liste proposée
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -437,6 +482,9 @@ export default function CreateProperty() {
                               field.onChange(value);
                               setSelectedCanton(value);
                               form.setValue('city_name', '');
+                              // Réinitialiser l'adresse si le canton change
+                              form.setValue('address', '');
+                              setSelectedAddressData(null);
                             }}
                             value={field.value}
                           >

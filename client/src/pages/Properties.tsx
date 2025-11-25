@@ -19,6 +19,7 @@ import { apiRequest } from '@/lib/api';
 import type { Property, Canton, City } from '@shared/schema';
 import { useLanguage } from '@/lib/useLanguage';
 import { getAPIBaseURL } from '@/lib/apiConfig';
+import { CityAutocomplete } from '@/components/CityAutocomplete';
 
 export default function Properties() {
   const search = useSearch();
@@ -338,22 +339,34 @@ export default function Properties() {
         </Select>
       </div>
 
-      {selectedCanton && cities && cities.length > 0 && (
+      {selectedCanton && selectedCanton !== '___all___' && (
         <div>
           <label className="text-sm font-medium mb-2 block">{t('properties.city')}</label>
-          <Select value={selectedCity} onValueChange={setSelectedCity}>
-            <SelectTrigger data-testid="select-city">
-              <SelectValue placeholder={t('properties.city.all')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="___all___">{t('properties.city.all')}</SelectItem>
-              {cities.map((city) => (
-                <SelectItem key={city.id} value={city.id.toString()}>
-                  {getCityName(city.name)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <CityAutocomplete
+              value={selectedCity !== '___all___' && selectedCity && cities ? cities.find(c => c.id.toString() === selectedCity)?.name || '' : ''}
+              onChange={(value) => {
+                if (!value) {
+                  setSelectedCity('___all___');
+                }
+              }}
+              onSelect={(city) => {
+                setSelectedCity(city.id.toString());
+              }}
+              cantonCode={selectedCanton !== '___all___' ? selectedCanton : undefined}
+              placeholder={t('properties.city.all')}
+            />
+            {selectedCity !== '___all___' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setSelectedCity('___all___')}
+              >
+                {t('properties.city.all')}
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
