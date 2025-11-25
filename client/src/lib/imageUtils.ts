@@ -20,32 +20,29 @@ export function normalizeImageUrl(url: string | null | undefined): string {
   // Get API base URL
   const imageBaseUrl = getBackendBaseURL();
 
-  // Si c'est déjà une URL complète vers le backend, la retourner
-  if (trimmedUrl.startsWith('http://localhost:3000') || trimmedUrl.startsWith('https://backend.hoomy.site')) {
-    // Normalize to current API base
-    const urlMatch = trimmedUrl.match(/\/api\/image\/([^\/\?]+)/);
-    if (urlMatch) {
-      const base = imageBaseUrl.replace(/\/+$/, '');
-      return `${base}/api/image/${urlMatch[1]}`;
-    }
-    return trimmedUrl;
-  }
-
-  // Si c'est une URL avec localhost ou un autre domaine, extraire le nom de fichier
+  // Si c'est déjà une URL complète vers le backend (localhost, IP, ou domaine), normaliser
   if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
-    // Extraire le nom de fichier depuis l'URL
-    const urlMatch = trimmedUrl.match(/\/api\/image\/([^\/\?]+)/);
-    if (urlMatch) {
-      const base = imageBaseUrl.replace(/\/+$/, '');
-      return `${base}/api/image/${urlMatch[1]}`;
+    // Vérifier si c'est une URL du backend (localhost, IP locale, ou domaine backend)
+    const isBackendUrl = 
+      trimmedUrl.includes('localhost:3000') ||
+      trimmedUrl.includes('backend.hoomy.site') ||
+      trimmedUrl.includes('/api/image/'); // Si ça contient /api/image/, c'est probablement notre backend
+    
+    if (isBackendUrl) {
+      // Extraire le nom de fichier depuis l'URL
+      const urlMatch = trimmedUrl.match(/\/api\/image\/([^\/\?]+)/);
+      if (urlMatch) {
+        const base = imageBaseUrl.replace(/\/+$/, '');
+        return `${base}/api/image/${urlMatch[1]}`;
+      }
+      // Si l'URL contient un nom de fichier à la fin (fallback)
+      const filenameMatch = trimmedUrl.match(/\/([^\/\?]+\.(jpg|jpeg|png|gif|webp))$/i);
+      if (filenameMatch) {
+        const base = imageBaseUrl.replace(/\/+$/, '');
+        return `${base}/api/image/${filenameMatch[1]}`;
+      }
     }
-    // Si l'URL contient un nom de fichier à la fin
-    const filenameMatch = trimmedUrl.match(/\/([^\/\?]+\.(jpg|jpeg|png|gif|webp))$/i);
-    if (filenameMatch) {
-      const base = imageBaseUrl.replace(/\/+$/, '');
-      return `${base}/api/image/${filenameMatch[1]}`;
-    }
-    // Si on ne peut pas extraire, retourner tel quel (peut-être une URL externe valide)
+    // Si c'est une URL externe valide (pas notre backend), la retourner tel quel
     return trimmedUrl;
   }
 
