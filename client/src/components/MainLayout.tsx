@@ -149,7 +149,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                           <Link href="/admin/dashboard" data-testid="link-dashboard-admin-mobile">
                             <DropdownMenuItem className="cursor-pointer">
                               <Shield className="h-4 w-4 mr-2" />
-                              Panneau Admin
+                              {t('nav.admin')}
                             </DropdownMenuItem>
                           </Link>
                           <DropdownMenuSeparator />
@@ -219,7 +219,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#" className="hover:text-foreground">{t('footer.company.about')}</a></li>
                 <li><a href="#" className="hover:text-foreground">{t('footer.company.contact')}</a></li>
-                <li><a href="#" className="hover:text-foreground">{t('footer.company.terms')}</a></li>
+                <li><Link href="/cgu" className="hover:text-foreground">{t('footer.company.terms')}</Link></li>
                 <li><a href="#" className="hover:text-foreground">{t('footer.company.privacy')}</a></li>
               </ul>
             </div>

@@ -25,6 +25,7 @@ const Messages = lazy(() => import("@/pages/Messages"));
 const CreateContract = lazy(() => import("@/pages/CreateContract"));
 const ContractDetail = lazy(() => import("@/pages/ContractDetail"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
+const CGU = lazy(() => import("@/pages/CGU"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 // Loading fallback component
@@ -57,6 +58,7 @@ function AppRouter() {
           <Route path="/contracts/create/:propertyId" component={CreateContract} />
           <Route path="/contracts/:id" component={ContractDetail} />
           <Route path="/admin/dashboard" component={AdminDashboard} />
+          <Route path="/cgu" component={CGU} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

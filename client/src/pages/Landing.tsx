@@ -96,15 +96,15 @@ export default function Landing() {
                 <div className="mb-4 text-center">
                   <Badge variant="secondary" className="mb-2">
                     <Sparkles className="h-3 w-3 mr-1" />
-                    Recherche rapide
+                    {t('landing.search.quick')}
                   </Badge>
                   <p className="text-sm text-muted-foreground">
-                    Trouvez votre logement étudiant en quelques clics
+                    {t('landing.search.quick.subtitle')}
                   </p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Canton</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t('landing.search.canton.label')}</label>
                     <Select value={selectedCanton} onValueChange={setSelectedCanton}>
                       <SelectTrigger data-testid="select-canton" className="h-12">
                         <SelectValue placeholder={t('landing.search.canton')} />
@@ -120,7 +120,7 @@ export default function Landing() {
                   </div>
 
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Budget maximum</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t('landing.search.budget.label')}</label>
                     <Input 
                       type="number"
                       placeholder={t('landing.search.budget')}
@@ -179,7 +179,7 @@ export default function Landing() {
                       <h3 className="text-2xl font-bold">{getCityName(city.name)}</h3>
                       <p className="text-sm text-white/90 flex items-center gap-1 mt-1">
                         <MapPin className="h-3 w-3" />
-                        Canton {city.code}
+                        {t('landing.cities.canton')} {city.code}
                       </p>
                     </div>
                   </div>
@@ -297,31 +297,31 @@ export default function Landing() {
       </section>
 
       {!isAuthenticated && (
-        <section className="py-16">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <Card className="bg-primary text-primary-foreground">
-              <CardContent className="p-12 text-center">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('landing.cta.title')}</h2>
-                <p className="text-lg mb-6 text-primary-foreground/90">
-                  {t('landing.cta.subtitle')}
-                </p>
-                <div className="flex gap-4 justify-center flex-wrap">
-                  <Link href="/register?role=student">
-                    <Button size="lg" variant="secondary" data-testid="button-student-signup">
-                      {t('landing.cta.student')}
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </Link>
-                  <Link href="/register?role=owner">
-                    <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" data-testid="button-owner-signup">
-                      {t('landing.cta.owner')}
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
+      <section className="py-16">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <Card className="bg-primary text-primary-foreground">
+            <CardContent className="p-12 text-center">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('landing.cta.title')}</h2>
+              <p className="text-lg mb-6 text-primary-foreground/90">
+                {t('landing.cta.subtitle')}
+              </p>
+              <div className="flex gap-4 justify-center flex-wrap">
+                <Link href="/register?role=student">
+                  <Button size="lg" variant="secondary" data-testid="button-student-signup">
+                    {t('landing.cta.student')}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+                <Link href="/register?role=owner">
+                  <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" data-testid="button-owner-signup">
+                    {t('landing.cta.owner')}
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
       )}
     </MainLayout>
   );
