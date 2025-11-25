@@ -18,7 +18,6 @@ import { apiRequest, uploadImages } from '@/lib/api';
 import type { Canton, City, KYCStatus } from '@shared/schema';
 import { useLanguage } from '@/lib/useLanguage';
 import { AlertCircle } from 'lucide-react';
-import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 export default function CreateProperty() {
   const [, setLocation] = useLocation();
@@ -29,12 +28,6 @@ export default function CreateProperty() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [selectedCanton, setSelectedCanton] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [selectedAddressData, setSelectedAddressData] = useState<{
-    address: string;
-    city_name: string;
-    postal_code: string;
-    canton_code: string;
-  } | null>(null);
 
   const { data: cantons } = useQuery<Canton[]>({
     queryKey: ['/locations/cantons'],
@@ -274,20 +267,8 @@ export default function CreateProperty() {
       return;
     }
 
-    // Utiliser les données de l'adresse (soit depuis selectedAddressData, soit depuis le formulaire)
-    const addressData = selectedAddressData || {
-      address: data.address,
-      city_name: data.city_name,
-      postal_code: data.postal_code,
-      canton_code: data.canton_code,
-    };
-
     const submitData = {
       ...data,
-      address: addressData.address,
-      city_name: addressData.city_name,
-      postal_code: addressData.postal_code,
-      canton_code: addressData.canton_code,
       rooms: data.rooms ?? undefined,
       bathrooms: data.bathrooms ?? undefined,
       surface_area: data.surface_area ?? undefined,
@@ -445,33 +426,12 @@ export default function CreateProperty() {
                       <FormItem>
                         <FormLabel>Street Address</FormLabel>
                         <FormControl>
-                          <AddressAutocomplete
-                            value={field.value}
-                            onChange={(value) => {
-                              field.onChange(value);
-                            }}
-                            onSelect={(suggestion) => {
-                              setSelectedAddressData({
-                                address: suggestion.address,
-                                city_name: suggestion.city_name,
-                                postal_code: suggestion.postal_code,
-                                canton_code: suggestion.canton_code,
-                              });
-                              // Mettre à jour automatiquement les champs liés si le canton correspond
-                              if (suggestion.canton_code === form.getValues('canton_code')) {
-                                form.setValue('city_name', suggestion.city_name);
-                                form.setValue('postal_code', suggestion.postal_code);
-                              }
-                            }}
-                            cantonCode={form.watch('canton_code')}
+                          <Input
+                            {...field}
                             placeholder="Entrez une adresse (ex: Rue Saint-Maurice 12)"
-                            error={!!form.formState.errors.address}
                             data-testid="input-address"
                           />
                         </FormControl>
-                        <FormDescription>
-                          Saisissez une adresse (vous pouvez sélectionner depuis la liste ou saisir manuellement)
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -491,7 +451,6 @@ export default function CreateProperty() {
                               form.setValue('city_name', '');
                               // Réinitialiser l'adresse si le canton change
                               form.setValue('address', '');
-                              setSelectedAddressData(null);
                             }}
                             value={field.value}
                           >

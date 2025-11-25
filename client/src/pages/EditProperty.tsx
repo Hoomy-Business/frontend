@@ -18,7 +18,6 @@ import { apiRequest, uploadImages } from '@/lib/api';
 import type { Canton, City } from '@shared/schema';
 import { queryClient } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/useLanguage';
-import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 export default function EditProperty() {
   const [, params] = useRoute('/properties/:id/edit');
@@ -29,12 +28,6 @@ export default function EditProperty() {
   const [error, setError] = useState<string>('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedCanton, setSelectedCanton] = useState('');
-  const [selectedAddressData, setSelectedAddressData] = useState<{
-    address: string;
-    city_name: string;
-    postal_code: string;
-    canton_code: string;
-  } | null>(null);
 
   const { data: property, isLoading: propertyLoading } = useQuery<Property>({
     queryKey: [`/properties/${propertyId}`],
@@ -96,13 +89,6 @@ export default function EditProperty() {
         available_from: property.available_from || '',
       });
       setSelectedCanton(property.canton_code);
-      // Initialiser les données d'adresse sélectionnée
-      setSelectedAddressData({
-        address: property.address,
-        city_name: property.city_name,
-        postal_code: property.postal_code,
-        canton_code: property.canton_code,
-      });
     }
   }, [property, form]);
 
@@ -134,22 +120,17 @@ export default function EditProperty() {
   const onSubmit = async (data: CreatePropertyInput & { status?: string }) => {
     setError('');
     
-    // Vérifier qu'une adresse valide a été sélectionnée
-    if (!selectedAddressData) {
-      setError('Veuillez sélectionner une adresse dans la liste proposée');
+    // Vérifier que les champs d'adresse sont remplis
+    if (!data.address || !data.city_name || !data.postal_code || !data.canton_code) {
+      setError('Veuillez remplir tous les champs d\'adresse (rue, canton, ville, code postal)');
       return;
     }
     
     // Note: Image updates would require additional backend support
     // For now, we only update property details
     
-    // Utiliser les données de l'adresse sélectionnée
     const submitData = {
       ...data,
-      address: selectedAddressData.address,
-      city_name: selectedAddressData.city_name,
-      postal_code: selectedAddressData.postal_code,
-      canton_code: selectedAddressData.canton_code,
       rooms: data.rooms || 0,
       bathrooms: data.bathrooms || 0,
       surface_area: data.surface_area || 0,
@@ -310,32 +291,11 @@ export default function EditProperty() {
                       <FormItem>
                         <FormLabel>Street Address</FormLabel>
                         <FormControl>
-                          <AddressAutocomplete
-                            value={field.value}
-                            onChange={(value) => {
-                              field.onChange(value);
-                            }}
-                            onSelect={(suggestion) => {
-                              setSelectedAddressData({
-                                address: suggestion.address,
-                                city_name: suggestion.city_name,
-                                postal_code: suggestion.postal_code,
-                                canton_code: suggestion.canton_code,
-                              });
-                              // Mettre à jour automatiquement les champs liés si le canton correspond
-                              if (suggestion.canton_code === form.getValues('canton_code')) {
-                                form.setValue('city_name', suggestion.city_name);
-                                form.setValue('postal_code', suggestion.postal_code);
-                              }
-                            }}
-                            cantonCode={form.watch('canton_code')}
+                          <Input
+                            {...field}
                             placeholder="Entrez une adresse (ex: Rue Saint-Maurice 12)"
-                            error={!!form.formState.errors.address}
                           />
                         </FormControl>
-                        <FormDescription>
-                          Sélectionnez une adresse dans la liste proposée
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -355,7 +315,6 @@ export default function EditProperty() {
                               form.setValue('city_name', '');
                               // Réinitialiser l'adresse si le canton change
                               form.setValue('address', '');
-                              setSelectedAddressData(null);
                             }}
                             value={field.value}
                           >
