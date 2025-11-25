@@ -162,7 +162,7 @@ export default function OwnerDashboard() {
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -176,23 +176,19 @@ export default function OwnerDashboard() {
     }
 
     // Créer une URL d'aperçu pour le recadrage
-    return new Promise<void>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setSelectedImageSrc(reader.result as string);
-        setCropDialogOpen(true);
-        resolve();
-      };
-      reader.onerror = () => {
-        toast({
-          title: 'Erreur',
-          description: 'Erreur lors de la lecture du fichier',
-          variant: 'destructive',
-        });
-        reject(new Error('Erreur lors de la lecture du fichier'));
-      };
-      reader.readAsDataURL(file);
-    });
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedImageSrc(reader.result as string);
+      setCropDialogOpen(true);
+    };
+    reader.onerror = () => {
+      toast({
+        title: 'Erreur',
+        description: 'Erreur lors de la lecture du fichier',
+        variant: 'destructive',
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCropComplete = async (croppedImageBlob: Blob) => {
@@ -704,6 +700,21 @@ export default function OwnerDashboard() {
 
           </TabsContent>
         </Tabs>
+        
+        {/* Image Crop Dialog - Rendu au niveau principal pour être accessible partout */}
+        {selectedImageSrc && (
+          <ImageCropDialog
+            open={cropDialogOpen}
+            onClose={() => {
+              setCropDialogOpen(false);
+              setSelectedImageSrc(null);
+            }}
+            imageSrc={selectedImageSrc}
+            onCropComplete={handleCropComplete}
+            aspectRatio={1}
+            circularCrop={true}
+          />
+        )}
       </div>
     </MainLayout>
   );
@@ -718,7 +729,7 @@ function ProfileEditForm({
   user: any; 
   updateProfileMutation: any; 
   changePasswordMutation: any;
-  onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   const { t } = useLanguage();
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -735,13 +746,8 @@ function ProfileEditForm({
   });
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUploadingPhoto(true);
-    try {
-      await onPhotoUpload(e);
-    } finally {
-      setUploadingPhoto(false);
-    }
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onPhotoUpload(e);
   };
 
   const handleUpdateProfile = () => {
