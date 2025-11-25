@@ -1,9 +1,26 @@
+import { useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { MainLayout } from '@/components/MainLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, FileText, Scale, Shield, AlertTriangle, Info, Lock, Server, Database, Users, FileSignature, Gavel, Mail, Phone, MapPin, Clock, Bot, Check, Calendar, Flag, MessageSquare } from 'lucide-react';
 
 export default function CGU() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    // Gérer le scroll vers l'ancre si présente dans l'URL
+    if (location.includes('#')) {
+      const hash = location.split('#')[1];
+      setTimeout(() => {
+        const element = document.getElementById(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, [location]);
+
   return (
     <MainLayout>
       <div className="min-h-screen bg-background py-3 sm:py-6 md:py-8 lg:py-12">
