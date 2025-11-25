@@ -74,7 +74,7 @@ export default function Landing() {
 
   return (
     <MainLayout>
-      <div className="relative overflow-hidden min-h-screen">
+      <div className="relative overflow-hidden min-h-screen sm:min-h-[600px] md:min-h-screen">
         {!videoError ? (
           <video
             autoPlay
@@ -83,6 +83,7 @@ export default function Landing() {
             playsInline
             preload="auto"
             className="absolute inset-0 w-full h-full object-cover z-0"
+            style={{ minHeight: '100vh' }}
             onError={(e) => {
               console.error('Video loading error:', e);
               setVideoError(true);
@@ -107,31 +108,31 @@ export default function Landing() {
           className="absolute inset-0 z-[1] bg-gradient-to-b from-black/40 to-black/60"
         />
         
-        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+        <div className="relative z-10 container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-12 sm:py-16 md:py-24 lg:py-32">
           <div className="max-w-3xl mx-auto text-center text-white">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6" data-testid="text-hero-title">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 md:mb-6 leading-tight px-2" data-testid="text-hero-title">
               {t('landing.hero.title')}
             </h1>
-            <p className="text-xl md:text-2xl mb-8 text-white/90">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl mb-6 sm:mb-7 md:mb-8 text-white/90 px-3 leading-relaxed">
               {t('landing.hero.subtitle')}
             </p>
 
-            <Card className="bg-background/95 backdrop-blur border-2 shadow-2xl">
-              <CardContent className="p-6">
-                <div className="mb-4 text-center">
-                  <Badge variant="secondary" className="mb-2">
+            <Card className="bg-background/95 backdrop-blur border-2 shadow-2xl mx-2 sm:mx-0">
+              <CardContent className="p-4 sm:p-5 md:p-6">
+                <div className="mb-3 sm:mb-4 text-center">
+                  <Badge variant="secondary" className="mb-2 text-xs sm:text-sm">
                     <Sparkles className="h-3 w-3 mr-1" />
                     {t('landing.search.quick')}
                   </Badge>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     {t('landing.search.quick.subtitle')}
                   </p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">{t('landing.search.canton.label')}</label>
+                    <label className="text-xs text-muted-foreground mb-1.5 sm:mb-2 block">{t('landing.search.canton.label')}</label>
                     <Select value={selectedCanton} onValueChange={setSelectedCanton}>
-                      <SelectTrigger data-testid="select-canton" className="h-12">
+                      <SelectTrigger data-testid="select-canton" className="h-11 sm:h-12 text-base">
                         <SelectValue placeholder={t('landing.search.canton')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -145,14 +146,14 @@ export default function Landing() {
                   </div>
 
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">{t('landing.search.budget.label')}</label>
+                    <label className="text-xs text-muted-foreground mb-1.5 sm:mb-2 block">{t('landing.search.budget.label')}</label>
                     <Input 
                       type="number"
                       placeholder={t('landing.search.budget')}
                       value={maxBudget}
                       onChange={(e) => setMaxBudget(e.target.value)}
                       data-testid="input-budget"
-                      className="h-12"
+                      className="h-11 sm:h-12 text-base"
                     />
                   </div>
 
@@ -160,11 +161,12 @@ export default function Landing() {
                     <Button 
                       onClick={handleSearch} 
                       size="lg" 
-                      className="w-full h-12"
+                      className="w-full h-11 sm:h-12 text-base sm:text-lg touch-manipulation"
                       data-testid="button-search"
                     >
                       <Search className="h-4 w-4 mr-2" />
-                      {t('landing.search.button')}
+                      <span className="hidden sm:inline">{t('landing.search.button')}</span>
+                      <span className="sm:hidden">{t('landing.search.button')}</span>
                     </Button>
                   </div>
                 </div>
@@ -174,14 +176,14 @@ export default function Landing() {
         </div>
       </div>
 
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('landing.cities.title')}</h2>
-            <p className="text-lg text-muted-foreground">{t('landing.cities.subtitle')}</p>
+      <section className="py-8 sm:py-12 md:py-16 bg-muted/30">
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="text-center mb-6 sm:mb-8 md:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3 md:mb-4 px-2">{t('landing.cities.title')}</h2>
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground px-3">{t('landing.cities.subtitle')}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
             {featuredCities.map((city) => (
               <Link key={city.code} href={`/properties?canton=${city.code}`}>
                 <Card className="overflow-hidden hover-elevate cursor-pointer" data-testid={`card-city-${city.code}`}>
@@ -200,9 +202,9 @@ export default function Landing() {
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    <div className="absolute bottom-4 left-4 text-white">
-                      <h3 className="text-2xl font-bold">{getCityName(city.name)}</h3>
-                      <p className="text-sm text-white/90 flex items-center gap-1 mt-1">
+                    <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-2 sm:left-3 md:left-4 text-white">
+                      <h3 className="text-lg sm:text-xl md:text-2xl font-bold">{getCityName(city.name)}</h3>
+                      <p className="text-xs sm:text-sm text-white/90 flex items-center gap-1 mt-0.5 sm:mt-1">
                         <MapPin className="h-3 w-3" />
                         {t('landing.cities.canton')} {city.code}
                       </p>
@@ -215,54 +217,54 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="py-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('landing.how.title')}</h2>
-            <p className="text-lg text-muted-foreground">{t('landing.how.subtitle')}</p>
+      <section className="py-8 sm:py-12 md:py-16">
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="text-center mb-6 sm:mb-8 md:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3 md:mb-4 px-2">{t('landing.how.title')}</h2>
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground px-3">{t('landing.how.subtitle')}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             <Card className="text-center hover-elevate transition-all border-2 hover:border-primary/50">
-              <CardContent className="p-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4 relative">
-                  <Search className="h-8 w-8" />
-                  <Badge variant="default" className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center text-xs">
+              <CardContent className="p-4 sm:p-5 md:p-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4 relative">
+                  <Search className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8" />
+                  <Badge variant="default" className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 h-5 w-5 sm:h-6 sm:w-6 p-0 flex items-center justify-center text-xs">
                     1
                   </Badge>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{t('landing.how.step1.title')}</h3>
-                <p className="text-muted-foreground">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2">{t('landing.how.step1.title')}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">
                   {t('landing.how.step1.desc')}
                 </p>
               </CardContent>
             </Card>
 
             <Card className="text-center hover-elevate transition-all border-2 hover:border-primary/50">
-              <CardContent className="p-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4 relative">
-                  <Shield className="h-8 w-8" />
-                  <Badge variant="default" className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center text-xs">
+              <CardContent className="p-4 sm:p-5 md:p-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4 relative">
+                  <Shield className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8" />
+                  <Badge variant="default" className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 h-5 w-5 sm:h-6 sm:w-6 p-0 flex items-center justify-center text-xs">
                     2
                   </Badge>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{t('landing.how.step2.title')}</h3>
-                <p className="text-muted-foreground">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2">{t('landing.how.step2.title')}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">
                   {t('landing.how.step2.desc')}
                 </p>
               </CardContent>
             </Card>
 
             <Card className="text-center hover-elevate transition-all border-2 hover:border-primary/50">
-              <CardContent className="p-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4 relative">
-                  <CreditCard className="h-8 w-8" />
-                  <Badge variant="default" className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center text-xs">
+              <CardContent className="p-4 sm:p-5 md:p-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4 relative">
+                  <CreditCard className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8" />
+                  <Badge variant="default" className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 h-5 w-5 sm:h-6 sm:w-6 p-0 flex items-center justify-center text-xs">
                     3
                   </Badge>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{t('landing.how.step3.title')}</h3>
-                <p className="text-muted-foreground">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2">{t('landing.how.step3.title')}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">
                   {t('landing.how.step3.desc')}
                 </p>
               </CardContent>
@@ -271,50 +273,50 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('landing.why.title')}</h2>
+      <section className="py-8 sm:py-12 md:py-16 bg-muted/30">
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="text-center mb-6 sm:mb-8 md:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3 md:mb-4 px-2">{t('landing.why.title')}</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 max-w-5xl mx-auto">
             <Card className="flex flex-col items-center text-center hover-elevate transition-all">
-              <CardContent className="p-6">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-4">
-                  <Shield className="h-7 w-7" />
+              <CardContent className="p-4 sm:p-5 md:p-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4">
+                  <Shield className="h-6 w-6 sm:h-7 sm:w-7" />
                 </div>
-                <h3 className="font-semibold mb-2">{t('landing.why.verified')}</h3>
-                <p className="text-sm text-muted-foreground">{t('landing.why.verified.desc')}</p>
+                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2">{t('landing.why.verified')}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t('landing.why.verified.desc')}</p>
               </CardContent>
             </Card>
 
             <Card className="flex flex-col items-center text-center hover-elevate transition-all">
-              <CardContent className="p-6">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-4">
-                  <CreditCard className="h-7 w-7" />
+              <CardContent className="p-4 sm:p-5 md:p-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4">
+                  <CreditCard className="h-6 w-6 sm:h-7 sm:w-7" />
                 </div>
-                <h3 className="font-semibold mb-2">{t('landing.why.secure')}</h3>
-                <p className="text-sm text-muted-foreground">{t('landing.why.secure.desc')}</p>
+                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2">{t('landing.why.secure')}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t('landing.why.secure.desc')}</p>
               </CardContent>
             </Card>
 
             <Card className="flex flex-col items-center text-center hover-elevate transition-all">
-              <CardContent className="p-6">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-4">
-                  <MapPin className="h-7 w-7" />
+              <CardContent className="p-4 sm:p-5 md:p-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4">
+                  <MapPin className="h-6 w-6 sm:h-7 sm:w-7" />
                 </div>
-                <h3 className="font-semibold mb-2">{t('landing.why.locations')}</h3>
-                <p className="text-sm text-muted-foreground">{t('landing.why.locations.desc')}</p>
+                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2">{t('landing.why.locations')}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t('landing.why.locations.desc')}</p>
               </CardContent>
             </Card>
 
             <Card className="flex flex-col items-center text-center hover-elevate transition-all">
-              <CardContent className="p-6">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-4">
-                  <Users className="h-7 w-7" />
+              <CardContent className="p-4 sm:p-5 md:p-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4">
+                  <Users className="h-6 w-6 sm:h-7 sm:w-7" />
                 </div>
-                <h3 className="font-semibold mb-2">{t('landing.why.student')}</h3>
-                <p className="text-sm text-muted-foreground">{t('landing.why.student.desc')}</p>
+                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2">{t('landing.why.student')}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t('landing.why.student.desc')}</p>
               </CardContent>
             </Card>
           </div>
@@ -322,23 +324,23 @@ export default function Landing() {
       </section>
 
       {!isAuthenticated && (
-      <section className="py-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-8 sm:py-12 md:py-16">
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
           <Card className="bg-primary text-primary-foreground">
-            <CardContent className="p-12 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('landing.cta.title')}</h2>
-              <p className="text-lg mb-6 text-primary-foreground/90">
+            <CardContent className="p-6 sm:p-8 md:p-10 lg:p-12 text-center">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-2">{t('landing.cta.title')}</h2>
+              <p className="text-sm sm:text-base md:text-lg mb-5 sm:mb-6 text-primary-foreground/90 px-3">
                 {t('landing.cta.subtitle')}
               </p>
-              <div className="flex gap-4 justify-center flex-wrap">
-                <Link href="/register?role=student">
-                  <Button size="lg" variant="secondary" data-testid="button-student-signup">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
+                <Link href="/register?role=student" className="w-full sm:w-auto">
+                  <Button size="lg" variant="secondary" className="w-full sm:w-auto text-base sm:text-lg h-12 sm:h-14 touch-manipulation" data-testid="button-student-signup">
                     {t('landing.cta.student')}
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </Link>
-                <Link href="/register?role=owner">
-                  <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" data-testid="button-owner-signup">
+                <Link href="/register?role=owner" className="w-full sm:w-auto">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto text-base sm:text-lg h-12 sm:h-14 border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 touch-manipulation" data-testid="button-owner-signup">
                     {t('landing.cta.owner')}
                   </Button>
                 </Link>
