@@ -70,18 +70,31 @@ export default function Landing() {
     },
   ], []);
 
+  const [videoError, setVideoError] = useState(false);
+
   return (
     <MainLayout>
       <div className="relative overflow-hidden min-h-screen">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover z-0"
-        >
-          <source src="/video/background.mp4" type="video/mp4" />
-        </video>
+        {!videoError ? (
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            className="absolute inset-0 w-full h-full object-cover z-0"
+            onError={() => setVideoError(true)}
+          >
+            <source src="/video/background.mp4" type="video/mp4" />
+          </video>
+        ) : (
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center"
+            style={{
+              backgroundImage: 'linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url(https://images.unsplash.com/photo-1531971589569-0d9370cbe1e5?w=1920&h=1080&fit=crop&q=80)',
+            }}
+          />
+        )}
         <div 
           className="absolute inset-0 z-[1] bg-gradient-to-b from-black/40 to-black/60"
         />
