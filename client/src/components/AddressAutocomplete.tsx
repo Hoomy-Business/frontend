@@ -83,7 +83,12 @@ export function AddressAutocomplete({
     setOpen(false);
   };
 
-  const handleBlur = () => {
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Ne pas fermer si le focus passe vers le popover
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget && relatedTarget.closest('[role="dialog"]')) {
+      return;
+    }
     // Attendre un peu avant de fermer pour permettre le clic sur une suggestion
     setTimeout(() => {
       setOpen(false);
@@ -134,8 +139,12 @@ export function AddressAutocomplete({
             <ChevronsUpDown className="h-4 w-4" />
           </button>
         </div>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-          <Command>
+        <PopoverContent 
+          className="w-[var(--radix-popover-trigger-width)] p-0" 
+          align="start"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <Command shouldFilter={false}>
             <CommandList>
               {isLoading ? (
                 <CommandEmpty>Recherche en cours...</CommandEmpty>
