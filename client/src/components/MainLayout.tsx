@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'wouter';
-import { Home, Search, MessageSquare, User, LogOut, Building2, FileText, Shield } from 'lucide-react';
+import { Home, Search, MessageSquare, User, LogOut, FileText, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/Logo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,9 +30,8 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
             <div className="flex items-center gap-8">
               <Link href="/" data-testid="link-home">
-                <div className="flex items-center gap-1.5 sm:gap-2 hover-elevate px-1.5 sm:px-2 py-1 rounded-md cursor-pointer active:scale-95 transition-transform duration-100">
-                  <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                  <span className="text-lg sm:text-xl font-bold">Hoomy</span>
+                <div className="hover-elevate px-1.5 sm:px-2 py-1 rounded-md cursor-pointer active:scale-95 transition-transform duration-100">
+                  <Logo />
                 </div>
               </Link>
 
@@ -191,9 +191,8 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1">
-              <div className="flex items-center gap-2 mb-4">
-                <Building2 className="h-6 w-6 text-primary" />
-                <span className="text-xl font-bold">Hoomy</span>
+              <div className="mb-4">
+                <Logo iconClassName="h-6 w-6" textClassName="text-xl" />
               </div>
               <p className="text-sm text-muted-foreground">
                 {t('footer.tagline')}

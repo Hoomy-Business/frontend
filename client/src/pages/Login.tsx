@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building2, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -80,9 +81,8 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/">
-            <div className="inline-flex items-center gap-2 mb-4 cursor-pointer">
-              <Building2 className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold">Hoomy</span>
+            <div className="mb-4 cursor-pointer">
+              <Logo iconClassName="h-8 w-8" textClassName="text-2xl" />
             </div>
           </Link>
           <h1 className="text-3xl font-bold" data-testid="text-login-title">Welcome Back</h1>
