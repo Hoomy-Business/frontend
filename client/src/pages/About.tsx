@@ -23,16 +23,16 @@ export default function About() {
           {/* Mission Section */}
           <Card className="mb-6 sm:mb-8">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl md:text-3xl">
-                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                {t('about.mission.title') || 'Notre Mission'}
+              <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl md:text-3xl break-words">
+                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+                <span className="break-words">{t('about.mission.title') || 'Notre Mission'}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm sm:text-base md:text-lg leading-relaxed">
-              <p>
+            <CardContent className="space-y-4 text-sm sm:text-base md:text-lg leading-relaxed break-words">
+              <p className="break-words">
                 {t('about.mission.content') || 'Hoomy révolutionne la recherche de logement étudiant en Suisse en offrant une plateforme sécurisée, transparente et efficace qui connecte les étudiants avec des propriétaires vérifiés.'}
               </p>
-              <p>
+              <p className="break-words">
                 {t('about.mission.content2') || 'Notre objectif est de simplifier le processus de location tout en garantissant la sécurité et la confiance pour toutes les parties impliquées.'}
               </p>
             </CardContent>
@@ -41,46 +41,46 @@ export default function About() {
           {/* Values Section */}
           <Card className="mb-6 sm:mb-8">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl md:text-3xl">
-                <Heart className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                {t('about.values.title') || 'Nos Valeurs'}
+              <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl md:text-3xl break-words">
+                <Heart className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+                <span className="break-words">{t('about.values.title') || 'Nos Valeurs'}</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2">
-                    <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                    {t('about.values.security') || 'Sécurité'}
+                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 break-words min-w-0">
+                    <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                    <span className="break-words">{t('about.values.security') || 'Sécurité'}</span>
                   </h3>
-                  <p className="text-sm sm:text-base text-muted-foreground">
+                  <p className="text-sm sm:text-base text-muted-foreground break-words">
                     {t('about.values.security.desc') || 'Tous nos propriétaires sont vérifiés pour garantir votre tranquillité d\'esprit.'}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2">
-                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                    {t('about.values.transparency') || 'Transparence'}
+                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 break-words min-w-0">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                    <span className="break-words">{t('about.values.transparency') || 'Transparence'}</span>
                   </h3>
-                  <p className="text-sm sm:text-base text-muted-foreground">
+                  <p className="text-sm sm:text-base text-muted-foreground break-words">
                     {t('about.values.transparency.desc') || 'Des informations claires et complètes sur chaque logement et propriétaire.'}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2">
-                    <Award className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                    {t('about.values.excellence') || 'Excellence'}
+                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 break-words min-w-0">
+                    <Award className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                    <span className="break-words">{t('about.values.excellence') || 'Excellence'}</span>
                   </h3>
-                  <p className="text-sm sm:text-base text-muted-foreground">
+                  <p className="text-sm sm:text-base text-muted-foreground break-words">
                     {t('about.values.excellence.desc') || 'Un service client de qualité disponible pour vous accompagner à chaque étape.'}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2">
-                    <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                    {t('about.values.community') || 'Communauté'}
+                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2 break-words min-w-0">
+                    <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                    <span className="break-words">{t('about.values.community') || 'Communauté'}</span>
                   </h3>
-                  <p className="text-sm sm:text-base text-muted-foreground">
+                  <p className="text-sm sm:text-base text-muted-foreground break-words">
                     {t('about.values.community.desc') || 'Une plateforme qui rassemble étudiants et propriétaires dans un environnement de confiance.'}
                   </p>
                 </div>
@@ -91,7 +91,7 @@ export default function About() {
           {/* How It Works Section */}
           <Card className="mb-6 sm:mb-8">
             <CardHeader>
-              <CardTitle className="text-xl sm:text-2xl md:text-3xl">
+              <CardTitle className="text-xl sm:text-2xl md:text-3xl break-words">
                 {t('about.how.title') || 'Comment Ça Marche'}
               </CardTitle>
             </CardHeader>
@@ -102,10 +102,10 @@ export default function About() {
                     1
                   </div>
                   <div>
-                    <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2">
+                    <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2 break-words">
                       {t('about.how.step1.title') || 'Inscription Simple'}
                     </h3>
-                    <p className="text-sm sm:text-base text-muted-foreground">
+                    <p className="text-sm sm:text-base text-muted-foreground break-words">
                       {t('about.how.step1.desc') || 'Créez votre compte en quelques minutes, que vous soyez étudiant ou propriétaire.'}
                     </p>
                   </div>
@@ -114,11 +114,11 @@ export default function About() {
                   <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm sm:text-base">
                     2
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2 break-words">
                       {t('about.how.step2.title') || 'Recherche et Sélection'}
                     </h3>
-                    <p className="text-sm sm:text-base text-muted-foreground">
+                    <p className="text-sm sm:text-base text-muted-foreground break-words">
                       {t('about.how.step2.desc') || 'Parcourez notre catalogue de logements vérifiés dans toute la Suisse et trouvez celui qui correspond à vos besoins.'}
                     </p>
                   </div>
@@ -127,11 +127,11 @@ export default function About() {
                   <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm sm:text-base">
                     3
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2 break-words">
                       {t('about.how.step3.title') || 'Mise en Relation Sécurisée'}
                     </h3>
-                    <p className="text-sm sm:text-base text-muted-foreground">
+                    <p className="text-sm sm:text-base text-muted-foreground break-words">
                       {t('about.how.step3.desc') || 'Contactez directement les propriétaires via notre plateforme sécurisée et finalisez votre location en toute confiance.'}
                     </p>
                   </div>
@@ -143,33 +143,33 @@ export default function About() {
           {/* Why Choose Us Section */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl sm:text-2xl md:text-3xl">
+              <CardTitle className="text-xl sm:text-2xl md:text-3xl break-words">
                 {t('about.why.title') || 'Pourquoi Choisir Hoomy ?'}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 sm:space-y-4 text-sm sm:text-base leading-relaxed">
-                <li className="flex items-start gap-3">
+                <li className="flex items-start gap-3 min-w-0">
                   <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0 mt-0.5" />
-                  <span>
+                  <span className="break-words min-w-0">
                     <strong>{t('about.why.verified') || 'Propriétaires vérifiés :'}</strong> {t('about.why.verified.desc') || 'Tous les propriétaires passent par un processus de vérification rigoureux.'}
                   </span>
                 </li>
-                <li className="flex items-start gap-3">
+                <li className="flex items-start gap-3 min-w-0">
                   <Award className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0 mt-0.5" />
-                  <span>
+                  <span className="break-words min-w-0">
                     <strong>{t('about.why.quality') || 'Logements de qualité :'}</strong> {t('about.why.quality.desc') || 'Chaque propriété est vérifiée pour garantir des standards élevés.'}
                   </span>
                 </li>
-                <li className="flex items-start gap-3">
+                <li className="flex items-start gap-3 min-w-0">
                   <Users className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0 mt-0.5" />
-                  <span>
+                  <span className="break-words min-w-0">
                     <strong>{t('about.why.support') || 'Support dédié :'}</strong> {t('about.why.support.desc') || 'Notre équipe est là pour vous aider à chaque étape de votre recherche.'}
                   </span>
                 </li>
-                <li className="flex items-start gap-3">
+                <li className="flex items-start gap-3 min-w-0">
                   <Heart className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0 mt-0.5" />
-                  <span>
+                  <span className="break-words min-w-0">
                     <strong>{t('about.why.trust') || 'Plateforme de confiance :'}</strong> {t('about.why.trust.desc') || 'Des milliers d\'étudiants nous font confiance pour trouver leur logement idéal.'}
                   </span>
                 </li>

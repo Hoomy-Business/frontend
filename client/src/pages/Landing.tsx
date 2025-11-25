@@ -120,11 +120,11 @@ export default function Landing() {
             <Card className="bg-background/95 backdrop-blur border-2 shadow-2xl mx-2 sm:mx-0">
               <CardContent className="p-4 sm:p-5 md:p-6">
                 <div className="mb-3 sm:mb-4 text-center">
-                  <Badge variant="secondary" className="mb-2 text-xs sm:text-sm">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    {t('landing.search.quick')}
+                  <Badge variant="secondary" className="mb-2 text-xs sm:text-sm whitespace-normal break-words">
+                    <Sparkles className="h-3 w-3 mr-1 flex-shrink-0" />
+                    <span className="break-words">{t('landing.search.quick')}</span>
                   </Badge>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground break-words">
                     {t('landing.search.quick.subtitle')}
                   </p>
                 </div>
@@ -132,7 +132,7 @@ export default function Landing() {
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 sm:mb-2 block">{t('landing.search.canton.label')}</label>
                     <Select value={selectedCanton} onValueChange={setSelectedCanton}>
-                      <SelectTrigger data-testid="select-canton" className="h-11 sm:h-12 text-base">
+                      <SelectTrigger data-testid="select-canton" className="h-11 sm:h-12 text-base min-w-0">
                         <SelectValue placeholder={t('landing.search.canton')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -161,12 +161,11 @@ export default function Landing() {
                     <Button 
                       onClick={handleSearch} 
                       size="lg" 
-                      className="w-full h-11 sm:h-12 text-base sm:text-lg touch-manipulation"
+                      className="w-full h-11 sm:h-12 text-base sm:text-lg touch-manipulation whitespace-normal break-words"
                       data-testid="button-search"
                     >
-                      <Search className="h-4 w-4 mr-2" />
-                      <span className="hidden sm:inline">{t('landing.search.button')}</span>
-                      <span className="sm:hidden">{t('landing.search.button')}</span>
+                      <Search className="h-4 w-4 mr-2 flex-shrink-0" />
+                      <span className="break-words">{t('landing.search.button')}</span>
                     </Button>
                   </div>
                 </div>
@@ -203,11 +202,11 @@ export default function Landing() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-2 sm:left-3 md:left-4 text-white">
-                      <h3 className="text-lg sm:text-xl md:text-2xl font-bold">{getCityName(city.name)}</h3>
-                      <p className="text-xs sm:text-sm text-white/90 flex items-center gap-1 mt-0.5 sm:mt-1">
-                        <MapPin className="h-3 w-3" />
-                        {t('landing.cities.canton')} {city.code}
-                      </p>
+                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold break-words">{getCityName(city.name)}</h3>
+                    <p className="text-xs sm:text-sm text-white/90 flex items-center gap-1 mt-0.5 sm:mt-1 break-words">
+                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                      <span className="break-words">{t('landing.cities.canton')} {city.code}</span>
+                    </p>
                     </div>
                   </div>
                 </Card>
@@ -233,8 +232,8 @@ export default function Landing() {
                     1
                   </Badge>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold mb-2">{t('landing.how.step1.title')}</h3>
-                <p className="text-sm sm:text-base text-muted-foreground">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2 break-words">{t('landing.how.step1.title')}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground break-words">
                   {t('landing.how.step1.desc')}
                 </p>
               </CardContent>
@@ -248,8 +247,8 @@ export default function Landing() {
                     2
                   </Badge>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold mb-2">{t('landing.how.step2.title')}</h3>
-                <p className="text-sm sm:text-base text-muted-foreground">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2 break-words">{t('landing.how.step2.title')}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground break-words">
                   {t('landing.how.step2.desc')}
                 </p>
               </CardContent>
@@ -263,8 +262,8 @@ export default function Landing() {
                     3
                   </Badge>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold mb-2">{t('landing.how.step3.title')}</h3>
-                <p className="text-sm sm:text-base text-muted-foreground">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2 break-words">{t('landing.how.step3.title')}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground break-words">
                   {t('landing.how.step3.desc')}
                 </p>
               </CardContent>
@@ -285,8 +284,8 @@ export default function Landing() {
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4">
                   <Shield className="h-6 w-6 sm:h-7 sm:w-7" />
                 </div>
-                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2">{t('landing.why.verified')}</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">{t('landing.why.verified.desc')}</p>
+                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2 break-words">{t('landing.why.verified')}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground break-words">{t('landing.why.verified.desc')}</p>
               </CardContent>
             </Card>
 
@@ -295,8 +294,8 @@ export default function Landing() {
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4">
                   <CreditCard className="h-6 w-6 sm:h-7 sm:w-7" />
                 </div>
-                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2">{t('landing.why.secure')}</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">{t('landing.why.secure.desc')}</p>
+                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2 break-words">{t('landing.why.secure')}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground break-words">{t('landing.why.secure.desc')}</p>
               </CardContent>
             </Card>
 
@@ -305,8 +304,8 @@ export default function Landing() {
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4">
                   <MapPin className="h-6 w-6 sm:h-7 sm:w-7" />
                 </div>
-                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2">{t('landing.why.locations')}</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">{t('landing.why.locations.desc')}</p>
+                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2 break-words">{t('landing.why.locations')}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground break-words">{t('landing.why.locations.desc')}</p>
               </CardContent>
             </Card>
 
@@ -315,8 +314,8 @@ export default function Landing() {
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary mb-3 sm:mb-4">
                   <Users className="h-6 w-6 sm:h-7 sm:w-7" />
                 </div>
-                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2">{t('landing.why.student')}</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">{t('landing.why.student.desc')}</p>
+                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2 break-words">{t('landing.why.student')}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground break-words">{t('landing.why.student.desc')}</p>
               </CardContent>
             </Card>
           </div>
@@ -333,15 +332,15 @@ export default function Landing() {
                 {t('landing.cta.subtitle')}
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
-                <Link href="/register?role=student" className="w-full sm:w-auto">
-                  <Button size="lg" variant="secondary" className="w-full sm:w-auto text-base sm:text-lg h-12 sm:h-14 touch-manipulation" data-testid="button-student-signup">
-                    {t('landing.cta.student')}
-                    <ArrowRight className="h-4 w-4 ml-2" />
+                <Link href="/register?role=student" className="w-full sm:w-auto min-w-0">
+                  <Button size="lg" variant="secondary" className="w-full sm:w-auto text-base sm:text-lg h-12 sm:h-14 touch-manipulation whitespace-normal break-words px-4" data-testid="button-student-signup">
+                    <span className="break-words">{t('landing.cta.student')}</span>
+                    <ArrowRight className="h-4 w-4 ml-2 flex-shrink-0" />
                   </Button>
                 </Link>
-                <Link href="/register?role=owner" className="w-full sm:w-auto">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto text-base sm:text-lg h-12 sm:h-14 border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 touch-manipulation" data-testid="button-owner-signup">
-                    {t('landing.cta.owner')}
+                <Link href="/register?role=owner" className="w-full sm:w-auto min-w-0">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto text-base sm:text-lg h-12 sm:h-14 border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 touch-manipulation whitespace-normal break-words px-4" data-testid="button-owner-signup">
+                    <span className="break-words">{t('landing.cta.owner')}</span>
                   </Button>
                 </Link>
               </div>
