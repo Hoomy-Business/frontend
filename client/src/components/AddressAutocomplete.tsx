@@ -140,12 +140,12 @@ export function AddressAutocomplete({
           </button>
         </div>
         <PopoverContent 
-          className="w-[var(--radix-popover-trigger-width)] p-0" 
+          className="w-[var(--radix-popover-trigger-width)] p-0 max-h-[400px] overflow-hidden" 
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <Command shouldFilter={false}>
-            <CommandList>
+            <CommandList className="max-h-[400px] overflow-y-auto">
               {isLoading ? (
                 <CommandEmpty>Recherche en cours...</CommandEmpty>
               ) : suggestions.length === 0 ? (
