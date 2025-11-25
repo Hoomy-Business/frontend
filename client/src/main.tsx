@@ -25,6 +25,11 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Marquer le body comme chargé pour éviter le FOUC
+if (typeof document !== 'undefined') {
+  document.body.classList.add('loaded');
+}
+
 createRoot(document.getElementById("root")!).render(
   <LanguageProvider>
     <App />
