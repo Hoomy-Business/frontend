@@ -18,23 +18,19 @@ export default function Login() {
   const { login, isAuthenticated, user } = useAuth();
   const [error, setError] = useState<string>('');
 
-  // Rediriger si déjà connecté
+  // Rediriger si déjà connecté (pour les utilisateurs qui arrivent directement sur /login)
   useEffect(() => {
     if (isAuthenticated && user) {
+      let redirectPath = '/dashboard/owner';
       if (user.role === 'admin') {
-        setLocation('/admin/dashboard');
+        redirectPath = '/admin/dashboard';
       } else if (user.role === 'student') {
-        setLocation('/dashboard/student');
-      } else {
-        setLocation('/dashboard/owner');
+        redirectPath = '/dashboard/student';
       }
+      // Utiliser window.location pour forcer la redirection
+      window.location.href = redirectPath;
     }
-  }, [isAuthenticated, user, setLocation]);
-
-  // Ne pas afficher le formulaire si déjà connecté
-  if (isAuthenticated && user) {
-    return null;
-  }
+  }, [isAuthenticated, user]);
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -47,19 +43,27 @@ export default function Login() {
   const loginMutation = useMutation({
     mutationFn: (data: LoginInput) => apiRequest<AuthResponse>('POST', '/login', data),
     onSuccess: (data) => {
+      // Mettre à jour l'état d'authentification
       login(data.token, data.user);
+      
+      // Rediriger immédiatement selon le rôle
       const role = data.user.role;
+      let redirectPath = '/dashboard/owner';
       if (role === 'admin') {
-        setLocation('/admin/dashboard');
+        redirectPath = '/admin/dashboard';
       } else if (role === 'student') {
-        setLocation('/dashboard/student');
-      } else {
-        setLocation('/dashboard/owner');
+        redirectPath = '/dashboard/student';
       }
+      
+      // Utiliser window.location pour une redirection immédiate et fiable
+      // Cela force un re-render complet de l'application
+      window.location.href = redirectPath;
     },
     onError: (err: Error) => {
       if (err.message.includes('EMAIL_NOT_VERIFIED')) {
         setError('Please verify your email before logging in. Check your inbox for the verification code.');
+      } else if (err.message.includes('ACCOUNT_DELETED')) {
+        setError('This account has been deleted.');
       } else {
         setError(err.message || 'Login failed. Please check your credentials.');
       }

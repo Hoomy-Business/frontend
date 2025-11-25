@@ -104,26 +104,36 @@ export function AddressAutocomplete({
   return (
     <div className={cn("relative", className)}>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div className="relative">
-            <Input
-              ref={inputRef}
-              value={inputValue}
-              onChange={handleInputChange}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              placeholder={placeholder}
-              disabled={disabled}
-              data-testid={dataTestId}
-              className={cn(
-                error || (!isValidAddress && inputValue.trim().length > 0) 
-                  ? "border-destructive" 
-                  : ""
-              )}
-            />
-            <ChevronsUpDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          </div>
-        </PopoverTrigger>
+        <div className="relative">
+          <Input
+            ref={inputRef}
+            value={inputValue}
+            onChange={handleInputChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            placeholder={placeholder}
+            disabled={disabled}
+            data-testid={dataTestId}
+            className={cn(
+              "pr-8",
+              error || (!isValidAddress && inputValue.trim().length > 0) 
+                ? "border-destructive" 
+                : ""
+            )}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (inputValue.trim().length >= 2) {
+                setOpen(!open);
+              }
+            }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:outline-none"
+            tabIndex={-1}
+          >
+            <ChevronsUpDown className="h-4 w-4" />
+          </button>
+        </div>
         <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
           <Command>
             <CommandList>

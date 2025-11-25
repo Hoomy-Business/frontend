@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { KYCVerification } from '@/components/KYCVerification';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
+import { formatUserDisplayName } from '@/lib/userUtils';
 
 export default function OwnerDashboard() {
   const { user, isAuthenticated, isOwner, refreshUser } = useAuth();
@@ -406,7 +407,7 @@ export default function OwnerDashboard() {
                             <div className="flex-1">
                               <h4 className="font-semibold text-lg">{req.property_title}</h4>
                               <p className="text-sm text-muted-foreground mb-2">
-                                From: {req.first_name} {req.last_name}
+                                From: {formatUserDisplayName(req)}
                               </p>
                               <p className="text-sm bg-muted p-3 rounded-md">
                                 "{req.message}"
@@ -481,7 +482,7 @@ export default function OwnerDashboard() {
                             <div className="flex-1">
                               <h4 className="font-semibold text-lg">{contract.property_title}</h4>
                               <p className="text-sm text-muted-foreground">
-                                Tenant: {contract.student_first_name} {contract.student_last_name}
+                                Tenant: {contract.student_deleted_at ? `deleted_user_${contract.student_id}` : `${contract.student_first_name || ''} ${contract.student_last_name || ''}`.trim()}
                               </p>
                             </div>
                             <Badge variant={

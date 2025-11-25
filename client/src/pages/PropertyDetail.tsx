@@ -20,6 +20,7 @@ import { apiRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import type { Property, PropertyPhoto } from '@shared/schema';
 import { normalizeImageUrl } from '@/lib/imageUtils';
+import { formatUserDisplayName, getUserProfilePicture, getUserInitials } from '@/lib/userUtils';
 import { useLanguage } from '@/lib/useLanguage';
 
 export default function PropertyDetail() {
@@ -218,10 +219,8 @@ export default function PropertyDetail() {
 
   const ownerInitials = useMemo(() => {
     if (!property) return 'O';
-    return property.first_name && property.last_name
-      ? `${property.first_name[0]}${property.last_name[0]}`.toUpperCase()
-      : 'O';
-  }, [property?.first_name, property?.last_name]);
+    return getUserInitials(property);
+  }, [property]);
 
   const canContact = useMemo(() => {
     if (!property) return false;
@@ -509,17 +508,17 @@ export default function PropertyDetail() {
                 <CardTitle>{t('property.contact')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {property.first_name && property.last_name && (
+                {formatUserDisplayName(property) && (
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={property.profile_picture ? normalizeImageUrl(property.profile_picture) : undefined} />
+                      <AvatarImage src={getUserProfilePicture(property) ? normalizeImageUrl(getUserProfilePicture(property)!) : undefined} />
                       <AvatarFallback className="bg-primary text-primary-foreground">
                         {ownerInitials}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-medium" data-testid="text-owner-name">
-                        {property.first_name} {property.last_name}
+                        {formatUserDisplayName(property)}
                       </p>
                       {property.email_verified && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1">

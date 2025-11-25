@@ -13,16 +13,14 @@ import { useAuth } from '@/lib/auth';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useLanguage } from '@/lib/useLanguage';
 import { normalizeImageUrl } from '@/lib/imageUtils';
+import { formatUserDisplayName, getUserProfilePicture, getUserInitials, isUserDeleted } from '@/lib/userUtils';
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, isAuthenticated, isStudent, isOwner } = useAuth();
   const { t } = useLanguage();
 
-  const getInitials = (firstName?: string, lastName?: string) => {
-    if (!firstName || !lastName) return 'U';
-    return `${firstName[0]}${lastName[0]}`.toUpperCase();
-  };
+  // Utiliser la fonction helper pour gérer les utilisateurs supprimés
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -108,17 +106,19 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={user.profile_picture ? normalizeImageUrl(user.profile_picture) : undefined} />
+                          <AvatarImage src={getUserProfilePicture(user) ? normalizeImageUrl(getUserProfilePicture(user)!) : undefined} />
                           <AvatarFallback className="bg-primary text-primary-foreground">
-                            {getInitials(user.first_name, user.last_name)}
+                            {getUserInitials(user)}
                           </AvatarFallback>
                         </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                       <div className="px-2 py-2">
-                        <p className="text-sm font-medium">{user.first_name} {user.last_name}</p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                        <p className="text-sm font-medium">{formatUserDisplayName(user)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {isUserDeleted(user) ? 'Compte supprimé' : user.email}
+                        </p>
                       </div>
                       <DropdownMenuSeparator />
                       {isStudent && (
