@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    
+    <!-- ===========================================
+         SECURITY HEADERS
+         =========================================== -->
+    
+    <!-- Content Security Policy - Strict -->
+    <!-- Note: frame-ancestors must be set via HTTP header, not meta tag -->
+    <!-- In development, CSP is relaxed to allow Vite HMR and module loading -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:* http://192.168.1.176:* ws://localhost:* ws://127.0.0.1:* ws://192.168.1.176:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:* http://192.168.1.176:*; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com https://backend.hoomy.site http://backend.hoomy.site http://192.168.1.176:* https://*.stripe.com; connect-src 'self' http://localhost:* https://localhost:* http://127.0.0.1:* http://192.168.1.176:* https://backend.hoomy.site http://backend.hoomy.site https://api.stripe.com https://fonts.googleapis.com ws://localhost:* ws://127.0.0.1:* ws://192.168.1.176:*; frame-src 'self' https://js.stripe.com https://hooks.stripe.com; form-action 'self'; base-uri 'self'; object-src 'none'; media-src 'self' blob: data:; worker-src 'self' blob:; manifest-src 'self';" />
+    
+    <!-- X-Content-Type-Options -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    
+    <!-- X-Frame-Options - Prevent clickjacking -->
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    
+    <!-- Referrer Policy - Limit information leakage -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    
+    <!-- Permissions Policy - Disable unnecessary features -->
+    <meta http-equiv="Permissions-Policy" content="
+      accelerometer=(),
+      ambient-light-sensor=(),
+      autoplay=(),
+      battery=(),
+      camera=(),
+      display-capture=(),
+      document-domain=(),
+      encrypted-media=(),
+      fullscreen=(self),
+      geolocation=(),
+      gyroscope=(),
+      magnetometer=(),
+      microphone=(),
+      midi=(),
+      payment=(self https://js.stripe.com),
+      picture-in-picture=(),
+      publickey-credentials-get=(),
+      screen-wake-lock=(),
+      sync-xhr=(),
+      usb=(),
+      web-share=(),
+      xr-spatial-tracking=()
+    " />
+    
+    <!-- ===========================================
+         PWA / MOBILE
+         =========================================== -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Hoomy" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- ===========================================
+         PRECONNECT & DNS PREFETCH
+         =========================================== -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://backend.hoomy.site" crossorigin />
+    <link rel="dns-prefetch" href="https://images.unsplash.com" />
+    <link rel="dns-prefetch" href="https://js.stripe.com" />
+    
+    <!-- ===========================================
+         FAVICONS
+         =========================================== -->
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="alternate icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    
+    <!-- ===========================================
+         FONTS (async loading)
+         =========================================== -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
+    
+    <!-- ===========================================
+         CRITICAL CSS
+         =========================================== -->
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      html{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;line-height:1.5;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+      body{min-height:100vh;background:#fff}
+      #root{min-height:100vh;width:100%;display:flex;flex-direction:column}
+      body:not(.loaded){opacity:0}
+      body.loaded{opacity:1;transition:opacity .15s ease-out}
+      .skeleton{background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);background-size:200% 100%;animation:skeleton 1.2s ease-in-out infinite}
+      @keyframes skeleton{0%{background-position:200% 0}100%{background-position:-200% 0}}
+      .initial-loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#fff;z-index:9999}
+      .initial-loader.hidden{opacity:0;pointer-events:none;transition:opacity .3s}
+      .loader-spinner{width:40px;height:40px;border:3px solid #e5e7eb;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite}
+      @keyframes spin{to{transform:rotate(360deg)}}
+      img,video{max-width:100%;height:auto;display:block}
+      button{cursor:pointer}
+    </style>
+    
+    <!-- ===========================================
+         SEO
+         =========================================== -->
+    <title>Hoomy - Logement étudiant en Suisse | Zurich, Genève, Lausanne</title>
+    <meta name="description" content="Trouvez votre logement étudiant idéal en Suisse. Parcourez des propriétés vérifiées à Zurich, Genève, Lausanne, Berne et plus. Locations sécurisées avec des propriétaires de confiance." />
+    <meta name="keywords" content="logement étudiant, Suisse, Zurich, Genève, Lausanne, location appartement, colocation, studio étudiant" />
+    <meta name="author" content="Hoomy" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://hoomy.site/" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hoomy.site/" />
+    <meta property="og:title" content="Hoomy - Logement étudiant en Suisse" />
+    <meta property="og:description" content="Trouvez votre logement étudiant idéal en Suisse. Propriétés vérifiées à Zurich, Genève, Lausanne et plus." />
+    <meta property="og:image" content="https://hoomy.site/images/zurich.webp" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="fr_CH" />
+    <meta property="og:locale:alternate" content="de_CH" />
+    <meta property="og:site_name" content="Hoomy" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://hoomy.site/" />
+    <meta name="twitter:title" content="Hoomy - Logement étudiant en Suisse" />
+    <meta name="twitter:description" content="Trouvez votre logement étudiant idéal en Suisse. Propriétés vérifiées à Zurich, Genève, Lausanne et plus." />
+    <meta name="twitter:image" content="https://hoomy.site/images/zurich.webp" />
+    
+    <!-- Theme color for browsers -->
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Hoomy",
+      "description": "Plateforme de logement étudiant en Suisse",
+      "url": "https://hoomy.site",
+      "applicationCategory": "Real Estate",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "CHF"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "Switzerland"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <!-- Security: Prevent clickjacking via JS (backup to X-Frame-Options) -->
+    <script>
+      if (self !== top) {
+        document.body.innerHTML = '';
+        top.location = self.location;
+      }
+    </script>
+    
+    <!-- Initial loader (removed by JS) -->
+    <div id="initial-loader" class="initial-loader" aria-hidden="true">
+      <div class="loader-spinner"></div>
+    </div>
+    
+    <div id="root"></div>
+    
+    <script>
+      // Performance: Add loaded class and remove initial loader ASAP
+      (function() {
+        var loader = document.getElementById('initial-loader');
+        
+        function hideLoader() {
+          document.body.classList.add('loaded');
+          if (loader) {
+            loader.classList.add('hidden');
+            setTimeout(function() { loader.remove(); }, 300);
+          }
+        }
+        
+        // Hide loader when React mounts or after timeout
+        window.__hideLoader = hideLoader;
+        
+        if (document.readyState === 'complete') {
+          setTimeout(hideLoader, 100);
+        } else {
+          window.addEventListener('load', function() {
+            setTimeout(hideLoader, 100);
+          });
+        }
+        
+        // Fallback: hide after 3s max
+        setTimeout(hideLoader, 3000);
+      })();
+      
+      // Note: Service worker registration is handled in main.tsx
+      // The service worker will automatically update when a new version is deployed
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
