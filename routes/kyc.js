@@ -60,8 +60,8 @@ const storage = multer.diskStorage({
 
 const fileFilter = (req, file, cb) => {
     if (!file.originalname.match(/\.(jpg|JPG|jpeg|JPEG|png|PNG|webp|WEBP)$/)) {
-        req.fileValidationError = 'Only image files are allowed!';
-        return cb(new Error('Only image files are allowed!'), false);
+        req.fileValidationError = 'Seuls les fichiers image sont autorisés (JPG, PNG, WEBP)';
+        return cb(null, false); // Ne pas throw, juste retourner false
     }
     cb(null, true);
 };
@@ -140,18 +140,74 @@ router.get('/status', authenticateToken, async (req, res) => {
 // =========================================
 // ROUTE: SUBMIT KYC
 // =========================================
-router.post('/submit', authenticateToken, upload.fields([
-    { name: 'id_card_front', maxCount: 1 },
-    { name: 'id_card_back', maxCount: 1 },
-    { name: 'selfie', maxCount: 1 }
-]), async (req, res) => {
+router.post('/submit', authenticateToken, (req, res, next) => {
+    // Middleware pour gérer les erreurs multer
+    upload.fields([
+        { name: 'id_card_front', maxCount: 1 },
+        { name: 'id_card_back', maxCount: 1 },
+        { name: 'selfie', maxCount: 1 }
+    ])(req, res, (err) => {
+        if (err) {
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: 'Fichier trop volumineux. Taille maximale: 10MB' });
+                }
+                if (err.code === 'LIMIT_FILE_COUNT') {
+                    return res.status(400).json({ error: 'Trop de fichiers envoyés' });
+                }
+                if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+                    return res.status(400).json({ error: 'Nom de champ de fichier inattendu' });
+                }
+                return res.status(400).json({ error: `Erreur upload: ${err.message}` });
+            }
+            if (err.message && err.message.includes('Only image files')) {
+                return res.status(400).json({ error: 'Seuls les fichiers image sont autorisés (JPG, PNG, WEBP)' });
+            }
+            return res.status(400).json({ error: err.message || 'Erreur lors de l\'upload des fichiers' });
+        }
+        // Gérer les erreurs de validation multer
+        if (req.fileValidationError) {
+            return res.status(400).json({ error: req.fileValidationError });
+        }
+        if (req.files === undefined) {
+            return res.status(400).json({ error: 'Aucun fichier reçu. Assurez-vous d\'envoyer les fichiers avec les noms: id_card_front, id_card_back, selfie' });
+        }
+        next();
+    });
+}, async (req, res) => {
     const client = await pool.connect();
     try {
         const files = req.files;
         
+        // Vérifier que tous les fichiers sont présents
         if (!files || !files.id_card_front || !files.id_card_back || !files.selfie) {
+            const missing = [];
+            if (!files || !files.id_card_front) missing.push('carte d\'identité avant');
+            if (!files || !files.id_card_back) missing.push('carte d\'identité arrière');
+            if (!files || !files.selfie) missing.push('selfie');
+            
             return res.status(400).json({ 
-                error: 'Tous les documents sont requis: carte d\'identité avant, carte d\'identité arrière et selfie' 
+                error: `Documents manquants: ${missing.join(', ')}. Tous les documents sont requis.` 
+            });
+        }
+        
+        // Vérifier que les fichiers ne sont pas vides
+        if (!files.id_card_front[0] || !files.id_card_back[0] || !files.selfie[0]) {
+            return res.status(400).json({ 
+                error: 'Un ou plusieurs fichiers sont vides ou invalides' 
+            });
+        }
+
+        // Vérifier que l'utilisateur existe dans la base de données
+        const userCheck = await client.query(
+            'SELECT id FROM users WHERE id = $1',
+            [req.user.id]
+        );
+        
+        if (userCheck.rows.length === 0) {
+            console.error(`❌ Tentative de création KYC pour un utilisateur inexistant: user_id=${req.user.id}`);
+            return res.status(404).json({ 
+                error: 'Utilisateur non trouvé. Veuillez vous reconnecter.' 
             });
         }
 
@@ -242,8 +298,46 @@ router.get('/image/:filename', (req, res) => {
     const { filename } = req.params;
     const filePath = path.join(uploadsDir, filename);
     
+    // Headers CORS pour les images - TOUJOURS définir même sans origin
+    const origin = req.headers.origin;
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Content-Length');
+    
+    // Déterminer le type MIME basé sur l'extension
+    const ext = path.extname(filename).toLowerCase();
+    const mimeTypes = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp'
+    };
+    const contentType = mimeTypes[ext] || 'image/jpeg';
+    
     if (fs.existsSync(filePath)) {
-        res.sendFile(filePath);
+        // Headers de cache et type MIME
+        res.set({
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=31536000', // 1 an
+            'ETag': `"${filename}"`,
+            'Last-Modified': new Date().toUTCString()
+        });
+        
+        // Utiliser sendFile avec les options pour éviter les problèmes de réponse opaque
+        res.sendFile(filePath, {
+            headers: {
+                'Content-Type': contentType
+            }
+        }, (err) => {
+            if (err) {
+                console.error('Erreur envoi image KYC:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({ error: 'Erreur serveur lors de l\'envoi de l\'image' });
+                }
+            }
+        });
     } else {
         res.status(404).json({ error: 'Image non trouvée' });
     }

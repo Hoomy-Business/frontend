@@ -4,7 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { sendEmail } = require('../utils/email');
+const { sendEmail, sendVerificationEmail, sendWelcomeEmail } = require('../utils/email');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -55,6 +55,99 @@ router.post('/register', async (req, res) => {
             const age = Math.abs(ageDate.getUTCFullYear() - 1970);
             if (age < 18) {
                 return res.status(400).json({ error: 'Vous devez avoir au moins 18 ans.' });
+            }
+        }
+
+        // Vérification email temporaire (améliorée)
+        const emailDomain = email.toLowerCase().split('@')[1];
+        if (emailDomain) {
+            const temporaryEmailDomains = [
+                'temp-mail.org', 'feralrex.com', 'bipochub.com', 'mohmal.com', 'getnada.com', 'maildrop.cc',
+                'yopmail.com', 'sharklasers.com', 'grr.la', 'guerrillamailblock.com',
+                'pokemail.net', 'spam4.me', 'bccto.me', 'chitthi.in', 'dispostable.com',
+                'mintemail.com', 'mytrashmail.com', 'tempinbox.com', 'trashmail.com',
+                'trashmailer.com', 'throwawaymail.com', 'getairmail.com', 'tempmailo.com',
+                'fakeinbox.com', 'emailondeck.com', 'mailcatch.com', 'meltmail.com',
+                'melt.li', 'mox.do', 'temp-mail.io', 'temp-mail.ru', 'tempail.com',
+                'tempr.email', 'tmpmail.org', 'tmpmail.net', 'tmpmail.com', 'tmpmail.io',
+                'tmpmail.me', 'tempmail.com', 'guerrillamail.com', 'mailinator.com',
+                '10minutemail.com', 'throwaway.email', '0-mail.com', '33mail.com',
+                '4warding.com', '4warding.net', '4warding.org', 'armyspy.com',
+                'cuvox.de', 'dayrep.com', 'einrot.com', 'fleckens.hu', 'gustr.com',
+                'jourrapide.com', 'rhyta.com', 'superrito.com', 'teleworm.us',
+                'emailfake.com', 'fakemailgenerator.com', 'mailnesia.com',
+                'tempinbox.co.uk', 'trashmail.net', 'trashmail.org',
+            ];
+            
+            // Vérifier si le domaine est exactement dans la liste
+            let isTemporaryEmail = temporaryEmailDomains.includes(emailDomain);
+            
+            // Vérifier si c'est un sous-domaine d'un domaine temporaire
+            if (!isTemporaryEmail) {
+                isTemporaryEmail = temporaryEmailDomains.some(domain => 
+                    emailDomain.endsWith(`.${domain}`)
+                );
+            }
+            
+            // Détecter les patterns suspects
+            if (!isTemporaryEmail) {
+                const suspiciousPatterns = [
+                    /^[a-z0-9]+\.(temp|tmp|trash|throw|fake|spam|disposable|mail-temp|tempmail)/i,
+                    /(temp|tmp|trash|throw|fake|spam|disposable|mail-temp|tempmail)[a-z0-9]*\.(com|org|net|io|me|co|info|xyz|online|site|website|tech|store|shop|club|fun|top|click|link|press|download|stream|video|space|cloud|host|work|party|review|accountant|design|photo|help|business|email|mail|services|solutions|support|systems|technology|today|tools|trade|training|travel|university|vip|watch|win|world|ws|zone)$/i,
+                ];
+                
+                for (const pattern of suspiciousPatterns) {
+                    if (pattern.test(emailDomain)) {
+                        isTemporaryEmail = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Détecter les domaines connus de temp-mail.org avec noms courts
+            if (!isTemporaryEmail) {
+                const knownTempMailDomains = [
+                    'feralrex.com', 'bipochub.com', 'mohmal.com', 'getnada.com', 'maildrop.cc',
+                    'yopmail.com', 'sharklasers.com', 'grr.la', 'pokemail.net',
+                    'spam4.me', 'bccto.me', 'chitthi.in', 'dispostable.com',
+                ];
+                isTemporaryEmail = knownTempMailDomains.includes(emailDomain);
+                
+                // Détecter les domaines courts avec patterns suspects
+                if (!isTemporaryEmail && emailDomain.length < 15 && /^[a-z]{4,12}\.(com|org|net|io|me|co|cc|info|xyz)$/i.test(emailDomain)) {
+                    // Vérifier si le domaine ressemble à un domaine temporaire
+                    const suspiciousWords = ['temp', 'tmp', 'trash', 'throw', 'fake', 'spam', 'disposable', 'mail'];
+                    const hasSuspiciousWord = suspiciousWords.some(word => emailDomain.includes(word));
+                    
+                    // Si le domaine est court et ne contient pas de mots suspects mais ressemble à un nom aléatoire
+                    if (!hasSuspiciousWord && /^[a-z]{5,11}\.(com|org|net|io|me|co|cc|info|xyz)$/i.test(emailDomain)) {
+                        // Vérifier si c'est un domaine connu de temp-mail.org
+                        if (knownTempMailDomains.includes(emailDomain)) {
+                            isTemporaryEmail = true;
+                        } else {
+                            // Détecter les patterns de noms aléatoires (consonnes/voyelles aléatoires)
+                            const randomPattern = /^[bcdfghjklmnpqrstvwxyz]{3,}[aeiou]{1,2}[bcdfghjklmnpqrstvwxyz]{2,}\.(com|org|net|io|me|co|cc|info|xyz)$/i;
+                            if (randomPattern.test(emailDomain)) {
+                                // Vérifier si le domaine est dans une liste de domaines légitimes connus
+                                const legitimateShortDomains = [
+                                    'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com',
+                                    'protonmail.com', 'aol.com', 'zoho.com', 'mail.com', 'yandex.com',
+                                    'gmx.com', 'live.com', 'msn.com', 'me.com', 'mac.com',
+                                ];
+                                if (!legitimateShortDomains.some(legit => emailDomain === legit || emailDomain.endsWith(`.${legit}`))) {
+                                    // C'est probablement un domaine temporaire
+                                    isTemporaryEmail = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (isTemporaryEmail) {
+                return res.status(400).json({ 
+                    error: 'Les adresses email temporaires ne sont pas autorisées. Veuillez utiliser une adresse email permanente.' 
+                });
             }
         }
 
@@ -265,8 +358,7 @@ router.post('/verify-email', async (req, res) => {
         }
 
         // Email de bienvenue (non bloquant)
-        //sendWelcomeEmail(email, user.first_name, user.role).catch(console.error);
-	console.log(`Welcome ${user.first_name}`);
+        sendWelcomeEmail(email, user.first_name, user.role).catch(console.error);
 
         // Token JWT
         const token = jwt.sign(
@@ -355,14 +447,32 @@ router.post('/login', async (req, res) => {
         const { email, password } = req.body;
         if (!email || !password) return res.status(400).json({ error: 'Champs requis' });
 
+        // Vérifier si la colonne deleted_at existe
+        const hasDeletedAt = await client.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'deleted_at'
+        `);
+        const deletedAtExists = hasDeletedAt.rows.length > 0;
+        const deletedAtSelect = deletedAtExists ? ', deleted_at' : ', NULL as deleted_at';
+        
         const result = await client.query(`
-            SELECT id, email, password_hash, first_name, last_name, role, email_verified, phone
+            SELECT id, email, password_hash, first_name, last_name, role, email_verified, phone, profile_picture${deletedAtSelect}
             FROM users WHERE email = $1
         `, [email.toLowerCase()]);
 
         if (result.rows.length === 0) return res.status(401).json({ error: 'Identifiants incorrects' });
 
         const user = result.rows[0];
+        
+        // Empêcher la connexion si l'utilisateur est supprimé
+        if (deletedAtExists && user.deleted_at) {
+            return res.status(403).json({ 
+                error: 'Ce compte a été supprimé',
+                code: 'ACCOUNT_DELETED' 
+            });
+        }
+        
         const validPass = await bcrypt.compare(password, user.password_hash);
 
         if (!validPass) return res.status(401).json({ error: 'Identifiants incorrects' });
@@ -390,7 +500,8 @@ router.post('/login', async (req, res) => {
                 last_name: user.last_name,
                 role: user.role,
                 email_verified: true,
-                phone: user.phone
+                phone: user.phone,
+                profile_picture: user.profile_picture || null
             }
         });
 
@@ -419,7 +530,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
         const dateOfBirthField = hasDateOfBirth ? ', date_of_birth' : '';
         
         const result = await client.query(`
-            SELECT id, email, first_name, last_name, role, phone, email_verified${dateOfBirthField}
+            SELECT id, email, first_name, last_name, role, phone, email_verified, profile_picture${dateOfBirthField}
             FROM users WHERE id = $1
         `, [req.user.id]);
 

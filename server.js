@@ -40,11 +40,20 @@ function getLocalIP() {
 }
 
 const LOCAL_IP = getLocalIP();
-const BASE_URL = `http://${LOCAL_IP}:${PORT}`;
+
+// Déterminer BASE_URL selon l'environnement
+let BASE_URL;
+if (process.env.NODE_ENV === 'production') {
+    // En production, utiliser l'URL du backend de production
+    BASE_URL = process.env.BACKEND_URL || 'https://backend.hoomy.site';
+} else {
+    // En développement, utiliser l'IP locale
+    BASE_URL = `http://${LOCAL_IP}:${PORT}`;
+}
 
 console.log(`
 ╔═══════════════════════════════════════════════════╗
-║   🔒 CONFIGURATION RÉSEAU LOCAL (LAN) UNIQUEMENT  ║
+║   🔒 CONFIGURATION ${process.env.NODE_ENV === 'production' ? 'PRODUCTION' : 'RÉSEAU LOCAL (LAN)'}  ║
 ║   IP Locale: ${LOCAL_IP}                          ║
 ║   Port: ${PORT}                                   ║
 ║   URL: ${BASE_URL}                                ║
@@ -128,7 +137,9 @@ if (!fs.existsSync(uploadsDir)) {
 // MIDDLEWARE DE SÉCURITÉ ET PERFORMANCE
 // =========================================
 // Trust proxy pour express-rate-limit (nécessaire derrière un reverse proxy)
-app.set('trust proxy', true);
+// Configurer trust proxy de manière sécurisée pour éviter le bypass du rate limiting
+// Ne faire confiance qu'au premier proxy (reverse proxy)
+app.set('trust proxy', 1); // Faire confiance uniquement au premier proxy
 
 // Helmet pour sécurité
 app.use(helmet({
@@ -151,17 +162,60 @@ app.use(compression({
 // =========================================
 // MIDDLEWARE - CORS (DOIT ÊTRE AVANT RATE LIMITING)
 // =========================================
-app.use(cors({
+// Configuration CORS complète
+const corsOptions = {
     origin: function(origin, callback) {
+        // Permettre toutes les origines (y compris null pour les requêtes same-origin)
         callback(null, true);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token'],
+    exposedHeaders: ['Content-Type', 'Content-Length'],
     credentials: true,
-    optionsSuccessStatus: 204
-}));
+    optionsSuccessStatus: 204,
+    preflightContinue: false,
+    maxAge: 86400 // Cache preflight pour 24 heures
+};
 
-app.options('*', cors());
+// Appliquer CORS à toutes les routes
+app.use(cors(corsOptions));
+
+// Handler explicite pour les requêtes OPTIONS (preflight)
+app.options('*', (req, res) => {
+    const origin = req.headers.origin;
+    
+    // Définir tous les headers CORS nécessaires
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Content-Length');
+    
+    res.status(204).end();
+});
+
+// Middleware pour ajouter les headers CORS à toutes les réponses
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    
+    // Ajouter les headers CORS à toutes les réponses
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Content-Length');
+    
+    next();
+});
 
 // =========================================
 // WEBHOOK STRIPE - DOIT ÊTRE AVANT express.json()
@@ -178,6 +232,17 @@ const limiter = rateLimit({
     message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
     standardHeaders: true,
     legacyHeaders: false,
+    // Ignorer les requêtes OPTIONS (preflight) - elles ne doivent pas être limitées
+    skip: (req) => req.method === 'OPTIONS',
+    // Utiliser l'IP réelle même avec trust proxy
+    keyGenerator: (req) => {
+        // Récupérer l'IP réelle depuis les headers X-Forwarded-For ou l'IP directe
+        const forwarded = req.headers['x-forwarded-for'];
+        const ip = forwarded ? forwarded.split(',')[0].trim() : req.ip || req.connection.remoteAddress;
+        return ip || 'unknown';
+    },
+    // Désactiver trustProxy dans rateLimit pour éviter le warning
+    trustProxy: false,
     handler: (req, res) => {
         // S'assurer que les en-têtes CORS sont inclus même pour les erreurs 429
         const origin = req.headers.origin;
@@ -185,7 +250,7 @@ const limiter = rateLimit({
             res.setHeader('Access-Control-Allow-Origin', origin);
             res.setHeader('Access-Control-Allow-Credentials', 'true');
             res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
         }
         res.status(429).json({
             error: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
@@ -202,6 +267,8 @@ const authLimiter = rateLimit({
     max: 10, // Augmenté à 10 tentatives par 15 minutes
     message: 'Trop de tentatives de connexion, veuillez réessayer plus tard.',
     skipSuccessfulRequests: true,
+    // Ignorer les requêtes OPTIONS (preflight)
+    skip: (req) => req.method === 'OPTIONS',
     handler: (req, res) => {
         // S'assurer que les en-têtes CORS sont inclus même pour les erreurs 429
         const origin = req.headers.origin;
@@ -209,7 +276,7 @@ const authLimiter = rateLimit({
             res.setHeader('Access-Control-Allow-Origin', origin);
             res.setHeader('Access-Control-Allow-Credentials', 'true');
             res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
         }
         res.status(429).json({
             error: 'Trop de tentatives de connexion, veuillez réessayer plus tard.',
@@ -303,17 +370,66 @@ app.get('/api/image/:filename', (req, res) => {
     const { filename } = req.params;
     const filePath = path.join(uploadsDir, filename);
     
-    // Headers de cache pour les images
-    res.set({
-        'Cache-Control': 'public, max-age=31536000', // 1 an
-        'ETag': `"${filename}"`,
-        'Last-Modified': new Date().toUTCString()
-    });
+    // Headers CORS pour les images - TOUJOURS définir même sans origin
+    const origin = req.headers.origin;
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Content-Length');
+    
+    // Déterminer le type MIME basé sur l'extension AVANT de définir les headers
+    const ext = path.extname(filename).toLowerCase();
+    const mimeTypes = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp'
+    };
+    const contentType = mimeTypes[ext] || 'image/jpeg';
     
     if (fs.existsSync(filePath)) {
-        res.sendFile(filePath);
+        // Headers de cache et type MIME
+        res.set({
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=31536000', // 1 an
+            'ETag': `"${filename}"`,
+            'Last-Modified': new Date().toUTCString()
+        });
+        
+        // Utiliser sendFile avec les options pour éviter les problèmes de réponse opaque
+        res.sendFile(filePath, {
+            headers: {
+                'Content-Type': contentType
+            }
+        }, (err) => {
+            if (err) {
+                console.error('Erreur envoi image:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({ error: 'Erreur serveur lors de l\'envoi de l\'image' });
+                }
+            }
+        });
     } else {
-        res.status(404).json({ error: 'Image non trouvée' });
+        // Image non trouvée - retourner un placeholder SVG au lieu d'une erreur JSON
+        // Cela permet au navigateur d'afficher quelque chose au lieu d'une erreur
+        console.warn(`Image non trouvée: ${filename} dans ${uploadsDir}`);
+        
+        // Créer un placeholder SVG simple
+        const placeholderSvg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect fill="#e5e7eb" width="400" height="300"/>
+  <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16" fill="#9ca3af">
+    Image non disponible
+  </text>
+</svg>`;
+        
+        res.set({
+            'Content-Type': 'image/svg+xml',
+            'Cache-Control': 'public, max-age=3600', // Cache 1 heure pour les placeholders
+        });
+        
+        res.send(placeholderSvg);
     }
 });
 
@@ -379,18 +495,48 @@ app.delete('/api/upload/image/:filename', authenticateToken, (req, res) => {
 // =========================================
 app.get('/api/locations/cantons', async (req, res) => {
     try {
+        // Headers CORS explicites pour cette route
+        const origin = req.headers.origin;
+        if (origin) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+        } else {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+        }
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        
         const cantons = await getCachedCantons();
         res.set('Cache-Control', 'public, max-age=300'); // Cache 5 minutes
         res.set('Content-Type', 'application/json; charset=utf-8'); // UTF-8 encoding
         res.json(cantons);
     } catch (error) {
         console.error('Erreur récupération cantons:', error.message);
+        // S'assurer que les headers CORS sont présents même en cas d'erreur
+        const origin = req.headers.origin;
+        if (origin) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+        } else {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+        }
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
 app.get('/api/locations/cities', async (req, res) => {
+    const client = await pool.connect();
     try {
+        // Headers CORS explicites pour cette route
+        const origin = req.headers.origin;
+        if (origin) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+        } else {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+        }
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        
         const { canton } = req.query;
         const cities = await getCachedCities(canton);
         res.set('Cache-Control', 'public, max-age=300'); // Cache 5 minutes
@@ -398,9 +544,297 @@ app.get('/api/locations/cities', async (req, res) => {
         res.json(cities);
     } catch (error) {
         console.error('Erreur récupération villes:', error.message);
+        // S'assurer que les headers CORS sont présents même en cas d'erreur
+        const origin = req.headers.origin;
+        if (origin) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+        } else {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+        }
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
+
+// =========================================
+// ROUTE AUTocomplétion ADRESSES
+// =========================================
+app.get('/api/locations/addresses/autocomplete', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { query, canton_code } = req.query;
+        
+        if (!query || query.trim().length < 2) {
+            return res.json([]);
+        }
+        
+        const searchQuery = `%${query.trim()}%`;
+        const queryLower = query.trim().toLowerCase();
+        const results = [];
+        const seenAddresses = new Set(); // Pour éviter les doublons
+        
+        // 1. D'abord, rechercher dans les propriétés existantes (priorité)
+        let addressQuery = `
+            SELECT DISTINCT 
+                p.address,
+                p.city_name,
+                p.postal_code,
+                p.canton_code,
+                sc.name_fr as canton_name
+            FROM properties p
+            JOIN swiss_cantons sc ON p.canton_code = sc.code
+            WHERE p.address ILIKE $1
+        `;
+        const addressParams = [searchQuery];
+        
+        if (canton_code) {
+            addressQuery += ' AND p.canton_code = $2';
+            addressParams.push(canton_code);
+        }
+        
+        addressQuery += ' ORDER BY p.city_name, p.address LIMIT 50';
+        
+        const addressResult = await client.query(addressQuery, addressParams);
+        
+        // Formater les résultats des propriétés existantes
+        addressResult.rows.forEach(row => {
+            const key = `${row.address.toLowerCase()}_${row.city_name.toLowerCase()}`;
+            if (!seenAddresses.has(key)) {
+                seenAddresses.add(key);
+                results.push({
+                    address: row.address,
+                    city_name: row.city_name,
+                    postal_code: row.postal_code,
+                    canton_code: row.canton_code,
+                    canton_name: row.canton_name,
+                    full_address: `${row.address}, ${row.city_name}`,
+                    source: 'existing_property'
+                });
+            }
+        });
+        
+        // 2. Rechercher toutes les villes suisses correspondantes
+        let cityQuery = `
+            SELECT DISTINCT
+                c.name,
+                c.postal_code,
+                c.canton_code,
+                sc.name_fr as canton_name
+            FROM swiss_cities c
+            JOIN swiss_cantons sc ON c.canton_code = sc.code
+            WHERE 1=1
+        `;
+        const cityParams = [];
+        let paramCount = 1;
+        
+        // Chercher les villes dont le nom correspond à la recherche OU qui sont dans le canton spécifié
+        if (canton_code) {
+            cityQuery += ` AND c.canton_code = $${paramCount}`;
+            cityParams.push(canton_code);
+            paramCount++;
+        }
+        
+        cityQuery += ' ORDER BY c.name LIMIT 200';
+        
+        const cityResult = await client.query(cityQuery, cityParams);
+        
+        // 3. Proposer la combinaison adresse + ville pour TOUTES les villes correspondantes
+        cityResult.rows.forEach(city => {
+            const key = `${queryLower}_${city.name.toLowerCase()}`;
+            if (!seenAddresses.has(key)) {
+                seenAddresses.add(key);
+                results.push({
+                    address: query.trim(),
+                    city_name: city.name,
+                    postal_code: city.postal_code,
+                    canton_code: city.canton_code,
+                    canton_name: city.canton_name,
+                    full_address: `${query.trim()}, ${city.name}`,
+                    source: 'suggestion'
+                });
+            }
+        });
+        
+        // 4. Si la recherche ressemble à un nom de ville, chercher aussi les villes correspondantes
+        if (query.trim().length >= 3) {
+            let cityNameQuery = `
+                SELECT DISTINCT
+                    c.name,
+                    c.postal_code,
+                    c.canton_code,
+                    sc.name_fr as canton_name
+                FROM swiss_cities c
+                JOIN swiss_cantons sc ON c.canton_code = sc.code
+                WHERE c.name ILIKE $1
+            `;
+            const cityNameParams = [searchQuery];
+            let cityNameParamCount = 2;
+            
+            if (canton_code) {
+                cityNameQuery += ` AND c.canton_code = $${cityNameParamCount}`;
+                cityNameParams.push(canton_code);
+                cityNameParamCount++;
+            }
+            
+            cityNameQuery += ' ORDER BY c.name LIMIT 50';
+            
+            const matchingCities = await client.query(cityNameQuery, cityNameParams);
+            
+            matchingCities.rows.forEach(city => {
+                // Proposer l'adresse avec cette ville
+                const key = `${queryLower}_${city.name.toLowerCase()}`;
+                if (!seenAddresses.has(key)) {
+                    seenAddresses.add(key);
+                    results.push({
+                        address: query.trim(),
+                        city_name: city.name,
+                        postal_code: city.postal_code,
+                        canton_code: city.canton_code,
+                        canton_name: city.canton_name,
+                        full_address: `${query.trim()}, ${city.name}`,
+                        source: 'suggestion'
+                    });
+                }
+            });
+        }
+        
+        // Trier les résultats : propriétés existantes en premier, puis par nom de ville
+        results.sort((a, b) => {
+            if (a.source === 'existing_property' && b.source !== 'existing_property') return -1;
+            if (a.source !== 'existing_property' && b.source === 'existing_property') return 1;
+            return a.city_name.localeCompare(b.city_name);
+        });
+        
+        res.set('Cache-Control', 'public, max-age=60'); // Cache 1 minute
+        res.set('Content-Type', 'application/json; charset=utf-8');
+        res.json(results.slice(0, 100)); // Augmenter la limite à 100 résultats
+    } catch (error) {
+        console.error('Erreur autocomplétion adresses:', error.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    } finally {
+        client.release();
+    }
+});
+
+// =========================================
+// ROUTE AUTocomplétion VILLES
+// =========================================
+app.get('/api/locations/cities/autocomplete', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { query, canton_code } = req.query;
+        
+        if (!query || query.trim().length < 1) {
+            return res.json([]);
+        }
+        
+        const searchQuery = `%${query.trim()}%`;
+        let cityQuery = `
+            SELECT c.*, s.name_fr as canton_name
+            FROM swiss_cities c
+            JOIN swiss_cantons s ON c.canton_code = s.code
+            WHERE c.name ILIKE $1
+        `;
+        const params = [searchQuery];
+        
+        if (canton_code) {
+            cityQuery += ' AND c.canton_code = $2';
+            params.push(canton_code);
+        }
+        
+        cityQuery += ' ORDER BY c.name LIMIT 20';
+        
+        const result = await client.query(cityQuery, params);
+        
+        res.set('Cache-Control', 'public, max-age=300'); // Cache 5 minutes
+        res.set('Content-Type', 'application/json; charset=utf-8');
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Erreur autocomplétion villes:', error.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    } finally {
+        client.release();
+    }
+});
+
+// =========================================
+// HELPER: Vérifier si la colonne deleted_at existe
+// =========================================
+async function checkDeletedAtColumn(client) {
+    try {
+        const result = await client.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'deleted_at'
+        `);
+        return result.rows.length > 0;
+    } catch (error) {
+        return false;
+    }
+}
+
+// =========================================
+// HELPER: Formater les données utilisateur pour gérer les soft deletes
+// =========================================
+function formatUserData(user) {
+    if (!user) return user;
+    
+    // Si l'utilisateur est supprimé (deleted_at IS NOT NULL)
+    // Vérifier si deleted_at existe et n'est pas null
+    if (user.deleted_at !== undefined && user.deleted_at !== null) {
+        return {
+            ...user,
+            first_name: 'deleted_user',
+            last_name: user.id?.toString() || '',
+            email: `deleted_user_${user.id}@deleted.local`,
+            profile_picture: null,
+            phone: null,
+        };
+    }
+    
+    return user;
+}
+
+// =========================================
+// HELPER: Normaliser les URLs d'images pour pointer vers le bon backend
+// =========================================
+function normalizeImageUrl(url) {
+    if (!url) return null;
+    
+    // Si c'est déjà une URL complète vers le backend de production, la retourner
+    if (url.includes('backend.hoomy.site') || url.includes('/api/image/')) {
+        // Extraire le nom de fichier
+        const filenameMatch = url.match(/\/api\/image\/([^\/\?]+)/);
+        if (filenameMatch) {
+            return `${BASE_URL}/api/image/${filenameMatch[1]}`;
+        }
+    }
+    
+    // Si c'est une URL locale (localhost ou IP), la convertir
+    if (url.includes('localhost') || /^\d+\.\d+\.\d+\.\d+/.test(url)) {
+        const filenameMatch = url.match(/\/api\/image\/([^\/\?]+)/);
+        if (filenameMatch) {
+            return `${BASE_URL}/api/image/${filenameMatch[1]}`;
+        }
+        // Si c'est juste un nom de fichier à la fin
+        const filenameMatch2 = url.match(/\/([^\/\?]+\.(jpg|jpeg|png|gif|webp))$/i);
+        if (filenameMatch2) {
+            return `${BASE_URL}/api/image/${filenameMatch2[1]}`;
+        }
+    }
+    
+    // Si c'est juste un nom de fichier, construire l'URL complète
+    if (!url.includes('http') && !url.includes('/')) {
+        return `${BASE_URL}/api/image/${url}`;
+    }
+    
+    // Si c'est un chemin relatif /api/image/...
+    if (url.startsWith('/api/image/')) {
+        return `${BASE_URL}${url}`;
+    }
+    
+    // Sinon, retourner tel quel (URL externe valide)
+    return url;
+}
 
 // =========================================
 // ROUTES PROPERTIES (ANNONCES) - OPTIMISÉES
@@ -410,10 +844,14 @@ app.get('/api/properties', async (req, res) => {
     try {
         const { city_id, city_name, canton, max_price, min_rooms, property_type, status, search } = req.query;
 
+        // Vérifier si la colonne deleted_at existe
+        const hasDeletedAt = await checkDeletedAtColumn(client);
+        const deletedAtSelect = hasDeletedAt ? ', u.deleted_at' : ', NULL as deleted_at';
+
         // Construction optimisée de la requête avec index
         let query = `
             SELECT p.*, 
-                   u.first_name, u.last_name, u.email, u.phone,
+                   u.first_name, u.last_name, u.email, u.phone, u.profile_picture${deletedAtSelect},
                    sc.name_fr as canton_name,
                    (SELECT photo_url FROM property_photos WHERE property_id = p.id AND is_main = true LIMIT 1) as main_photo
             FROM properties p
@@ -478,14 +916,110 @@ app.get('/api/properties', async (req, res) => {
             paramCount += 4;
         }
 
+        // Pagination pour éviter de retourner trop de résultats
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100); // Max 100 par page
+        const offset = (page - 1) * limit;
+        
         query += ' ORDER BY p.created_at DESC';
-
-        const result = await client.query(query, params);
+        query += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+        params.push(limit, offset);
+        
+        // Requête pour compter le total (pour la pagination) - construite séparément
+        let countQuery = `
+            SELECT COUNT(*) as total
+            FROM properties p
+            JOIN users u ON p.owner_id = u.id
+            JOIN swiss_cantons sc ON p.canton_code = sc.code
+            WHERE 1=1
+        `;
+        const countParams = [];
+        let countParamCount = 1;
+        
+        // Ajouter les mêmes conditions WHERE
+        if (city_id) {
+            countQuery += ` AND p.city_id = $${countParamCount}`;
+            countParams.push(city_id);
+            countParamCount++;
+        }
+        if (city_name) {
+            countQuery += ` AND p.city_name = $${countParamCount}`;
+            countParams.push(city_name);
+            countParamCount++;
+        }
+        if (canton) {
+            countQuery += ` AND p.canton_code = $${countParamCount}`;
+            countParams.push(canton);
+            countParamCount++;
+        }
+        if (max_price) {
+            countQuery += ` AND p.price <= $${countParamCount}`;
+            countParams.push(max_price);
+            countParamCount++;
+        }
+        if (min_rooms) {
+            countQuery += ` AND p.rooms >= $${countParamCount}`;
+            countParams.push(min_rooms);
+            countParamCount++;
+        }
+        if (property_type) {
+            countQuery += ` AND p.property_type = $${countParamCount}`;
+            countParams.push(property_type);
+            countParamCount++;
+        }
+        if (status) {
+            countQuery += ` AND p.status = $${countParamCount}`;
+            countParams.push(status);
+            countParamCount++;
+        } else {
+            countQuery += ` AND p.status = 'available'`;
+        }
+        if (search) {
+            countQuery += ` AND (p.title ILIKE $${countParamCount} OR p.description ILIKE $${countParamCount} OR p.address ILIKE $${countParamCount} OR p.city_name ILIKE $${countParamCount})`;
+            const searchPattern = `%${search}%`;
+            countParams.push(searchPattern, searchPattern, searchPattern, searchPattern);
+        }
+        
+        const [result, countResult] = await Promise.all([
+            client.query(query, params),
+            client.query(countQuery, countParams)
+        ]);
+        
+        const total = parseInt(countResult.rows[0]?.total || 0);
+        
+        // Formater les utilisateurs supprimés et normaliser les URLs d'images
+        const formattedRows = result.rows.map(row => {
+            const formatted = { ...row };
+            
+            if (hasDeletedAt && row.deleted_at) {
+                formatted.first_name = 'deleted_user';
+                formatted.last_name = row.owner_id?.toString() || '';
+                formatted.email = `deleted_user_${row.owner_id}@deleted.local`;
+                formatted.phone = null;
+                formatted.profile_picture = null;
+            }
+            
+            // Normaliser l'URL de la photo principale
+            if (formatted.main_photo) {
+                formatted.main_photo = normalizeImageUrl(formatted.main_photo);
+            }
+            
+            return formatted;
+        });
         
         // Cache pour les résultats de recherche
         res.set('Cache-Control', 'public, max-age=60'); // Cache 1 minute
         res.set('Content-Type', 'application/json; charset=utf-8');
-        res.json(result.rows);
+        res.json({
+            properties: formattedRows,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+                hasMore: offset + limit < total
+            }
+        });
     } catch (error) {
         console.error('Erreur récupération annonces:', error.message);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -497,6 +1031,11 @@ app.get('/api/properties', async (req, res) => {
 app.get('/api/properties/my-properties', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
+        // Pagination
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        const offset = (page - 1) * limit;
+        
         const result = await client.query(`
             SELECT p.*, 
                    sc.name_fr as canton_name,
@@ -505,9 +1044,34 @@ app.get('/api/properties/my-properties', authenticateToken, async (req, res) => 
             JOIN swiss_cantons sc ON p.canton_code = sc.code
             WHERE p.owner_id = $1
             ORDER BY p.created_at DESC
-        `, [req.user.id]);
+            LIMIT $2 OFFSET $3
+        `, [req.user.id, limit, offset]);
+        
+        // Compter le total
+        const countResult = await client.query(
+            'SELECT COUNT(*) as total FROM properties WHERE owner_id = $1',
+            [req.user.id]
+        );
+        const total = parseInt(countResult.rows[0]?.total || 0);
 
-        res.json(result.rows);
+        // Normaliser les URLs d'images
+        const formattedRows = result.rows.map(row => {
+            if (row.main_photo) {
+                row.main_photo = normalizeImageUrl(row.main_photo);
+            }
+            return row;
+        });
+
+        res.json({
+            properties: formattedRows,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+                hasMore: offset + limit < total
+            }
+        });
     } catch (error) {
         console.error('Erreur récupération mes annonces:', error.message);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -534,21 +1098,34 @@ app.get('/api/properties/:id', async (req, res) => {
             return res.status(400).json({ error: 'ID de propriété invalide' });
         }
 
+        // Vérifier si la colonne deleted_at existe
+        const hasDeletedAt = await checkDeletedAtColumn(client);
+        const deletedAtSelect = hasDeletedAt ? ', u.deleted_at' : ', NULL as deleted_at';
+        
         // Requête optimisée avec une seule jointure
         const propertyResult = await client.query(`
-            SELECT p.*, u.first_name, u.last_name, u.email, u.phone, u.email_verified, u.phone_verified,
+            SELECT p.*, u.first_name, u.last_name, u.email, u.phone, u.email_verified, u.phone_verified, u.profile_picture${deletedAtSelect},
                    sc.name_fr as canton_name
             FROM properties p
             JOIN users u ON p.owner_id = u.id
             JOIN swiss_cantons sc ON p.canton_code = sc.code
             WHERE p.id = $1
         `, [propertyId]);
-
+        
         if (propertyResult.rows.length === 0) {
             return res.status(404).json({ error: 'Annonce non trouvée' });
         }
 
         const property = propertyResult.rows[0];
+        
+        // Formater les données utilisateur si supprimé
+        if (hasDeletedAt && property && property.deleted_at) {
+            property.first_name = 'deleted_user';
+            property.last_name = property.owner_id?.toString() || '';
+            property.email = `deleted_user_${property.owner_id}@deleted.local`;
+            property.profile_picture = null;
+            property.phone = null;
+        }
 
         // Récupération des photos en parallèle serait mieux, mais on garde simple
         const photosResult = await client.query(
@@ -556,7 +1133,11 @@ app.get('/api/properties/:id', async (req, res) => {
             [propertyId]
         );
 
-        property.photos = photosResult.rows;
+        // Normaliser les URLs des photos
+        property.photos = photosResult.rows.map(photo => ({
+            ...photo,
+            photo_url: normalizeImageUrl(photo.photo_url)
+        }));
 
         res.set('Cache-Control', 'public, max-age=300'); // Cache 5 minutes
         res.json(property);
@@ -625,14 +1206,21 @@ app.post('/api/properties', authenticateToken, async (req, res) => {
 
         const property = result.rows[0];
 
-        // Insertion batch des photos pour performance
+        // Insertion batch optimisée des photos
         if (image_urls.length > 0) {
-            for (let i = 0; i < image_urls.length; i++) {
-                await client.query(
-                    'INSERT INTO property_photos (property_id, photo_url, is_main) VALUES ($1, $2, $3)',
-                    [property.id, image_urls[i], i === 0]
-                );
-            }
+            // Utiliser une seule requête avec VALUES multiples pour meilleure performance
+            const photoValues = image_urls.map((_, i) => {
+                const paramIndex = i * 2 + 1;
+                return `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2})`;
+            }).join(', ');
+            
+            // Flatten les paramètres : [property.id, url1, is_main1, property.id, url2, is_main2, ...]
+            const photoParams = image_urls.flatMap((url, i) => [property.id, url, i === 0]);
+            
+            await client.query(
+                `INSERT INTO property_photos (property_id, photo_url, is_main) VALUES ${photoValues}`,
+                photoParams
+            );
         }
 
         // Invalider le cache
@@ -729,8 +1317,13 @@ app.delete('/api/properties/:id', authenticateToken, async (req, res) => {
 app.get('/api/favorites', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
+        // Pagination
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        const offset = (page - 1) * limit;
+        
         const result = await client.query(`
-            SELECT p.*, u.first_name, u.last_name, sc.name_fr as canton_name,
+            SELECT p.*, u.first_name, u.last_name, u.profile_picture, sc.name_fr as canton_name,
                    (SELECT photo_url FROM property_photos WHERE property_id = p.id AND is_main = true LIMIT 1) as main_photo,
                    f.id as favorite_id
             FROM favorites f
@@ -739,9 +1332,34 @@ app.get('/api/favorites', authenticateToken, async (req, res) => {
             JOIN swiss_cantons sc ON p.canton_code = sc.code
             WHERE f.user_id = $1
             ORDER BY f.created_at DESC
-        `, [req.user.id]);
+            LIMIT $2 OFFSET $3
+        `, [req.user.id, limit, offset]);
+        
+        // Compter le total
+        const countResult = await client.query(
+            'SELECT COUNT(*) as total FROM favorites WHERE user_id = $1',
+            [req.user.id]
+        );
+        const total = parseInt(countResult.rows[0]?.total || 0);
 
-        res.json(result.rows);
+        // Normaliser les URLs d'images
+        const formattedRows = result.rows.map(row => {
+            if (row.main_photo) {
+                row.main_photo = normalizeImageUrl(row.main_photo);
+            }
+            return row;
+        });
+
+        res.json({
+            favorites: formattedRows,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+                hasMore: offset + limit < total
+            }
+        });
     } catch (error) {
         console.error('Erreur récupération favoris:', error.message);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -875,16 +1493,34 @@ app.post('/api/requests', authenticateToken, async (req, res) => {
 app.get('/api/requests/received', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
+        // Vérifier si la colonne deleted_at existe
+        const hasDeletedAt = await checkDeletedAtColumn(client);
+        const deletedAtSelect = hasDeletedAt ? ', u.deleted_at' : ', NULL as deleted_at';
+        
         const result = await client.query(`
-            SELECT r.*, p.title as property_title, u.first_name, u.last_name, u.email, u.phone
+            SELECT r.*, p.title as property_title, u.first_name, u.last_name, u.email, u.phone${deletedAtSelect}
             FROM property_requests r
             JOIN properties p ON r.property_id = p.id
             JOIN users u ON r.requester_id = u.id
             WHERE p.owner_id = $1
             ORDER BY r.created_at DESC
         `, [req.user.id]);
+        
+        // Formater les utilisateurs supprimés
+        const formattedRows = result.rows.map(row => {
+            if (hasDeletedAt && row.deleted_at) {
+                return {
+                    ...row,
+                    first_name: 'deleted_user',
+                    last_name: row.requester_id?.toString() || '',
+                    email: `deleted_user_${row.requester_id}@deleted.local`,
+                    phone: null,
+                };
+            }
+            return row;
+        });
 
-        res.json(result.rows);
+        res.json(formattedRows);
     } catch (error) {
         console.error('Erreur récupération demandes reçues:', error.message);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -1060,13 +1696,21 @@ app.post('/api/conversations', authenticateToken, async (req, res) => {
 app.get('/api/conversations', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
+        // Pagination
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        const offset = (page - 1) * limit;
+        
+        // Vérifier si la colonne deleted_at existe
+        const hasDeletedAt = await checkDeletedAtColumn(client);
+        const ownerDeletedAtSelect = hasDeletedAt ? ', u_owner.deleted_at as owner_deleted_at' : ', NULL as owner_deleted_at';
+        const studentDeletedAtSelect = hasDeletedAt ? ', u_student.deleted_at as student_deleted_at' : ', NULL as student_deleted_at';
+        
         const result = await client.query(`
             SELECT c.*, 
                    p.title as property_title, p.city_name,
-                   CASE 
-                       WHEN c.student_id = $1 THEN u_owner.first_name || ' ' || u_owner.last_name
-                       ELSE u_student.first_name || ' ' || u_student.last_name
-                   END as other_user_name,
+                   u_owner.first_name as owner_first_name, u_owner.last_name as owner_last_name${ownerDeletedAtSelect},
+                   u_student.first_name as student_first_name, u_student.last_name as student_last_name${studentDeletedAtSelect},
                    (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
                    (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id AND sender_id != $1 AND read_at IS NULL) as unread_count
             FROM conversations c
@@ -1075,9 +1719,51 @@ app.get('/api/conversations', authenticateToken, async (req, res) => {
             LEFT JOIN users u_student ON c.student_id = u_student.id
             WHERE c.student_id = $1 OR c.owner_id = $1
             ORDER BY c.last_message_at DESC
-        `, [req.user.id]);
+            LIMIT $2 OFFSET $3
+        `, [req.user.id, limit, offset]);
+        
+        // Compter le total
+        const countResult = await client.query(
+            'SELECT COUNT(*) as total FROM conversations WHERE student_id = $1 OR owner_id = $1',
+            [req.user.id]
+        );
+        const total = parseInt(countResult.rows[0]?.total || 0);
+        
+        // Formater les utilisateurs supprimés
+        const formattedRows = result.rows.map(row => {
+            let other_user_name = '';
+            if (row.student_id === req.user.id) {
+                // L'utilisateur actuel est l'étudiant, donc l'autre est le propriétaire
+                if (hasDeletedAt && row.owner_deleted_at) {
+                    other_user_name = `deleted_user_${row.owner_id}`;
+                } else {
+                    other_user_name = `${row.owner_first_name || ''} ${row.owner_last_name || ''}`.trim();
+                }
+            } else {
+                // L'utilisateur actuel est le propriétaire, donc l'autre est l'étudiant
+                if (hasDeletedAt && row.student_deleted_at) {
+                    other_user_name = `deleted_user_${row.student_id}`;
+                } else {
+                    other_user_name = `${row.student_first_name || ''} ${row.student_last_name || ''}`.trim();
+                }
+            }
+            
+            return {
+                ...row,
+                other_user_name,
+            };
+        });
 
-        res.json(result.rows);
+        res.json({
+            conversations: formattedRows,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+                hasMore: offset + limit < total
+            }
+        });
     } catch (error) {
         console.error('Erreur récupération conversations:', error.message);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -1140,9 +1826,13 @@ app.get('/api/messages/:conversation_id', authenticateToken, async (req, res) =>
         }
 
         // Récupération et mise à jour en parallèle
+        // Vérifier si la colonne deleted_at existe
+        const hasDeletedAt = await checkDeletedAtColumn(client);
+        const deletedAtSelect = hasDeletedAt ? ', u.deleted_at' : ', NULL as deleted_at';
+        
         const [result] = await Promise.all([
             client.query(`
-                SELECT m.*, u.first_name, u.last_name
+                SELECT m.*, u.first_name, u.last_name${deletedAtSelect}
                 FROM messages m
                 JOIN users u ON m.sender_id = u.id
                 WHERE m.conversation_id = $1
@@ -1153,8 +1843,20 @@ app.get('/api/messages/:conversation_id', authenticateToken, async (req, res) =>
                 [conversation_id, req.user.id]
             )
         ]);
+        
+        // Formater les utilisateurs supprimés
+        const formattedRows = result.rows.map(row => {
+            if (hasDeletedAt && row.deleted_at) {
+                return {
+                    ...row,
+                    first_name: 'deleted_user',
+                    last_name: row.sender_id?.toString() || '',
+                };
+            }
+            return row;
+        });
 
-        res.json(result.rows);
+        res.json(formattedRows);
     } catch (error) {
         console.error('Erreur récupération messages:', error.message);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -1169,13 +1871,42 @@ app.get('/api/messages/:conversation_id', authenticateToken, async (req, res) =>
 app.put('/api/users/profile', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
-        const { first_name, last_name, phone } = req.body;
+        const { first_name, last_name, phone, profile_picture } = req.body;
+
+        // Construire la requête dynamiquement selon les champs fournis
+        const updates = [];
+        const values = [];
+        let paramIndex = 1;
+
+        if (first_name !== undefined) {
+            updates.push(`first_name = $${paramIndex++}`);
+            values.push(first_name);
+        }
+        if (last_name !== undefined) {
+            updates.push(`last_name = $${paramIndex++}`);
+            values.push(last_name);
+        }
+        if (phone !== undefined) {
+            updates.push(`phone = $${paramIndex++}`);
+            values.push(phone);
+        }
+        if (profile_picture !== undefined) {
+            updates.push(`profile_picture = $${paramIndex++}`);
+            values.push(profile_picture);
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'Aucun champ à mettre à jour' });
+        }
+
+        updates.push(`updated_at = CURRENT_TIMESTAMP`);
+        values.push(req.user.id);
 
         const result = await client.query(`
-            UPDATE users SET first_name = $1, last_name = $2, phone = $3, updated_at = CURRENT_TIMESTAMP
-            WHERE id = $4
-            RETURNING id, first_name, last_name, email, phone, role, email_verified, phone_verified
-        `, [first_name, last_name, phone, req.user.id]);
+            UPDATE users SET ${updates.join(', ')}
+            WHERE id = $${paramIndex}
+            RETURNING id, first_name, last_name, email, phone, role, email_verified, phone_verified, profile_picture
+        `, values);
 
         res.json({ user: result.rows[0] });
     } catch (error) {
@@ -1239,6 +1970,48 @@ app.get('/api/users/students', authenticateToken, async (req, res) => {
     } finally {
         client.release();
     }
+});
+
+// =========================================
+// MIDDLEWARE D'ERREUR GLOBAL - GARANTIT LES HEADERS CORS
+// =========================================
+app.use((err, req, res, next) => {
+    // Toujours ajouter les headers CORS, même en cas d'erreur
+    const origin = req.headers.origin;
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Content-Length');
+    
+    console.error('Erreur serveur:', err);
+    
+    // Si la réponse n'a pas encore été envoyée
+    if (!res.headersSent) {
+        res.status(err.status || 500).json({
+            error: err.message || 'Erreur serveur',
+            ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+        });
+    }
+});
+
+// Handler pour les routes non trouvées - avec headers CORS
+app.use((req, res) => {
+    const origin = req.headers.origin;
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    res.status(404).json({ error: 'Route non trouvée' });
 });
 
 // =========================================

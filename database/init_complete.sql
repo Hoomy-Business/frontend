@@ -3,6 +3,7 @@
 -- =========================================
 -- Ce script crée toute la base de données et le compte admin
 -- Usage: psql -U postgres -f init_complete.sql
+-- OU: psql -U postgres -d hoomy_ch -f init_complete.sql (si la DB existe déjà)
 
 -- =========================================
 -- CRÉATION DE LA BASE DE DONNÉES
@@ -24,7 +25,7 @@ CREATE TYPE payment_method AS ENUM ('card','twint','bank_transfer');
 CREATE TYPE kyc_status AS ENUM ('pending', 'approved', 'rejected');
 
 -- =========================================
--- TABLE UTILISATEURS
+-- TABLE UTILISATEURS (AVEC TOUTES LES COLONNES)
 -- =========================================
 DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
@@ -39,6 +40,21 @@ CREATE TABLE users (
     email_verified BOOLEAN DEFAULT FALSE,
     phone_verified BOOLEAN DEFAULT FALSE,
     kyc_verified BOOLEAN DEFAULT FALSE,
+    -- Colonnes pour la vérification email
+    email_verification_code VARCHAR(6),
+    email_code_expires_at TIMESTAMP,
+    -- Colonnes pour les conditions d'utilisation
+    terms_accepted BOOLEAN DEFAULT FALSE,
+    terms_accepted_at TIMESTAMP,
+    -- Colonne pour la date de naissance
+    date_of_birth DATE,
+    -- Colonnes pour la modération (ban/mute)
+    banned_until TIMESTAMP NULL,
+    ban_reason TEXT NULL,
+    muted_until TIMESTAMP NULL,
+    mute_reason TEXT NULL,
+    -- Colonne pour le soft delete
+    deleted_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -46,6 +62,7 @@ CREATE TABLE users (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_users_kyc_verified ON users(kyc_verified);
+CREATE INDEX idx_users_deleted_at ON users(deleted_at);
 
 -- =========================================
 -- TABLE CODES DE VÉRIFICATION
@@ -689,4 +706,3 @@ SELECT '========================================' as separator;
 SELECT 'COMPTES DE TEST' as info;
 SELECT 'Email: ' || email || ' | Rôle: ' || role || ' | Mot de passe: password123' as compte FROM users WHERE role != 'admin';
 SELECT '========================================' as separator;
-

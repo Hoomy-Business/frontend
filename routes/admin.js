@@ -447,6 +447,15 @@ router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
     try {
         await ensureModerationColumns(client);
         
+        // Vérifier si la colonne deleted_at existe
+        const hasDeletedAt = await client.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'deleted_at'
+        `);
+        const deletedAtExists = hasDeletedAt.rows.length > 0;
+        const deletedAtFilter = deletedAtExists ? 'AND deleted_at IS NULL' : '';
+        
         const result = await client.query(`
             SELECT 
                 id, email, first_name, last_name, role, phone,
@@ -464,6 +473,7 @@ router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
                     ELSE false
                 END as is_muted
             FROM users
+            WHERE 1=1 ${deletedAtFilter}
             ORDER BY created_at DESC
         `);
 
@@ -753,7 +763,9 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
         const userInfo = await client.query('SELECT email, first_name, last_name, role FROM users WHERE id = $1', [id]);
         const user = userInfo.rows[0];
         
-        // Supprimer l'utilisateur (CASCADE supprimera les données liées)
+        // Suppression définitive (hard delete)
+        // Les contraintes ON DELETE CASCADE s'occuperont de supprimer automatiquement
+        // toutes les données liées (properties, messages, conversations, etc.)
         await client.query('DELETE FROM users WHERE id = $1', [id]);
 
         // Logger l'action

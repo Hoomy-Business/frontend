@@ -1,4 +1,4 @@
-import { sendEmail } from "./utils/email.js";
+const { sendEmail } = require("./utils/email");
 
 sendEmail("hoomybuisness@proton.me", {
   sujet: "Bienvenue chez Hoomy ! 🎉",

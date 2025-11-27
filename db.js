@@ -4,7 +4,7 @@ require('dotenv').config();
 // Pool PostgreSQL optimisé pour performance maximale
 const pool = new Pool({
     user: process.env.DB_USER || 'postgres',
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST || '127.0.0.1', // Utiliser IPv4 explicitement au lieu de localhost
     database: process.env.DB_NAME || 'hoomy_ch',
     password: process.env.DB_PASSWORD,
     port: process.env.DB_PORT || 5432,
@@ -23,14 +23,30 @@ const pool = new Pool({
     client_encoding: 'UTF8',
 });
 
-// Test connexion DB
-pool.query('SELECT NOW()', (err, res) => {
-    if (err) {
-        console.error('❌ Erreur de connexion à PostgreSQL:', err.message);
-    } else {
-        console.log('✅ Connexion à PostgreSQL réussie');
-    }
-});
+// Test connexion DB avec retry
+let connectionAttempts = 0;
+const maxAttempts = 5;
+
+function testConnection() {
+    pool.query('SELECT NOW()', (err, res) => {
+        if (err) {
+            connectionAttempts++;
+            if (connectionAttempts < maxAttempts) {
+                console.log(`⏳ Tentative de connexion ${connectionAttempts}/${maxAttempts}...`);
+                setTimeout(testConnection, 2000); // Retry après 2 secondes
+            } else {
+                console.error('❌ Erreur de connexion à PostgreSQL:', err.message);
+                console.error('💡 Vérifiez que PostgreSQL est démarré et accessible');
+                console.error(`💡 Host: ${process.env.DB_HOST || '127.0.0.1'}, Port: ${process.env.DB_PORT || 5432}`);
+            }
+        } else {
+            console.log('✅ Connexion à PostgreSQL réussie');
+        }
+    });
+}
+
+// Démarrer le test de connexion
+testConnection();
 
 pool.on('error', (err) => {
     console.error('❌ Erreur pool PostgreSQL:', err);
