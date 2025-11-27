@@ -95,16 +95,13 @@ export default defineConfig({
             if (id.includes('@tanstack/react-query')) {
               return 'query';
             }
-            // Radix UI primitives - base components
-            if (id.includes('@radix-ui/react-primitive') || id.includes('@radix-ui/react-slot') || id.includes('@radix-ui/react-compose-refs')) {
-              return 'ui-base';
-            }
             // Image cropping - bundle with UI to ensure React is available
             // react-easy-crop needs React, so bundle it with UI components that depend on react-core
             if (id.includes('react-easy-crop')) {
               return 'ui-radix';
             }
-            // Radix UI - other components (react-easy-crop will be bundled here)
+            // Radix UI - all components including primitives (they all need React)
+            // Bundle all Radix UI together to ensure React is available
             if (id.includes('@radix-ui')) {
               return 'ui-radix';
             }
@@ -142,7 +139,7 @@ export default defineConfig({
         },
         chunkFileNames: (chunkInfo) => {
           // Noms courts pour les chunks critiques
-          const criticalChunks = ['react-core', 'router', 'ui-base'];
+          const criticalChunks = ['react-core', 'router'];
           if (chunkInfo.name && criticalChunks.includes(chunkInfo.name)) {
             return 'assets/js/[name]-[hash:8].js';
           }
