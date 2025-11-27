@@ -1,6 +1,6 @@
 // Service Worker for Hoomy - Offline caching and performance
 // Version updated for aggressive mobile caching and maximum performance
-const SW_VERSION = 'v5';
+const SW_VERSION = 'v6';
 const CACHE_NAME = `hoomy-${SW_VERSION}`;
 const STATIC_CACHE = `hoomy-static-${SW_VERSION}`;
 const DYNAMIC_CACHE = `hoomy-dynamic-${SW_VERSION}`;
@@ -236,24 +236,36 @@ self.addEventListener('fetch', (event) => {
   }
   
   // Default: network first
-  // Skip service worker for video files to avoid caching issues
+  // Skip service worker for video files and assets that might not exist
   const requestUrl = new URL(event.request.url);
   const isVideo = /\.(webm|mp4|avi|mov|mkv|mp3|wav|ogg)$/i.test(requestUrl.pathname);
+  const isAsset = requestUrl.pathname.startsWith('/assets/');
   
-  if (isVideo) {
-    // Let videos load directly without service worker interference
+  // Don't intercept videos or assets that might not exist
+  if (isVideo || isAsset) {
+    // Let them load directly without service worker interference
     return;
   }
   
-  event.respondWith(CACHE_STRATEGIES.networkFirst(request).catch((error) => {
-    // Better error handling - log but don't break the app
-    console.warn('Service worker fetch error:', error);
-    // Try to return from cache as fallback
-    return caches.match(event.request).catch(() => {
+  event.respondWith((async () => {
+    try {
+      const response = await CACHE_STRATEGIES.networkFirst(request);
+      return response;
+    } catch (error) {
+      // Better error handling - log but don't break the app
+      console.warn('Service worker fetch error:', error);
+      // Try to return from cache as fallback
+      const cached = await caches.match(event.request);
+      if (cached) {
+        return cached;
+      }
       // If all else fails, return a basic error response
-      return new Response('Resource unavailable', { status: 503 });
-    });
-  }));
+      return new Response('Resource unavailable', { 
+        status: 503,
+        headers: { 'Content-Type': 'text/plain' }
+      });
+    }
+  })());
 });
 
 // Handle background sync for offline actions
