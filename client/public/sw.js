@@ -1,6 +1,6 @@
 // Service Worker for Hoomy - Offline caching and performance
 // Version updated for aggressive mobile caching and maximum performance
-const SW_VERSION = 'v4';
+const SW_VERSION = 'v5';
 const CACHE_NAME = `hoomy-${SW_VERSION}`;
 const STATIC_CACHE = `hoomy-static-${SW_VERSION}`;
 const DYNAMIC_CACHE = `hoomy-dynamic-${SW_VERSION}`;
