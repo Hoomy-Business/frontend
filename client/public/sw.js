@@ -165,38 +165,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Static assets (JS, CSS, fonts) - Aggressive cache-first for maximum speed
-  // Always return cached if available, update in background
+  // Static assets (JS, CSS, fonts) - Skip service worker to avoid 404 issues
+  // Don't intercept assets - let browser handle 404s correctly
   if (url.pathname.match(/\.(js|css|woff2?|ttf|otf)$/i) || url.pathname.startsWith('/assets/')) {
-    event.respondWith((async () => {
-      // Check cache first - return immediately if available (FAST!)
-      const cached = await caches.match(request);
-      if (cached) {
-        // Update cache in background (non-blocking)
-        fetch(request).then(response => {
-          // Only cache full responses (status 200), not partial (206)
-          if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
-            caches.open(JS_CSS_CACHE).then(cache => {
-              cache.put(request, response.clone());
-            });
-          }
-        }).catch(() => {}); // Ignore errors in background update
-        return cached;
-      }
-      
-      // Not cached - fetch and cache
-      try {
-        const response = await fetch(request);
-        // Only cache full responses (status 200), not partial (206)
-        if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
-          const cache = await caches.open(JS_CSS_CACHE);
-          cache.put(request, response.clone());
-        }
-        return response;
-      } catch {
-        throw new Error('Resource unavailable');
-      }
-    })());
+    // Let assets load directly without service worker interference
+    // This prevents errors when files don't exist (404)
     return;
   }
   
