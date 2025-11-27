@@ -5,7 +5,6 @@ import {
   sanitizeObject, 
   sanitizeUrl, 
   getCSRFToken, 
-  generateRequestFingerprint,
   checkRateLimit,
   reportSecurityViolation,
   isTrustedUrl,
@@ -120,7 +119,7 @@ export async function apiRequest<T = any>(
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest', // Helps prevent CSRF
-    'X-Client-Fingerprint': generateRequestFingerprint(),
+    // Note: X-Client-Fingerprint removed - backend CORS doesn't allow it
   };
 
   // Add auth token
@@ -256,7 +255,7 @@ export async function uploadImage(file: File): Promise<{ url: string; filename: 
       headers: {
         'Authorization': `Bearer ${token}`,
         'X-CSRF-Token': getCSRFToken(),
-        'X-Client-Fingerprint': generateRequestFingerprint(),
+        // Note: X-Client-Fingerprint removed - backend CORS doesn't allow it
       },
       body: formData,
       signal: controller.signal,
@@ -322,7 +321,7 @@ export async function uploadImages(files: File[]): Promise<{ images: { url: stri
       headers: {
         'Authorization': `Bearer ${token}`,
         'X-CSRF-Token': getCSRFToken(),
-        'X-Client-Fingerprint': generateRequestFingerprint(),
+        // Note: X-Client-Fingerprint removed - backend CORS doesn't allow it
       },
       body: formData,
       signal: controller.signal,
