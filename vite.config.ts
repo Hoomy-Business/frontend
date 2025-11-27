@@ -79,12 +79,21 @@ export default defineConfig({
           // Vendor chunk for node_modules
           if (id.includes('node_modules')) {
             // React core - must be in a separate chunk that other chunks can depend on
-            // This ensures React is available to all chunks
+            // Include Radix UI and react-easy-crop in react-core to ensure React is available
             if (id.includes('react-dom') || id.includes('react/jsx-runtime') || (id.includes('react/') && !id.includes('react-easy-crop'))) {
               return 'react-core';
             }
             // Scheduler React - part of react-core
             if (id.includes('scheduler')) {
+              return 'react-core';
+            }
+            // Radix UI - bundle with react-core to ensure React is available
+            // All Radix UI components need React, so bundle them together
+            if (id.includes('@radix-ui')) {
+              return 'react-core';
+            }
+            // react-easy-crop - bundle with react-core to ensure React is available
+            if (id.includes('react-easy-crop')) {
               return 'react-core';
             }
             // Router - small, separate chunk
@@ -94,16 +103,6 @@ export default defineConfig({
             // React Query - depends on React
             if (id.includes('@tanstack/react-query')) {
               return 'query';
-            }
-            // Image cropping - bundle with UI to ensure React is available
-            // react-easy-crop needs React, so bundle it with UI components that depend on react-core
-            if (id.includes('react-easy-crop')) {
-              return 'ui-radix';
-            }
-            // Radix UI - all components including primitives (they all need React)
-            // Bundle all Radix UI together to ensure React is available
-            if (id.includes('@radix-ui')) {
-              return 'ui-radix';
             }
             // Framer motion - heavy, lazy load
             if (id.includes('framer-motion')) {
