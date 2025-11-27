@@ -64,8 +64,6 @@ function validateEndpoint(endpoint: string): boolean {
     '/properties/create',
     '/properties/edit',
     '/dashboard',
-    '/login',
-    '/register',
   ];
   
   return !invalidPatterns.some(pattern => endpoint.includes(pattern));
