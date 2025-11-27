@@ -117,7 +117,7 @@ export default function Properties() {
     return queryString ? `?${queryString}` : '';
   }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, debouncedSearchQuery]);
   
-  const { data: properties, isLoading, error } = useQuery<Property[]>({
+  const { data: propertiesData, isLoading, error } = useQuery<{ properties: Property[]; pagination?: any } | Property[]>({
     queryKey: ['/properties', queryParams],
     // S'assurer que queryParams ne contient jamais "create"
     enabled: !queryParams.includes('create'),
@@ -144,11 +144,22 @@ export default function Properties() {
         throw new Error(errorData.error || errorData.message || res.statusText);
       }
       
-      return res.json();
+      const response = await res.json();
+      // Gérer la compatibilité : si c'est un tableau (ancien format), le convertir
+      if (Array.isArray(response)) {
+        return response;
+      }
+      // Sinon, c'est le nouveau format avec pagination
+      return response;
     },
     staleTime: 1000 * 60 * 3, // 3 minutes - properties can change but not too frequently
     gcTime: 1000 * 60 * 15, // 15 minutes - keep in cache longer
   });
+
+  // Extraire le tableau properties de la réponse (gère ancien et nouveau format)
+  const properties = Array.isArray(propertiesData) 
+    ? propertiesData 
+    : (propertiesData?.properties || []);
 
   // Fetch favorites if user is authenticated and is a student
   // Always call useQuery but enable it conditionally
@@ -177,7 +188,12 @@ export default function Properties() {
       }
       
       const data = await res.json();
-      return Array.isArray(data) ? data : [];
+      // Gérer la nouvelle structure avec pagination
+      if (Array.isArray(data)) {
+        return data;
+      }
+      // Si c'est un objet avec pagination, extraire le tableau favorites
+      return data?.favorites || [];
     },
     staleTime: 1000 * 60 * 10, // 10 minutes - favorites don't change often
     gcTime: 1000 * 60 * 30, // 30 minutes - keep favorites in cache longer
@@ -211,8 +227,15 @@ export default function Properties() {
         let property: Property | undefined;
         
         for (const query of cache.getAll()) {
-          if (query.queryKey[0] === '/properties' && Array.isArray(query.state.data)) {
-            property = (query.state.data as Property[]).find(p => p.id === propertyId);
+          if (query.queryKey[0] === '/properties') {
+            const data = query.state.data;
+            let propertiesArray: Property[] = [];
+            if (Array.isArray(data)) {
+              propertiesArray = data;
+            } else if (data && typeof data === 'object' && 'properties' in data) {
+              propertiesArray = (data as any).properties || [];
+            }
+            property = propertiesArray.find(p => p.id === propertyId);
             if (property) break;
           }
         }

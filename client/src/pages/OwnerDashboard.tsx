@@ -48,14 +48,22 @@ export default function OwnerDashboard() {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('properties');
 
-  const { data: properties, isLoading: propertiesLoading } = useQuery<Property[]>({
+  const { data: propertiesData, isLoading: propertiesLoading } = useQuery<{ properties: Property[]; pagination?: any }>({
     queryKey: ['/properties/my-properties'],
     queryFn: async () => {
-      return apiRequest<Property[]>('GET', '/properties/my-properties');
+      const response = await apiRequest<any>('GET', '/properties/my-properties');
+      // Gérer la compatibilité : si c'est un tableau (ancien format), le convertir
+      if (Array.isArray(response)) {
+        return { properties: response };
+      }
+      // Sinon, c'est déjà le nouveau format avec pagination
+      return response;
     },
     staleTime: 1000 * 60 * 2, // 2 minutes
     gcTime: 1000 * 60 * 10, // 10 minutes
   });
+
+  const properties = propertiesData?.properties || [];
 
   const { data: requests, isLoading: requestsLoading } = useQuery<any[]>({
     queryKey: ['/requests/received'],
@@ -120,14 +128,25 @@ export default function OwnerDashboard() {
     gcTime: 1000 * 60 * 15, // 15 minutes
   });
 
-  const { data: conversations, isLoading: conversationsLoading } = useQuery<Conversation[]>({
+  const { data: conversationsData, isLoading: conversationsLoading } = useQuery<{ conversations: Conversation[]; pagination?: any } | Conversation[]>({
     queryKey: ['/conversations'],
     queryFn: async () => {
-      return apiRequest<Conversation[]>('GET', '/conversations');
+      const response = await apiRequest<any>('GET', '/conversations');
+      // Gérer la compatibilité : si c'est un tableau (ancien format), le convertir
+      if (Array.isArray(response)) {
+        return response;
+      }
+      // Sinon, c'est déjà le nouveau format avec pagination
+      return response;
     },
     staleTime: 1000 * 30, // 30 seconds - conversations can change frequently
     gcTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  // Extraire le tableau conversations de la réponse (gère ancien et nouveau format)
+  const conversations = Array.isArray(conversationsData) 
+    ? conversationsData 
+    : (conversationsData?.conversations || []);
 
   const { data: stripeStatus } = useQuery<StripeAccountStatus>({
     queryKey: ['/contracts/connect/account-status'],
