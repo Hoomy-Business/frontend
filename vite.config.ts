@@ -51,16 +51,26 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true, // Supprimer les console.log en production
+        drop_console: true,
         drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug'],
-        passes: 2, // Plusieurs passes pour meilleure compression
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace'],
+        passes: 3, // More passes for better compression
+        unsafe: true, // Aggressive optimizations
+        unsafe_comps: true,
+        unsafe_math: true,
+        unsafe_methods: true,
+        unsafe_proto: true,
+        unsafe_regexp: true,
+        unsafe_undefined: true,
+        dead_code: true,
+        unused: true,
       },
       mangle: {
         safari10: true,
+        properties: false, // Keep property names for React
       },
       format: {
-        comments: false, // Supprimer tous les commentaires
+        comments: false,
       },
     },
     cssMinify: true,
@@ -145,9 +155,9 @@ export default defineConfig({
         tryCatchDeoptimization: false,
       },
     },
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 600, // Allow slightly larger chunks for better caching
     reportCompressedSize: true,
-    assetsInlineLimit: 4096, // Inline assets < 4KB en base64
+    assetsInlineLimit: 2048, // Inline smaller assets for faster initial load
   },
   server: {
     port: 5000,

@@ -1,6 +1,6 @@
 // Service Worker for Hoomy - Offline caching and performance
-// Version updated for aggressive mobile caching
-const SW_VERSION = 'v3';
+// Version updated for aggressive mobile caching and maximum performance
+const SW_VERSION = 'v4';
 const CACHE_NAME = `hoomy-${SW_VERSION}`;
 const STATIC_CACHE = `hoomy-static-${SW_VERSION}`;
 const DYNAMIC_CACHE = `hoomy-dynamic-${SW_VERSION}`;
@@ -140,57 +140,68 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Static assets (JS, CSS, fonts) - Cache first after first visit for speed
-  // Network first on first visit to get latest, then cache-first for speed
+  // Static assets (JS, CSS, fonts) - Aggressive cache-first for maximum speed
+  // Always return cached if available, update in background
   if (url.pathname.match(/\.(js|css|woff2?|ttf|otf)$/i) || url.pathname.startsWith('/assets/')) {
     event.respondWith((async () => {
-      // Check if we have this in cache
+      // Check cache first - return immediately if available (FAST!)
       const cached = await caches.match(request);
-      
-      // If cached and not first visit, return cached immediately (fast!)
-      if (cached && !isFirstVisit) {
-        // Update cache in background
+      if (cached) {
+        // Update cache in background (non-blocking)
         fetch(request).then(response => {
-          if (response.ok) {
-            caches.open(JS_CSS_CACHE).then(cache => cache.put(request, response.clone()));
+          if (response.ok && response.status === 200) {
+            caches.open(JS_CSS_CACHE).then(cache => {
+              cache.put(request, response.clone());
+            });
           }
-        }).catch(() => {});
+        }).catch(() => {}); // Ignore errors in background update
         return cached;
       }
       
-      // First visit or not cached - network first
+      // Not cached - fetch and cache
       try {
         const response = await fetch(request);
-        if (response.ok) {
+        if (response.ok && response.status === 200) {
           const cache = await caches.open(JS_CSS_CACHE);
           cache.put(request, response.clone());
-          isFirstVisit = false;
         }
         return response;
       } catch {
-        // Fallback to cache if network fails
-        if (cached) return cached;
         throw new Error('Resource unavailable');
       }
     })());
     return;
   }
   
-  // HTML navigation - cache first for speed after first visit
+  // HTML navigation - aggressive cache-first for instant page loads
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
       const cached = await caches.match(request);
-      // If cached, return immediately (fast!) and update in background
-      if (cached && !isFirstVisit) {
+      // If cached, return immediately (INSTANT!) and update in background
+      if (cached) {
+        // Background update (non-blocking)
         fetch(request).then(response => {
-          if (response.ok) {
-            caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, response.clone()));
+          if (response.ok && response.status === 200) {
+            caches.open(DYNAMIC_CACHE).then(cache => {
+              cache.put(request, response.clone());
+            });
           }
-        }).catch(() => {});
+        }).catch(() => {}); // Ignore errors
         return cached;
       }
-      // First visit or not cached - network first
-      return CACHE_STRATEGIES.networkFirst(request);
+      // Not cached - network first, then cache
+      try {
+        const response = await fetch(request);
+        if (response.ok && response.status === 200) {
+          const cache = await caches.open(DYNAMIC_CACHE);
+          cache.put(request, response.clone());
+        }
+        return response;
+      } catch {
+        // Return index.html as fallback for SPA
+        const fallback = await caches.match('/');
+        return fallback || new Response('Offline', { status: 503 });
+      }
     })());
     return;
   }
