@@ -26,51 +26,52 @@ if (typeof window !== 'undefined') {
 }
 
 // Hide initial loader when React is ready
-if (typeof window !== 'undefined' && (window as any).__hideLoader) {
-  (window as any).__hideLoader();
-}
+// Wait for React to fully mount before hiding loader
+setTimeout(() => {
+  if (typeof window !== 'undefined' && (window as any).__hideLoader) {
+    (window as any).__hideLoader();
+  }
+}, 100);
 
-// Register Service Worker for offline support and caching
+// Register Service Worker for offline support and aggressive caching
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered:', registration.scope);
-        
-        // Check for updates immediately and periodically
-        const checkForUpdates = () => {
-          registration.update().catch((err) => {
-            console.log('SW update check failed:', err);
-          });
-        };
-        
-        // Check for updates on page load
-        checkForUpdates();
-        
-        // Check for updates every 5 minutes
-        setInterval(checkForUpdates, 5 * 60 * 1000);
-        
-        // Listen for new service worker installation
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New service worker available - prompt user to reload
-                console.log('New service worker available');
-                // Auto-reload after a short delay to use new service worker
-                setTimeout(() => {
-                  window.location.reload();
-                }, 1000);
-              }
-            });
-          }
+  // Register immediately for faster caching
+  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+    .then((registration) => {
+      console.log('SW registered:', registration.scope);
+      
+      // Check for updates periodically (less frequent for mobile performance)
+      const checkForUpdates = () => {
+        registration.update().catch((err) => {
+          console.log('SW update check failed:', err);
         });
-      })
-      .catch((error) => {
-        console.log('SW registration failed:', error);
+      };
+      
+      // Check for updates after a delay to not block initial load
+      setTimeout(checkForUpdates, 10000);
+      
+      // Check for updates every 15 minutes (less frequent for mobile)
+      setInterval(checkForUpdates, 15 * 60 * 1000);
+      
+      // Listen for new service worker installation
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New service worker available - reload after delay
+              console.log('New service worker available');
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
+            }
+          });
+        }
       });
-  });
+    })
+    .catch((error) => {
+      console.log('SW registration failed:', error);
+    });
 }
 
 // Ensure root element exists before rendering

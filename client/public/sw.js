@@ -1,10 +1,11 @@
 // Service Worker for Hoomy - Offline caching and performance
-// Version updated to force cache refresh
-const SW_VERSION = 'v2';
+// Version updated for aggressive mobile caching
+const SW_VERSION = 'v3';
 const CACHE_NAME = `hoomy-${SW_VERSION}`;
 const STATIC_CACHE = `hoomy-static-${SW_VERSION}`;
 const DYNAMIC_CACHE = `hoomy-dynamic-${SW_VERSION}`;
 const IMAGE_CACHE = `hoomy-images-${SW_VERSION}`;
+const JS_CSS_CACHE = `hoomy-assets-${SW_VERSION}`;
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -13,6 +14,9 @@ const STATIC_ASSETS = [
   '/logo.svg',
   '/favicon.png',
 ];
+
+// Track if this is first visit (for cache strategy)
+let isFirstVisit = true;
 
 // Cache strategies
 const CACHE_STRATEGIES = {
@@ -54,28 +58,43 @@ const CACHE_STRATEGIES = {
     }
   },
   
-  // Stale while revalidate - best for images
+  // Stale while revalidate - best for images (fast on mobile)
   staleWhileRevalidate: async (request) => {
     const cached = await caches.match(request);
     
-    const fetchPromise = fetch(request).then(response => {
+    // Return cached immediately if available (fast!)
+    if (cached) {
+      // Update cache in background
+      fetch(request).then(response => {
+        if (response.ok) {
+          caches.open(IMAGE_CACHE).then(cache => cache.put(request, response.clone()));
+        }
+      }).catch(() => {});
+      return cached;
+    }
+    
+    // Not cached - fetch and cache
+    try {
+      const response = await fetch(request);
       if (response.ok) {
-        const cache = caches.open(IMAGE_CACHE);
-        cache.then(c => c.put(request, response.clone()));
+        const cache = await caches.open(IMAGE_CACHE);
+        cache.put(request, response.clone());
       }
       return response;
-    }).catch(() => null);
-    
-    return cached || fetchPromise;
+    } catch {
+      return null;
+    }
   },
 };
 
-// Install event - cache static assets
+// Install event - cache static assets aggressively
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
+    Promise.all([
+      caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)),
+      caches.open(JS_CSS_CACHE), // Pre-create cache for JS/CSS
+      caches.open(IMAGE_CACHE), // Pre-create cache for images
+    ]).then(() => self.skipWaiting())
   );
 });
 
@@ -95,6 +114,9 @@ self.addEventListener('activate', (event) => {
     }).then(() => {
       // Take control of all clients immediately
       return self.clients.claim();
+    }).then(() => {
+      // Mark that first visit is done after activation
+      isFirstVisit = false;
     })
   );
 });
@@ -118,16 +140,58 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Static assets (JS, CSS, fonts) - Network first to ensure fresh code
-  // This prevents serving broken cached JavaScript after deployments
+  // Static assets (JS, CSS, fonts) - Cache first after first visit for speed
+  // Network first on first visit to get latest, then cache-first for speed
   if (url.pathname.match(/\.(js|css|woff2?|ttf|otf)$/i) || url.pathname.startsWith('/assets/')) {
-    event.respondWith(CACHE_STRATEGIES.networkFirst(request));
+    event.respondWith((async () => {
+      // Check if we have this in cache
+      const cached = await caches.match(request);
+      
+      // If cached and not first visit, return cached immediately (fast!)
+      if (cached && !isFirstVisit) {
+        // Update cache in background
+        fetch(request).then(response => {
+          if (response.ok) {
+            caches.open(JS_CSS_CACHE).then(cache => cache.put(request, response.clone()));
+          }
+        }).catch(() => {});
+        return cached;
+      }
+      
+      // First visit or not cached - network first
+      try {
+        const response = await fetch(request);
+        if (response.ok) {
+          const cache = await caches.open(JS_CSS_CACHE);
+          cache.put(request, response.clone());
+          isFirstVisit = false;
+        }
+        return response;
+      } catch {
+        // Fallback to cache if network fails
+        if (cached) return cached;
+        throw new Error('Resource unavailable');
+      }
+    })());
     return;
   }
   
-  // HTML navigation - network first
+  // HTML navigation - cache first for speed after first visit
   if (request.mode === 'navigate') {
-    event.respondWith(CACHE_STRATEGIES.networkFirst(request));
+    event.respondWith((async () => {
+      const cached = await caches.match(request);
+      // If cached, return immediately (fast!) and update in background
+      if (cached && !isFirstVisit) {
+        fetch(request).then(response => {
+          if (response.ok) {
+            caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, response.clone()));
+          }
+        }).catch(() => {});
+        return cached;
+      }
+      // First visit or not cached - network first
+      return CACHE_STRATEGIES.networkFirst(request);
+    })());
     return;
   }
   
