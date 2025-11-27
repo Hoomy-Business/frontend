@@ -24,9 +24,15 @@ const CACHE_STRATEGIES = {
   networkFirst: async (request) => {
     try {
       const response = await fetch(request);
-      if (response.ok) {
+      // Only cache full responses (status 200), not partial (206) or other status codes
+      if (response.ok && response.status === 200 && response.type === 'basic') {
         const cache = await caches.open(DYNAMIC_CACHE);
-        cache.put(request, response.clone());
+        // Clone response before caching to avoid consuming the stream
+        const responseToCache = response.clone();
+        // Check if response is cacheable (not a partial response)
+        if (responseToCache.status === 200 && !responseToCache.headers.get('content-range')) {
+          cache.put(request, responseToCache);
+        }
       }
       return response;
     } catch {
@@ -48,7 +54,8 @@ const CACHE_STRATEGIES = {
     
     try {
       const response = await fetch(request);
-      if (response.ok) {
+      // Only cache full responses (status 200), not partial (206)
+      if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
         const cache = await caches.open(STATIC_CACHE);
         cache.put(request, response.clone());
       }
@@ -66,7 +73,8 @@ const CACHE_STRATEGIES = {
     if (cached) {
       // Update cache in background
       fetch(request).then(response => {
-        if (response.ok) {
+        // Only cache full responses (status 200), not partial (206)
+        if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
           caches.open(IMAGE_CACHE).then(cache => cache.put(request, response.clone()));
         }
       }).catch(() => {});
@@ -76,7 +84,8 @@ const CACHE_STRATEGIES = {
     // Not cached - fetch and cache
     try {
       const response = await fetch(request);
-      if (response.ok) {
+      // Only cache full responses (status 200), not partial (206)
+      if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
         const cache = await caches.open(IMAGE_CACHE);
         cache.put(request, response.clone());
       }
@@ -149,7 +158,8 @@ self.addEventListener('fetch', (event) => {
       if (cached) {
         // Update cache in background (non-blocking)
         fetch(request).then(response => {
-          if (response.ok && response.status === 200) {
+          // Only cache full responses (status 200), not partial (206)
+          if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
             caches.open(JS_CSS_CACHE).then(cache => {
               cache.put(request, response.clone());
             });
@@ -161,7 +171,8 @@ self.addEventListener('fetch', (event) => {
       // Not cached - fetch and cache
       try {
         const response = await fetch(request);
-        if (response.ok && response.status === 200) {
+        // Only cache full responses (status 200), not partial (206)
+        if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
           const cache = await caches.open(JS_CSS_CACHE);
           cache.put(request, response.clone());
         }
@@ -181,7 +192,8 @@ self.addEventListener('fetch', (event) => {
       if (cached) {
         // Background update (non-blocking)
         fetch(request).then(response => {
-          if (response.ok && response.status === 200) {
+          // Only cache full responses (status 200), not partial (206)
+          if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
             caches.open(DYNAMIC_CACHE).then(cache => {
               cache.put(request, response.clone());
             });
@@ -192,7 +204,8 @@ self.addEventListener('fetch', (event) => {
       // Not cached - network first, then cache
       try {
         const response = await fetch(request);
-        if (response.ok && response.status === 200) {
+        // Only cache full responses (status 200), not partial (206)
+        if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
           const cache = await caches.open(DYNAMIC_CACHE);
           cache.put(request, response.clone());
         }
