@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Building2, MessageSquare, FileText, User, Plus, Edit, Trash2, CreditCard, Check, X, Inbox, Lock, Upload, Camera } from 'lucide-react';
+import { Building2, MessageSquare, FileText, User, Plus, Edit, Trash2, CreditCard, Check, X, Inbox, Lock, Upload, Camera, AlertCircle } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -48,19 +48,25 @@ export default function OwnerDashboard() {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('properties');
 
-  const { data: propertiesData, isLoading: propertiesLoading } = useQuery<{ properties: Property[]; pagination?: any }>({
+  const { data: propertiesData, isLoading: propertiesLoading, error: propertiesError } = useQuery<{ properties: Property[]; pagination?: any }>({
     queryKey: ['/properties/my-properties'],
     queryFn: async () => {
-      const response = await apiRequest<any>('GET', '/properties/my-properties');
-      // Gérer la compatibilité : si c'est un tableau (ancien format), le convertir
-      if (Array.isArray(response)) {
-        return { properties: response };
+      try {
+        const response = await apiRequest<any>('GET', '/properties/my-properties');
+        // Gérer la compatibilité : si c'est un tableau (ancien format), le convertir
+        if (Array.isArray(response)) {
+          return { properties: response };
+        }
+        // Sinon, c'est déjà le nouveau format avec pagination
+        return response;
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+        throw error;
       }
-      // Sinon, c'est déjà le nouveau format avec pagination
-      return response;
     },
     staleTime: 1000 * 60 * 2, // 2 minutes
     gcTime: 1000 * 60 * 10, // 10 minutes
+    retry: 1, // Retry once on failure
   });
 
   const properties = propertiesData?.properties || [];
@@ -345,7 +351,18 @@ export default function OwnerDashboard() {
               </Link>
             </div>
 
-            {propertiesLoading ? (
+            {propertiesError ? (
+              <Card className="p-12 text-center">
+                <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                <h3 className="font-semibold text-lg mb-2">Erreur de chargement</h3>
+                <p className="text-muted-foreground mb-4">
+                  {propertiesError instanceof Error ? propertiesError.message : 'Impossible de charger les propriétés'}
+                </p>
+                <Button onClick={() => window.location.reload()}>
+                  Recharger la page
+                </Button>
+              </Card>
+            ) : propertiesLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-96 w-full" />

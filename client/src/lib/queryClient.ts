@@ -135,16 +135,46 @@ export const getQueryFn: <T>(options: {
 // Query cache with error handling
 const queryCache = new QueryCache({
   onError: (error, query) => {
-    // Only log errors for queries that have already been fetched
-    if (query.state.data !== undefined) {
-      logger.error('Query error:', error);
+    // Always log errors, not just for queries that have been fetched
+    console.error('Query error:', error);
+    console.error('Query key:', query.queryKey);
+    console.error('Query state:', query.state);
+    
+    // Store error in window for debugging
+    if (typeof window !== 'undefined') {
+      (window as any).__lastQueryError = {
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        } : error,
+        queryKey: query.queryKey,
+        timestamp: new Date().toISOString(),
+      };
     }
+    
+    logger.error('Query error:', error);
   },
 });
 
 // Mutation cache with optimistic update support
 const mutationCache = new MutationCache({
-  onError: (error) => {
+  onError: (error, variables, context, mutation) => {
+    console.error('Mutation error:', error);
+    console.error('Mutation options:', mutation.options);
+    
+    // Store error in window for debugging
+    if (typeof window !== 'undefined') {
+      (window as any).__lastMutationError = {
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        } : error,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    
     logger.error('Mutation error:', error);
   },
 });

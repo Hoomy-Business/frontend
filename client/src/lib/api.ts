@@ -194,9 +194,22 @@ export async function apiRequest<T = any>(
       return {} as T;
     }
 
-    return JSON.parse(text);
+    try {
+      return JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Response text:', text);
+      console.error('URL:', url);
+      throw new Error('Réponse invalide du serveur');
+    }
   } catch (error) {
     clearTimeout(timeoutId);
+    
+    // Log all errors for debugging
+    console.error('API request error:', error);
+    console.error('URL:', url);
+    console.error('Method:', method);
+    console.error('Endpoint:', endpoint);
     
     if (error instanceof Error) {
       if (error.name === 'AbortError') {

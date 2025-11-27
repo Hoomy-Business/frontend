@@ -25,17 +25,33 @@ const CACHE_STRATEGIES = {
     try {
       const response = await fetch(request);
       // Only cache full responses (status 200), not partial (206) or other status codes
-      if (response.ok && response.status === 200 && response.type === 'basic') {
+      // Skip caching for video files and large media files
+      const requestUrl = new URL(request.url);
+      const isVideo = /\.(webm|mp4|avi|mov|mkv)$/i.test(requestUrl.pathname);
+      const isLargeMedia = /\.(webm|mp4|avi|mov|mkv|mp3|wav|ogg)$/i.test(requestUrl.pathname);
+      
+      if (response.ok && response.status === 200 && response.type === 'basic' && !isLargeMedia) {
         const cache = await caches.open(DYNAMIC_CACHE);
         // Clone response before caching to avoid consuming the stream
         const responseToCache = response.clone();
         // Check if response is cacheable (not a partial response)
         if (responseToCache.status === 200 && !responseToCache.headers.get('content-range')) {
-          cache.put(request, responseToCache);
+          cache.put(request, responseToCache).catch(() => {
+            // Ignore cache errors silently
+          });
         }
       }
       return response;
-    } catch {
+    } catch (error) {
+      // For video/media files, don't try to serve from cache, just let it fail gracefully
+      const requestUrl = new URL(request.url);
+      const isVideo = /\.(webm|mp4|avi|mov|mkv|mp3|wav|ogg)$/i.test(requestUrl.pathname);
+      
+      if (isVideo) {
+        // Return a transparent 1x1 pixel response for videos that fail to load
+        return new Response(null, { status: 204, statusText: 'No Content' });
+      }
+      
       const cached = await caches.match(request);
       if (cached) return cached;
       
@@ -220,7 +236,24 @@ self.addEventListener('fetch', (event) => {
   }
   
   // Default: network first
-  event.respondWith(CACHE_STRATEGIES.networkFirst(request));
+  // Skip service worker for video files to avoid caching issues
+  const requestUrl = new URL(event.request.url);
+  const isVideo = /\.(webm|mp4|avi|mov|mkv|mp3|wav|ogg)$/i.test(requestUrl.pathname);
+  
+  if (isVideo) {
+    // Let videos load directly without service worker interference
+    return;
+  }
+  
+  event.respondWith(CACHE_STRATEGIES.networkFirst(request).catch((error) => {
+    // Better error handling - log but don't break the app
+    console.warn('Service worker fetch error:', error);
+    // Try to return from cache as fallback
+    return caches.match(event.request).catch(() => {
+      // If all else fails, return a basic error response
+      return new Response('Resource unavailable', { status: 503 });
+    });
+  }));
 });
 
 // Handle background sync for offline actions
