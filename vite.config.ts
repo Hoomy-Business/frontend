@@ -74,74 +74,50 @@ export default defineConfig({
     copyPublicDir: true,
     rollupOptions: {
       output: {
-        // Ensure proper chunk dependencies and sharing
+        // Simplified chunking strategy - let Vite handle React dependencies automatically
+        // This ensures React is properly shared between all chunks
         manualChunks: (id) => {
-          // Vendor chunk for node_modules
+          // Only split vendor code, but keep React and React-dependent libraries together
           if (id.includes('node_modules')) {
-            // React core - must be in a separate chunk that other chunks can depend on
-            // Include Radix UI and react-easy-crop in react-core to ensure React is available
-            if (id.includes('react-dom') || id.includes('react/jsx-runtime') || (id.includes('react/') && !id.includes('react-easy-crop'))) {
-              return 'react-core';
+            // Don't split React, Radix UI, or any React-dependent libraries
+            // Let Vite handle them automatically to ensure proper React sharing
+            if (
+              id.includes('react') ||
+              id.includes('@radix-ui') ||
+              id.includes('react-easy-crop') ||
+              id.includes('scheduler') ||
+              id.includes('@tanstack/react-query')
+            ) {
+              // Return undefined to let Vite handle these automatically
+              // This ensures React is properly shared
+              return undefined;
             }
-            // Scheduler React - part of react-core
-            if (id.includes('scheduler')) {
-              return 'react-core';
-            }
-            // Radix UI - bundle with react-core to ensure React is available
-            // All Radix UI components need React, so bundle them together
-            if (id.includes('@radix-ui')) {
-              return 'react-core';
-            }
-            // react-easy-crop - bundle with react-core to ensure React is available
-            if (id.includes('react-easy-crop')) {
-              return 'react-core';
-            }
-            // Router - small, separate chunk
+            
+            // Router - can be separate
             if (id.includes('wouter')) {
               return 'router';
             }
-            // React Query - depends on React
-            if (id.includes('@tanstack/react-query')) {
-              return 'query';
-            }
-            // Framer motion - heavy, lazy load
+            
+            // Heavy libraries that don't depend on React - can be lazy loaded
             if (id.includes('framer-motion')) {
               return 'motion';
             }
-            // Lucide icons - tree-shaking
-            if (id.includes('lucide-react')) {
-              return 'icons';
-            }
-            // Date utilities - lazy load
-            if (id.includes('date-fns')) {
-              return 'date-utils';
-            }
-            // Form handling - lazy load
-            if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform')) {
-              return 'forms';
-            }
-            // Charts - lazy load (heavy)
             if (id.includes('recharts') || id.includes('d3-')) {
               return 'charts';
             }
-            // Embla carousel - lazy load
             if (id.includes('embla-carousel')) {
               return 'carousel';
             }
-            // Vaul (drawer) - lazy load
             if (id.includes('vaul')) {
               return 'drawer';
             }
+            
             // Other vendor code
             return 'vendor';
           }
         },
         chunkFileNames: (chunkInfo) => {
-          // Noms courts pour les chunks critiques
-          const criticalChunks = ['react-core', 'router'];
-          if (chunkInfo.name && criticalChunks.includes(chunkInfo.name)) {
-            return 'assets/js/[name]-[hash:8].js';
-          }
+          // Noms courts pour les chunks
           return 'assets/js/[name]-[hash:8].js';
         },
         entryFileNames: 'assets/js/[name]-[hash:8].js',
