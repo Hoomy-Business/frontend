@@ -1,152 +1,54 @@
-// Service Worker for Hoomy - Offline caching and performance
-// Version updated for aggressive mobile caching and maximum performance
-const SW_VERSION = 'v6';
+// Service Worker for Hoomy - Optimized for reliability
+// IMPORTANT: Always fetch fresh HTML to prevent blank page issues
+const SW_VERSION = 'v7-fix';
 const CACHE_NAME = `hoomy-${SW_VERSION}`;
-const STATIC_CACHE = `hoomy-static-${SW_VERSION}`;
-const DYNAMIC_CACHE = `hoomy-dynamic-${SW_VERSION}`;
 const IMAGE_CACHE = `hoomy-images-${SW_VERSION}`;
-const JS_CSS_CACHE = `hoomy-assets-${SW_VERSION}`;
 
-// Static assets to cache on install
+// Static assets to cache (NO HTML - always fresh)
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/logo.svg',
   '/favicon.png',
 ];
 
-// Track if this is first visit (for cache strategy)
-let isFirstVisit = true;
-
-// Cache strategies
-const CACHE_STRATEGIES = {
-  // Network first, fall back to cache
-  networkFirst: async (request) => {
-    try {
-      const response = await fetch(request);
-      // Only cache full responses (status 200), not partial (206) or other status codes
-      // Skip caching for video files and large media files
-      const requestUrl = new URL(request.url);
-      const isVideo = /\.(webm|mp4|avi|mov|mkv)$/i.test(requestUrl.pathname);
-      const isLargeMedia = /\.(webm|mp4|avi|mov|mkv|mp3|wav|ogg)$/i.test(requestUrl.pathname);
-      
-      if (response.ok && response.status === 200 && response.type === 'basic' && !isLargeMedia) {
-        const cache = await caches.open(DYNAMIC_CACHE);
-        // Clone response before caching to avoid consuming the stream
-        const responseToCache = response.clone();
-        // Check if response is cacheable (not a partial response)
-        if (responseToCache.status === 200 && !responseToCache.headers.get('content-range')) {
-          cache.put(request, responseToCache).catch(() => {
-            // Ignore cache errors silently
-          });
-        }
-      }
-      return response;
-    } catch (error) {
-      // For video/media files, don't try to serve from cache, just let it fail gracefully
-      const requestUrl = new URL(request.url);
-      const isVideo = /\.(webm|mp4|avi|mov|mkv|mp3|wav|ogg)$/i.test(requestUrl.pathname);
-      
-      if (isVideo) {
-        // Return a transparent 1x1 pixel response for videos that fail to load
-        return new Response(null, { status: 204, statusText: 'No Content' });
-      }
-      
-      const cached = await caches.match(request);
-      if (cached) return cached;
-      
-      // Return offline page for navigation requests
-      if (request.mode === 'navigate') {
-        return caches.match('/');
-      }
-      throw new Error('Network unavailable');
-    }
-  },
-  
-  // Cache first, fall back to network
-  cacheFirst: async (request) => {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-    
-    try {
-      const response = await fetch(request);
-      // Only cache full responses (status 200), not partial (206)
-      if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
-        const cache = await caches.open(STATIC_CACHE);
-        cache.put(request, response.clone());
-      }
-      return response;
-    } catch {
-      throw new Error('Resource unavailable');
-    }
-  },
-  
-  // Stale while revalidate - best for images (fast on mobile)
-  staleWhileRevalidate: async (request) => {
-    const cached = await caches.match(request);
-    
-    // Return cached immediately if available (fast!)
-    if (cached) {
-      // Update cache in background
-      fetch(request).then(response => {
-        // Only cache full responses (status 200), not partial (206)
-        if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
-          caches.open(IMAGE_CACHE).then(cache => cache.put(request, response.clone()));
-        }
-      }).catch(() => {});
-      return cached;
-    }
-    
-    // Not cached - fetch and cache
-    try {
-      const response = await fetch(request);
-      // Only cache full responses (status 200), not partial (206)
-      if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
-        const cache = await caches.open(IMAGE_CACHE);
-        cache.put(request, response.clone());
-      }
-      return response;
-    } catch {
-      return null;
-    }
-  },
-};
-
-// Install event - cache static assets aggressively
+// Install event - cache only essential static assets
 self.addEventListener('install', (event) => {
+  console.log('[SW] Installing version:', SW_VERSION);
   event.waitUntil(
-    Promise.all([
-      caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)),
-      caches.open(JS_CSS_CACHE), // Pre-create cache for JS/CSS
-      caches.open(IMAGE_CACHE), // Pre-create cache for images
-    ]).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting()) // Activate immediately
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up ALL old caches aggressively
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating version:', SW_VERSION);
   event.waitUntil(
     caches.keys().then((cacheNames) => {
-      // Delete all old caches that don't match current version
       return Promise.all(
         cacheNames
           .filter((name) => name.startsWith('hoomy-') && !name.includes(SW_VERSION))
           .map((name) => {
-            console.log('Deleting old cache:', name);
+            console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);
           })
       );
     }).then(() => {
-      // Take control of all clients immediately
+      console.log('[SW] Taking control of all clients');
       return self.clients.claim();
     }).then(() => {
-      // Mark that first visit is done after activation
-      isFirstVisit = false;
+      // Force reload all clients to get fresh content
+      return self.clients.matchAll({ type: 'window' }).then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'SW_UPDATED', version: SW_VERSION });
+        });
+      });
     })
   );
 });
 
-// Fetch event - handle requests
+// Fetch event - NETWORK FIRST for HTML, cache for images only
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -154,129 +56,49 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
   
-  // Skip API requests (let them go through normally)
+  // Skip API requests completely
   if (url.pathname.startsWith('/api') || url.hostname === 'backend.hoomy.site') {
     return;
   }
   
-  // Handle different resource types
+  // CRITICAL: NEVER cache HTML or JS/CSS - always fetch fresh
+  // This prevents blank page issues when new versions are deployed
+  if (request.mode === 'navigate' || 
+      url.pathname === '/' || 
+      url.pathname.endsWith('.html') ||
+      url.pathname.match(/\.(js|css)$/i) ||
+      url.pathname.startsWith('/assets/')) {
+    // Let browser handle directly - no SW interference
+    return;
+  }
+  
+  // Only cache images with stale-while-revalidate
   if (request.destination === 'image' || url.pathname.match(/\.(jpg|jpeg|png|gif|webp|svg|avif)$/i)) {
-    event.respondWith(CACHE_STRATEGIES.staleWhileRevalidate(request));
-    return;
-  }
-  
-  // Static assets (JS, CSS, fonts) - Skip service worker to avoid 404 issues
-  // Don't intercept assets - let browser handle 404s correctly
-  if (url.pathname.match(/\.(js|css|woff2?|ttf|otf)$/i) || url.pathname.startsWith('/assets/')) {
-    // Let assets load directly without service worker interference
-    // This prevents errors when files don't exist (404)
-    return;
-  }
-  
-  // HTML navigation - aggressive cache-first for instant page loads
-  if (request.mode === 'navigate') {
-    event.respondWith((async () => {
-      const cached = await caches.match(request);
-      // If cached, return immediately (INSTANT!) and update in background
-      if (cached) {
-        // Background update (non-blocking)
-        fetch(request).then(response => {
-          // Only cache full responses (status 200), not partial (206)
-          if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
-            caches.open(DYNAMIC_CACHE).then(cache => {
-              cache.put(request, response.clone());
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const fetchPromise = fetch(request).then((response) => {
+          if (response.ok && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(IMAGE_CACHE).then((cache) => {
+              cache.put(request, responseClone);
             });
           }
-        }).catch(() => {}); // Ignore errors
-        return cached;
-      }
-      // Not cached - network first, then cache
-      try {
-        const response = await fetch(request);
-        // Only cache full responses (status 200), not partial (206)
-        if (response.ok && response.status === 200 && response.type === 'basic' && !response.headers.get('content-range')) {
-          const cache = await caches.open(DYNAMIC_CACHE);
-          cache.put(request, response.clone());
-        }
-        return response;
-      } catch {
-        // Return index.html as fallback for SPA
-        const fallback = await caches.match('/');
-        return fallback || new Response('Offline', { status: 503 });
-      }
-    })());
-    return;
-  }
-  
-  // Default: network first
-  // Skip service worker for video files and assets that might not exist
-  const requestUrl = new URL(event.request.url);
-  const isVideo = /\.(webm|mp4|avi|mov|mkv|mp3|wav|ogg)$/i.test(requestUrl.pathname);
-  const isAsset = requestUrl.pathname.startsWith('/assets/');
-  
-  // Don't intercept videos or assets that might not exist
-  if (isVideo || isAsset) {
-    // Let them load directly without service worker interference
-    return;
-  }
-  
-  event.respondWith((async () => {
-    try {
-      const response = await CACHE_STRATEGIES.networkFirst(request);
-      return response;
-    } catch (error) {
-      // Better error handling - log but don't break the app
-      console.warn('Service worker fetch error:', error);
-      // Try to return from cache as fallback
-      const cached = await caches.match(event.request);
-      if (cached) {
-        return cached;
-      }
-      // If all else fails, return a basic error response
-      return new Response('Resource unavailable', { 
-        status: 503,
-        headers: { 'Content-Type': 'text/plain' }
-      });
-    }
-  })());
-});
-
-// Handle background sync for offline actions
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-favorites') {
-    event.waitUntil(syncFavorites());
-  }
-});
-
-async function syncFavorites() {
-  // Sync favorites when back online
-  // Implementation depends on IndexedDB storage
-  console.log('Syncing favorites...');
-}
-
-// Handle push notifications (if implemented)
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  
-  const data = event.data.json();
-  
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'Hoomy', {
-      body: data.body,
-      icon: '/logo.svg',
-      badge: '/favicon.png',
-      data: data.url,
-    })
-  );
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  
-  if (event.notification.data) {
-    event.waitUntil(
-      clients.openWindow(event.notification.data)
+          return response;
+        }).catch(() => cached);
+        
+        return cached || fetchPromise;
+      })
     );
+    return;
   }
+  
+  // Everything else: network only, no caching
+  // Don't intercept - let browser handle
 });
 
+// Handle messages from the app
+self.addEventListener('message', (event) => {
+  if (event.data === 'skipWaiting') {
+    self.skipWaiting();
+  }
+});
