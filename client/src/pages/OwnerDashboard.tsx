@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Building2, MessageSquare, FileText, User, Plus, Edit, Trash2, CreditCard, Check, X, Inbox, Lock, Upload, Camera } from 'lucide-react';
+import { Building2, MessageSquare, FileText, User, Plus, Edit, Trash2, CreditCard, Check, X, Inbox, Lock, Upload, Camera, AlertCircle } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -48,23 +48,42 @@ export default function OwnerDashboard() {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('properties');
 
-  const { data: properties, isLoading: propertiesLoading } = useQuery<Property[]>({
+  const { data: propertiesData, isLoading: propertiesLoading, error: propertiesError } = useQuery<{ properties: Property[]; pagination?: any }>({
     queryKey: ['/properties/my-properties'],
     queryFn: async () => {
-      return apiRequest<Property[]>('GET', '/properties/my-properties');
+      try {
+        const response = await apiRequest<any>('GET', '/properties/my-properties');
+        // Gérer la compatibilité : si c'est un tableau (ancien format), le convertir
+        if (Array.isArray(response)) {
+          return { properties: response };
+        }
+        // Sinon, c'est déjà le nouveau format avec pagination
+        return response;
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+        throw error;
+      }
     },
     staleTime: 1000 * 60 * 2, // 2 minutes
     gcTime: 1000 * 60 * 10, // 10 minutes
+    retry: 1, // Retry once on failure
   });
 
-  const { data: requests, isLoading: requestsLoading } = useQuery<any[]>({
+  const properties = propertiesData?.properties || [];
+
+  const { data: requestsData, isLoading: requestsLoading } = useQuery<any[]>({
     queryKey: ['/requests/received'],
     queryFn: async () => {
-      return apiRequest<any[]>('GET', '/requests/received');
+      const response = await apiRequest<any>('GET', '/requests/received');
+      // S'assurer que la réponse est toujours un tableau
+      return Array.isArray(response) ? response : [];
     },
     staleTime: 1000 * 30, // 30 seconds - requests can change frequently
     gcTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  // S'assurer que requests est toujours un tableau
+  const requests = Array.isArray(requestsData) ? requestsData : [];
 
   const updateRequestMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: 'accepted' | 'rejected' }) =>
@@ -77,7 +96,7 @@ export default function OwnerDashboard() {
       const previousRequests = queryClient.getQueryData<any[]>(['/requests/received']);
       
       // Optimistically update
-      if (previousRequests) {
+      if (previousRequests && Array.isArray(previousRequests)) {
         queryClient.setQueryData<any[]>(
           ['/requests/received'],
           previousRequests.map(req => req.id === id ? { ...req, status } : req)
@@ -110,24 +129,41 @@ export default function OwnerDashboard() {
     },
   });
 
-  const { data: contracts, isLoading: contractsLoading } = useQuery<{ success: boolean; contracts: Contract[] }, Error, Contract[]>({
+  const { data: contractsData, isLoading: contractsLoading } = useQuery<{ success: boolean; contracts: Contract[] }, Error, Contract[]>({
     queryKey: ['/contracts/my-contracts'],
     queryFn: async () => {
       return apiRequest<{ success: boolean; contracts: Contract[] }>('GET', '/contracts/my-contracts');
     },
-    select: (data) => data?.contracts || [],
+    select: (data) => {
+      const contracts = data?.contracts;
+      return Array.isArray(contracts) ? contracts : [];
+    },
     staleTime: 1000 * 60 * 5, // 5 minutes - contracts don't change often
     gcTime: 1000 * 60 * 15, // 15 minutes
   });
 
-  const { data: conversations, isLoading: conversationsLoading } = useQuery<Conversation[]>({
+  // S'assurer que contracts est toujours un tableau
+  const contracts = Array.isArray(contractsData) ? contractsData : [];
+
+  const { data: conversationsData, isLoading: conversationsLoading } = useQuery<{ conversations: Conversation[]; pagination?: any } | Conversation[]>({
     queryKey: ['/conversations'],
     queryFn: async () => {
-      return apiRequest<Conversation[]>('GET', '/conversations');
+      const response = await apiRequest<any>('GET', '/conversations');
+      // Gérer la compatibilité : si c'est un tableau (ancien format), le convertir
+      if (Array.isArray(response)) {
+        return response;
+      }
+      // Sinon, c'est déjà le nouveau format avec pagination
+      return response;
     },
     staleTime: 1000 * 30, // 30 seconds - conversations can change frequently
     gcTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  // Extraire le tableau conversations de la réponse (gère ancien et nouveau format)
+  const conversations = Array.isArray(conversationsData) 
+    ? conversationsData 
+    : (conversationsData?.conversations || []);
 
   const { data: stripeStatus } = useQuery<StripeAccountStatus>({
     queryKey: ['/contracts/connect/account-status'],
@@ -326,7 +362,18 @@ export default function OwnerDashboard() {
               </Link>
             </div>
 
-            {propertiesLoading ? (
+            {propertiesError ? (
+              <Card className="p-12 text-center">
+                <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                <h3 className="font-semibold text-lg mb-2">Erreur de chargement</h3>
+                <p className="text-muted-foreground mb-4">
+                  {propertiesError instanceof Error ? propertiesError.message : 'Impossible de charger les propriétés'}
+                </p>
+                <Button onClick={() => window.location.reload()}>
+                  Recharger la page
+                </Button>
+              </Card>
+            ) : propertiesLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-96 w-full" />
