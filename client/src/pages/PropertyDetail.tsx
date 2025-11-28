@@ -98,7 +98,7 @@ export default function PropertyDetail() {
   // Check if property is favorited by checking the favorites list
   const { data: favorites } = useQuery<Property[]>({
     queryKey: ['/favorites'],
-    enabled: !!numericPropertyId && isAuthenticated && isStudent,
+    enabled: !!numericPropertyId && isAuthenticated,
     queryFn: async () => {
       return apiRequest<Property[]>('GET', '/favorites');
     },
@@ -188,7 +188,7 @@ export default function PropertyDetail() {
   });
 
   const handleFavoriteToggle = useCallback(() => {
-    if (!isAuthenticated || !isStudent) {
+    if (!isAuthenticated) {
       if (numericPropertyId) {
         setLocation(`/login?redirect=/properties/${numericPropertyId}`);
       } else {
@@ -203,7 +203,7 @@ export default function PropertyDetail() {
     } else {
       addFavoriteMutation.mutate(numericPropertyId);
     }
-  }, [numericPropertyId, isFavorited, removeFavoriteMutation, addFavoriteMutation, isAuthenticated, isStudent, setLocation]);
+  }, [numericPropertyId, isFavorited, removeFavoriteMutation, addFavoriteMutation, isAuthenticated, setLocation]);
 
   // Move all hooks before any conditional returns
   const images = useMemo(() => {

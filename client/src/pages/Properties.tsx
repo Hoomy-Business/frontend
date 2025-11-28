@@ -169,11 +169,11 @@ export default function Properties() {
   // S'assurer que properties est toujours un tableau
   const properties: Property[] = Array.isArray(propertiesData) ? propertiesData : [];
 
-  // Fetch favorites if user is authenticated and is a student
+  // Fetch favorites for all authenticated users
   // Always call useQuery but enable it conditionally
   const { data: favorites, error: favoritesError } = useQuery<Property[]>({
     queryKey: ['/favorites'],
-    enabled: isAuthenticated && isStudent,
+    enabled: isAuthenticated,
     retry: false,
     queryFn: async () => {
       const token = getAuthToken();
@@ -293,9 +293,9 @@ export default function Properties() {
     },
   });
 
-  // Handler to toggle favorite status
+  // Handler to toggle favorite status - available to all authenticated users
   const handleFavoriteToggle = useCallback((propertyId: number) => {
-    if (!isAuthenticated || !isStudent) {
+    if (!isAuthenticated) {
       // Redirect to login if not authenticated
       setLocation('/login?redirect=/properties');
       return;
@@ -306,7 +306,7 @@ export default function Properties() {
     } else {
       addFavoriteMutation.mutate(propertyId);
     }
-  }, [isAuthenticated, isStudent, favoriteIds, addFavoriteMutation, removeFavoriteMutation, setLocation]);
+  }, [isAuthenticated, favoriteIds, addFavoriteMutation, removeFavoriteMutation, setLocation]);
 
   const filteredProperties = useMemo(() => {
     if (!properties) return [];
@@ -712,7 +712,7 @@ export default function Properties() {
                   <PropertyCard 
                     key={property.id} 
                     property={property}
-                    isFavorited={isAuthenticated && isStudent ? favoriteIds.has(property.id) : false}
+                    isFavorited={isAuthenticated ? favoriteIds.has(property.id) : false}
                     onFavoriteToggle={handleFavoriteToggle}
                   />
                 ))}
