@@ -85,25 +85,37 @@ export default function Properties() {
     return () => clearTimeout(timeoutId);
   }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, debouncedSearchQuery, setLocation, search]);
 
-  const { data: cantons } = useQuery<Canton[]>({
+  const { data: cantonsData } = useQuery<any>({
     queryKey: ['/locations/cantons'],
     queryFn: async () => {
-      return apiRequest<Canton[]>('GET', '/locations/cantons');
+      const response = await apiRequest<any>('GET', '/locations/cantons');
+      if (Array.isArray(response)) return response;
+      if (response?.cantons && Array.isArray(response.cantons)) return response.cantons;
+      return [];
     },
     staleTime: 1000 * 60 * 60, // 1 hour - cantons are very static
     gcTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 
-  const { data: cities } = useQuery<City[]>({
+  // S'assurer que cantons est toujours un tableau
+  const cantons: Canton[] = Array.isArray(cantonsData) ? cantonsData : [];
+
+  const { data: citiesData } = useQuery<any>({
     queryKey: [`/locations/cities/${selectedCanton}`],
     enabled: !!selectedCanton && selectedCanton !== '___all___',
     queryFn: async () => {
       if (!selectedCanton || selectedCanton === '___all___') throw new Error('Canton required');
-      return apiRequest<City[]>('GET', `/locations/cities?canton=${selectedCanton}`);
+      const response = await apiRequest<any>('GET', `/locations/cities?canton=${selectedCanton}`);
+      if (Array.isArray(response)) return response;
+      if (response?.cities && Array.isArray(response.cities)) return response.cities;
+      return [];
     },
     staleTime: 1000 * 60 * 60, // 1 hour - cities are very static
     gcTime: 1000 * 60 * 60 * 24, // 24 hours
   });
+
+  // S'assurer que cities est toujours un tableau
+  const cities: City[] = Array.isArray(citiesData) ? citiesData : [];
 
   const queryParams = useMemo(() => {
     const filters: Record<string, string> = {};
@@ -117,7 +129,7 @@ export default function Properties() {
     return queryString ? `?${queryString}` : '';
   }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, debouncedSearchQuery]);
   
-  const { data: properties, isLoading, error } = useQuery<Property[]>({
+  const { data: propertiesData, isLoading, error } = useQuery<any>({
     queryKey: ['/properties', queryParams],
     // S'assurer que queryParams ne contient jamais "create"
     enabled: !queryParams.includes('create'),
@@ -144,11 +156,18 @@ export default function Properties() {
         throw new Error(errorData.error || errorData.message || res.statusText);
       }
       
-      return res.json();
+      const data = await res.json();
+      // Gérer les deux formats: tableau direct ou { properties: [...] }
+      if (Array.isArray(data)) return data;
+      if (data?.properties && Array.isArray(data.properties)) return data.properties;
+      return [];
     },
     staleTime: 1000 * 60 * 3, // 3 minutes - properties can change but not too frequently
     gcTime: 1000 * 60 * 15, // 15 minutes - keep in cache longer
   });
+
+  // S'assurer que properties est toujours un tableau
+  const properties: Property[] = Array.isArray(propertiesData) ? propertiesData : [];
 
   // Fetch favorites if user is authenticated and is a student
   // Always call useQuery but enable it conditionally
@@ -344,7 +363,7 @@ export default function Properties() {
           <label className="text-sm font-medium mb-2 block">{t('properties.city')}</label>
           <div className="space-y-2">
             <CityAutocomplete
-              value={selectedCity !== '___all___' && selectedCity && cities ? cities.find(c => c.id.toString() === selectedCity)?.name || '' : ''}
+              value={selectedCity !== '___all___' && selectedCity && Array.isArray(cities) && cities.length > 0 ? cities.find(c => c.id.toString() === selectedCity)?.name || '' : ''}
               onChange={(value) => {
                 if (!value) {
                   setSelectedCity('___all___');
@@ -490,7 +509,7 @@ export default function Properties() {
                 <Filter className="h-3 w-3" />
                 {activeFiltersCount} filtre{activeFiltersCount > 1 ? 's' : ''} actif{activeFiltersCount > 1 ? 's' : ''}
               </Badge>
-              {selectedCanton && selectedCanton !== '___all___' && cantons && (
+              {selectedCanton && selectedCanton !== '___all___' && Array.isArray(cantons) && cantons.length > 0 && (
                 <Badge variant="outline" className="gap-1">
                   {getCantonName(cantons.find(c => c.code === selectedCanton) || { code: selectedCanton, name_fr: selectedCanton, name_de: selectedCanton })}
                   <button
@@ -501,7 +520,7 @@ export default function Properties() {
                   </button>
                 </Badge>
               )}
-              {selectedCity && selectedCity !== '___all___' && cities && (
+              {selectedCity && selectedCity !== '___all___' && Array.isArray(cities) && cities.length > 0 && (
                 <Badge variant="outline" className="gap-1">
                   {getCityName(cities.find(c => c.id.toString() === selectedCity)?.name || '')}
                   <button

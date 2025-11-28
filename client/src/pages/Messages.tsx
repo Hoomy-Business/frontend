@@ -80,23 +80,37 @@ export default function Messages() {
     }
   }, [conversationIdParam, propertyIdParam, ownerIdParam, selectedConversation, createConversationMutation]);
 
-  const { data: conversations, isLoading: conversationsLoading } = useQuery<Conversation[]>({
+  const { data: conversationsData, isLoading: conversationsLoading } = useQuery<any>({
     queryKey: ['/conversations'],
     queryFn: async () => {
-      return apiRequest<Conversation[]>('GET', '/conversations');
+      const response = await apiRequest<any>('GET', '/conversations');
+      // Gérer les deux formats: tableau direct ou { conversations: [...] }
+      if (Array.isArray(response)) return response;
+      if (response?.conversations && Array.isArray(response.conversations)) return response.conversations;
+      return [];
     },
     refetchInterval: 5000, // Poll for new conversations every 5 seconds
   });
 
-  const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
+  // S'assurer que conversations est toujours un tableau
+  const conversations: Conversation[] = Array.isArray(conversationsData) ? conversationsData : [];
+
+  const { data: messagesData, isLoading: messagesLoading } = useQuery<any>({
     queryKey: ['/messages', selectedConversation],
     enabled: !!selectedConversation,
     queryFn: async () => {
       if (!selectedConversation) return [];
-      return apiRequest<Message[]>('GET', `/messages/${selectedConversation}`);
+      const response = await apiRequest<any>('GET', `/messages/${selectedConversation}`);
+      // Gérer les deux formats: tableau direct ou { messages: [...] }
+      if (Array.isArray(response)) return response;
+      if (response?.messages && Array.isArray(response.messages)) return response.messages;
+      return [];
     },
     refetchInterval: 3000, // Poll for new messages every 3 seconds
   });
+
+  // S'assurer que messages est toujours un tableau
+  const messages: Message[] = Array.isArray(messagesData) ? messagesData : [];
 
   const sendMessageMutation = useMutation({
     mutationFn: (data: { conversation_id: number; content: string }) =>
@@ -149,7 +163,10 @@ export default function Messages() {
     }
   }, [messageText]);
 
-  const selectedConvData = conversations?.find(c => c.id === selectedConversation);
+  // Trouver la conversation sélectionnée de manière sécurisée
+  const selectedConvData = Array.isArray(conversations) 
+    ? conversations.find(c => c.id === selectedConversation) 
+    : undefined;
 
   return (
     <MainLayout>

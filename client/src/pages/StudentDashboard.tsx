@@ -76,24 +76,37 @@ export default function StudentDashboard() {
     gcTime: 1000 * 60 * 15, // 15 minutes
   });
 
-  const { data: contracts, isLoading: contractsLoading } = useQuery<{ success: boolean; contracts: Contract[] }, Error, Contract[]>({
+  const { data: contractsData, isLoading: contractsLoading } = useQuery<any>({
     queryKey: ['/contracts/my-contracts'],
     queryFn: async () => {
-      return apiRequest<{ success: boolean; contracts: Contract[] }>('GET', '/contracts/my-contracts');
+      const response = await apiRequest<any>('GET', '/contracts/my-contracts');
+      // Gérer les deux formats: { contracts: [...] } ou tableau direct
+      if (Array.isArray(response)) return response;
+      if (response?.contracts && Array.isArray(response.contracts)) return response.contracts;
+      return [];
     },
-    select: (data) => data?.contracts || [],
     staleTime: 1000 * 60 * 5, // 5 minutes - contracts don't change often
     gcTime: 1000 * 60 * 15, // 15 minutes
   });
 
-  const { data: conversations, isLoading: conversationsLoading } = useQuery<Conversation[]>({
+  // S'assurer que contracts est toujours un tableau
+  const contracts: Contract[] = Array.isArray(contractsData) ? contractsData : [];
+
+  const { data: conversationsData, isLoading: conversationsLoading } = useQuery<any>({
     queryKey: ['/conversations'],
     queryFn: async () => {
-      return apiRequest<Conversation[]>('GET', '/conversations');
+      const response = await apiRequest<any>('GET', '/conversations');
+      // Gérer les deux formats: tableau direct ou { conversations: [...] }
+      if (Array.isArray(response)) return response;
+      if (response?.conversations && Array.isArray(response.conversations)) return response.conversations;
+      return [];
     },
     staleTime: 1000 * 30, // 30 seconds - conversations can change frequently
     gcTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  // S'assurer que conversations est toujours un tableau
+  const conversations: Conversation[] = Array.isArray(conversationsData) ? conversationsData : [];
 
   const removeFavoriteMutation = useMutation({
     mutationFn: (propertyId: number) => apiRequest('DELETE', `/favorites/${propertyId}`),
@@ -102,14 +115,21 @@ export default function StudentDashboard() {
     },
   });
 
-  const { data: sentRequests, isLoading: sentRequestsLoading } = useQuery<any[]>({
+  const { data: sentRequestsData, isLoading: sentRequestsLoading } = useQuery<any>({
     queryKey: ['/requests/sent'],
     queryFn: async () => {
-      return apiRequest<any[]>('GET', '/requests/sent');
+      const response = await apiRequest<any>('GET', '/requests/sent');
+      // Gérer les deux formats: tableau direct ou { requests: [...] }
+      if (Array.isArray(response)) return response;
+      if (response?.requests && Array.isArray(response.requests)) return response.requests;
+      return [];
     },
     staleTime: 1000 * 30, // 30 seconds - requests can change frequently
     gcTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  // S'assurer que sentRequests est toujours un tableau
+  const sentRequests = Array.isArray(sentRequestsData) ? sentRequestsData : [];
 
   const deleteRequestMutation = useMutation({
     mutationFn: (requestId: number) => apiRequest('DELETE', `/requests/${requestId}`),
