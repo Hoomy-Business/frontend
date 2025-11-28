@@ -1,0 +1,30 @@
+{
+  "name": "Hoomy - Student Housing Switzerland",
+  "short_name": "Hoomy",
+  "description": "Find your perfect student home in Switzerland. Browse verified properties in Zurich, Geneva, Lausanne and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "fr",
+  "categories": ["real-estate", "housing", "education"],
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
+
