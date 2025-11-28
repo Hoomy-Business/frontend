@@ -1,12 +1,19 @@
-import { Component, ReactNode, ErrorInfo } from 'react';
+import { Component, type ReactNode, type ErrorInfo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, RefreshCw, Home } from 'lucide-react';
 import { Link } from 'wouter';
 
+// ============================================
+// TYPES
+// ============================================
+
+type FallbackRender = (props: { error: Error; resetError: () => void }) => ReactNode;
+
 interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
+  fallback?: FallbackRender | ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
@@ -14,6 +21,10 @@ interface State {
   error: Error | null;
   errorInfo: ErrorInfo | null;
 }
+
+// ============================================
+// ERROR BOUNDARY CLASS
+// ============================================
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
@@ -32,16 +43,10 @@ export class ErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to console in ALL environments (not just dev)
-    console.error('ErrorBoundary caught an error:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Error info:', errorInfo);
-    console.error('Component stack:', errorInfo.componentStack);
-    
-    // Store error in window for debugging (accessible via window.__lastError)
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    // Store error for debugging
     if (typeof window !== 'undefined') {
-      (window as any).__lastError = {
+      (window as Window & { __lastError?: unknown }).__lastError = {
         error: {
           message: error.message,
           stack: error.stack,
@@ -59,38 +64,51 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo,
     });
 
-    // You can also log the error to an error reporting service here
-    // Example: logErrorToService(error, errorInfo);
+    // Call onError callback if provided
+    this.props.onError?.(error, errorInfo);
   }
 
-  handleReset = () => {
+  handleReset = (): void => {
     this.setState({
       hasError: false,
       error: null,
       errorInfo: null,
     });
-    // Reload the page to ensure clean state
+  };
+
+  handleReload = (): void => {
+    this.handleReset();
     window.location.reload();
   };
 
-  render() {
-    if (this.state.hasError) {
+  render(): ReactNode {
+    if (this.state.hasError && this.state.error) {
+      // Support function-as-fallback pattern
+      if (typeof this.props.fallback === 'function') {
+        return this.props.fallback({
+          error: this.state.error,
+          resetError: this.handleReset,
+        });
+      }
+      
+      // Support ReactNode fallback
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
+      // Default fallback UI
       return (
         <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
           <Card className="w-full max-w-2xl">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-6 w-6 text-destructive" />
-                <CardTitle>Une erreur s'est produite</CardTitle>
+                <CardTitle>Une erreur s&apos;est produite</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Désolé, une erreur inattendue s'est produite. Veuillez réessayer.
+                Désolé, une erreur inattendue s&apos;est produite. Veuillez réessayer.
               </p>
               
               {import.meta.env.DEV && this.state.error && (
@@ -112,14 +130,14 @@ export class ErrorBoundary extends Component<Props, State> {
               )}
 
               <div className="flex gap-2 flex-wrap">
-                <Button onClick={this.handleReset} variant="default">
+                <Button onClick={this.handleReload} variant="default">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Recharger la page
                 </Button>
                 <Button asChild variant="outline">
                   <Link href="/">
                     <Home className="h-4 w-4 mr-2" />
-                    Retour à l'accueil
+                    Retour à l&apos;accueil
                   </Link>
                 </Button>
               </div>
@@ -133,3 +151,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
+// ============================================
+// HOOK FOR MANUAL ERROR TRIGGERING
+// ============================================
+
+export function useErrorHandler(): (error: Error) => void {
+  return (error: Error) => {
+    throw error;
+  };
+}

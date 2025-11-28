@@ -1,25 +1,19 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+
+const isDev = process.env.NODE_ENV !== "production";
 
 export default defineConfig({
   base: '/',
+  
   plugins: [
-    react(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
+    react({
+      jsxRuntime: 'automatic',
+      fastRefresh: isDev,
+    }),
   ],
+  
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
@@ -27,15 +21,19 @@ export default defineConfig({
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
   },
+  
   root: path.resolve(import.meta.dirname, "client"),
+  
   build: {
     outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
     sourcemap: false,
     minify: 'esbuild',
     cssMinify: true,
-    // Copier 404.html pour GitHub Pages SPA routing
+    target: ['es2020', 'chrome87', 'firefox78', 'safari14'],
+    cssCodeSplit: true,
     copyPublicDir: true,
+    
     rollupOptions: {
       output: {
         manualChunks: {
@@ -54,40 +52,46 @@ export default defineConfig({
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
-          if (!assetInfo.name) {
-            return `assets/[name]-[hash][extname]`;
-          }
-          const info = assetInfo.name.split('.');
-          const ext = info[info.length - 1];
-          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+          if (!assetInfo.name) return `assets/[name]-[hash][extname]`;
+          const ext = assetInfo.name.split('.').pop()?.toLowerCase() || '';
+          if (/png|jpe?g|svg|gif|webp|avif|ico/i.test(ext)) {
             return `assets/images/[name]-[hash][extname]`;
           }
           if (/woff2?|eot|ttf|otf/i.test(ext)) {
             return `assets/fonts/[name]-[hash][extname]`;
           }
+          if (ext === 'css') {
+            return `assets/css/[name]-[hash][extname]`;
+          }
           return `assets/${ext}/[name]-[hash][extname]`;
         },
       },
     },
+    
     chunkSizeWarningLimit: 1000,
+    assetsInlineLimit: 4096,
   },
+  
   server: {
     port: 5000,
-    host: '0.0.0.0', // Écoute sur toutes les interfaces réseau (LAN)
+    host: '0.0.0.0',
     fs: {
       strict: true,
       deny: ["**/.*"],
     },
-    // Proxy désactivé - les requêtes vont directement vers https://backend.hoomy.site/api
-    // Le problème CORS doit être résolu côté backend avec les en-têtes appropriés
   },
+  
   optimizeDeps: {
     include: [
       'react',
       'react-dom',
       'wouter',
       '@tanstack/react-query',
-      '@radix-ui/react-tabs',
     ],
+  },
+  
+  esbuild: {
+    drop: isDev ? [] : ['console', 'debugger'],
+    legalComments: 'none',
   },
 });
