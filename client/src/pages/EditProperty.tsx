@@ -293,7 +293,7 @@ export default function EditProperty() {
                         <FormControl>
                           <Input
                             {...field}
-                            placeholder="Entrez une adresse (ex: Rue Saint-Maurice 12)"
+                            placeholder="Entrez une adresse"
                           />
                         </FormControl>
                         <FormMessage />

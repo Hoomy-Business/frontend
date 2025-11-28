@@ -428,7 +428,7 @@ export default function CreateProperty() {
                         <FormControl>
                           <Input
                             {...field}
-                            placeholder="Entrez une adresse (ex: Rue Saint-Maurice 12)"
+                            placeholder="Entrez une adresse"
                             data-testid="input-address"
                           />
                         </FormControl>
