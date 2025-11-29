@@ -52,7 +52,7 @@ function getRateLimitConfig(endpoint: string): { max: number; window: number } {
       return config;
     }
   }
-  return RATE_LIMITS.default;
+  return RATE_LIMITS.default || { max: 60, window: 60000 };
 }
 
 /**
@@ -165,32 +165,77 @@ export async function apiRequest<T = any>(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
       
+      // Traduire les messages d'erreur techniques en messages compréhensibles
+      const translateError = (error: string): string => {
+        const translations: Record<string, string> = {
+          // Authentification
+          'Identifiants incorrects': 'L\'email ou le mot de passe est incorrect. Vérifiez vos informations et réessayez.',
+          'Invalid credentials': 'L\'email ou le mot de passe est incorrect. Vérifiez vos informations et réessayez.',
+          'Token requis': 'Vous devez être connecté pour accéder à cette page.',
+          'Token invalide': 'Votre connexion a expiré. Veuillez vous reconnecter.',
+          'Token expired': 'Votre connexion a expiré. Veuillez vous reconnecter.',
+          'Email non vérifié': 'Votre adresse email n\'est pas encore vérifiée. Consultez votre boîte mail pour le code de vérification.',
+          'Champs requis': 'Veuillez remplir tous les champs obligatoires.',
+          
+          // Compte
+          'Cet email est déjà utilisé': 'Un compte existe déjà avec cette adresse email. Essayez de vous connecter ou utilisez une autre adresse.',
+          'Utilisateur non trouvé': 'Aucun compte n\'existe avec cette adresse email.',
+          'Ce compte a été supprimé': 'Ce compte a été supprimé et n\'est plus accessible.',
+          
+          // Téléphone
+          'Ce numéro de téléphone est déjà utilisé par un autre compte': 'Ce numéro de téléphone est déjà associé à un autre compte.',
+          'Code incorrect': 'Le code de vérification est incorrect. Vérifiez et réessayez.',
+          'Code expiré': 'Le code de vérification a expiré. Demandez un nouveau code.',
+          
+          // Général
+          'Non autorisé': 'Vous n\'avez pas les droits pour effectuer cette action.',
+          'Accès refusé': 'Vous n\'avez pas les droits pour accéder à cette ressource.',
+          'Erreur serveur': 'Un problème technique est survenu. Veuillez réessayer dans quelques instants.',
+          'Request failed': 'La connexion au serveur a échoué. Vérifiez votre connexion internet.',
+        };
+        
+        return translations[error] || error;
+      };
+      
+      const errorMessage = translateError(errorData.error || errorData.message || '');
+      
       // Handle specific error codes
       switch (response.status) {
         case 401:
-          // Token expired or invalid - include status code for better error handling
-          const authError = new Error('Session expirée. Veuillez vous reconnecter.');
+          // Pour 401, utiliser le message du backend s'il existe (ex: "Identifiants incorrects")
+          // Sinon seulement utiliser "session expirée" pour les cas où on est déconnecté
+          const hasBackendMessage = errorData.error || errorData.message;
+          const authErrorMsg = hasBackendMessage 
+            ? errorMessage 
+            : 'Votre session a expiré. Veuillez vous reconnecter.';
+          const authError = new Error(authErrorMsg);
           (authError as any).status = 401;
+          (authError as any).code = errorData.code;
           throw authError;
         case 403:
-          reportSecurityViolation('forbidden_access', { endpoint, status: 403 });
-          const forbiddenError = new Error(errorData.error || errorData.message || 'Accès non autorisé.');
+          // 403 peut être email non vérifié ou compte supprimé
+          const forbiddenError = new Error(errorMessage || 'Accès non autorisé.');
           (forbiddenError as any).status = 403;
+          (forbiddenError as any).code = errorData.code;
           throw forbiddenError;
         case 429:
           const retryAfter = errorData.retryAfter || response.headers.get('Retry-After') || 60;
-          throw new Error(`Trop de requêtes. Veuillez réessayer dans ${retryAfter} secondes.`);
+          throw new Error(`Trop de tentatives. Veuillez patienter ${retryAfter} secondes avant de réessayer.`);
         case 400:
-          throw new Error(errorData.error || errorData.message || 'Données invalides.');
+          throw new Error(errorMessage || 'Les informations saisies sont invalides. Veuillez vérifier et réessayer.');
+        case 404:
+          throw new Error(errorMessage || 'La ressource demandée n\'existe pas.');
         case 502:
         case 503:
         case 504:
           // Server errors - don't treat as auth errors
-          const serverError = new Error(errorData.error || errorData.message || 'Le serveur ne répond pas. Veuillez réessayer.');
+          const serverError = new Error(errorMessage || 'Le serveur est temporairement indisponible. Veuillez réessayer dans quelques instants.');
           (serverError as any).status = response.status;
+          (serverError as any).code = errorData.code;
+          (serverError as any).debug_code = errorData.debug_code;
           throw serverError;
         default:
-          throw new Error(errorData.error || errorData.message || 'Une erreur est survenue.');
+          throw new Error(errorMessage || 'Une erreur inattendue est survenue. Veuillez réessayer.');
       }
     }
 

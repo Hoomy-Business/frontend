@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Building2, MessageSquare, FileText, User, Plus, Edit, Trash2, CreditCard, Check, X, Inbox, Lock, Upload, Camera, AlertCircle } from 'lucide-react';
+import { Building2, MessageSquare, FileText, User, Plus, Edit, Trash2, CreditCard, Check, X, Inbox, Lock, Upload, Camera, AlertCircle, Phone, CheckCircle2, AlertTriangle, Mail } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,10 @@ import { KYCVerification } from '@/components/KYCVerification';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
 import { formatUserDisplayName } from '@/lib/userUtils';
+import { PhoneVerificationDialog } from '@/components/PhoneVerificationDialog';
+import { EmailVerificationDialog } from '@/components/EmailVerificationDialog';
+import { EmailChangeDialog } from '@/components/EmailChangeDialog';
+import { PhoneChangeDialog } from '@/components/PhoneChangeDialog';
 
 export default function OwnerDashboard() {
   const { user, isAuthenticated, isOwner, refreshUser } = useAuth();
@@ -47,6 +51,10 @@ export default function OwnerDashboard() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('properties');
+  const [phoneVerificationOpen, setPhoneVerificationOpen] = useState(false);
+  const [emailVerificationOpen, setEmailVerificationOpen] = useState(false);
+  const [emailChangeOpen, setEmailChangeOpen] = useState(false);
+  const [phoneChangeOpen, setPhoneChangeOpen] = useState(false);
 
   const { data: propertiesData, isLoading: propertiesLoading, error: propertiesError } = useQuery<{ properties: Property[]; pagination?: any }>({
     queryKey: ['/properties/my-properties'],
@@ -269,28 +277,35 @@ export default function OwnerDashboard() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: { first_name?: string; last_name?: string; phone?: string; profile_picture?: string }) =>
-      apiRequest('PUT', '/users/profile', data),
-    onSuccess: async () => {
+    mutationFn: (data: { first_name?: string; last_name?: string; email?: string; phone?: string; current_password?: string; new_password?: string }) =>
+      apiRequest('PUT', '/auth/profile', data),
+    onSuccess: async (response) => {
       queryClient.invalidateQueries({ queryKey: ['/auth/profile'] });
       queryClient.invalidateQueries({ queryKey: ['/auth/user'] });
       // Recharger le profil utilisateur pour avoir les dernières données
       await refreshUser();
-      toast({ title: 'Success', description: 'Profile updated successfully' });
+      toast({ 
+        title: 'Succès', 
+        description: response.message || 'Profil mis à jour avec succès' 
+      });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     },
   });
 
   const changePasswordMutation = useMutation({
     mutationFn: (data: { current_password: string; new_password: string }) =>
-      apiRequest('PUT', '/users/change-password', data),
-    onSuccess: () => {
-      toast({ title: 'Success', description: 'Password changed successfully' });
+      apiRequest('PUT', '/auth/profile', { ...data }),
+    onSuccess: async (response) => {
+      await refreshUser();
+      toast({ 
+        title: 'Succès', 
+        description: response.message || 'Mot de passe modifié avec succès' 
+      });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -673,21 +688,69 @@ export default function OwnerDashboard() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.email')}</p>
-                    <p className="font-medium">{user?.email}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{user?.email}</p>
+                      <Badge variant={user?.email_verified ? 'default' : 'secondary'} className="gap-1">
+                        {user?.email_verified ? (
+                          <>
+                            <CheckCircle2 className="h-3 w-3" />
+                            Vérifié
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="h-3 w-3" />
+                            Non vérifié
+                          </>
+                        )}
+                      </Badge>
+                    </div>
+                    {!user?.email_verified && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                        onClick={() => setEmailVerificationOpen(true)}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Vérifier mon email
+                      </Button>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.phone')}</p>
+                    <div className="flex items-center gap-2">
                     <p className="font-medium">{user?.phone || t('dashboard.phone.not_provided')}</p>
+                      {user?.phone && (
+                        <Badge variant={user?.phone_verified ? 'default' : 'secondary'} className="gap-1">
+                          {user?.phone_verified ? (
+                            <>
+                              <CheckCircle2 className="h-3 w-3" />
+                              Vérifié
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle className="h-3 w-3" />
+                              Non vérifié
+                            </>
+                          )}
+                        </Badge>
+                      )}
+                    </div>
+                    {!user?.phone_verified && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                        onClick={() => setPhoneVerificationOpen(true)}
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        {user?.phone ? 'Vérifier mon numéro' : 'Ajouter un numéro'}
+                      </Button>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.account_type')}</p>
                     <Badge>{user?.role}</Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.email_verified')}</p>
-                    <Badge variant={user?.email_verified ? 'default' : 'secondary'}>
-                      {user?.email_verified ? t('dashboard.profile.verified') : t('dashboard.profile.not_verified')}
-                    </Badge>
                   </div>
                 </div>
 
@@ -698,6 +761,8 @@ export default function OwnerDashboard() {
                   updateProfileMutation={updateProfileMutation}
                   changePasswordMutation={changePasswordMutation}
                   onPhotoUpload={handlePhotoUpload}
+                  onEmailChange={() => setEmailChangeOpen(true)}
+                  onPhoneChange={() => setPhoneChangeOpen(true)}
                 />
 
                 <Separator />
@@ -763,6 +828,35 @@ export default function OwnerDashboard() {
             circularCrop={true}
           />
         )}
+        
+        {/* Phone Verification Dialog */}
+        <PhoneVerificationDialog
+          open={phoneVerificationOpen}
+          onClose={() => setPhoneVerificationOpen(false)}
+          onSuccess={() => refreshUser()}
+          currentPhone={user?.phone}
+        />
+        
+        <EmailVerificationDialog
+          open={emailVerificationOpen}
+          onClose={() => setEmailVerificationOpen(false)}
+          onSuccess={() => refreshUser()}
+          currentEmail={user?.email}
+        />
+        
+        <EmailChangeDialog
+          open={emailChangeOpen}
+          onClose={() => setEmailChangeOpen(false)}
+          onSuccess={() => refreshUser()}
+          currentEmail={user?.email}
+        />
+        
+        <PhoneChangeDialog
+          open={phoneChangeOpen}
+          onClose={() => setPhoneChangeOpen(false)}
+          onSuccess={() => refreshUser()}
+          currentPhone={user?.phone}
+        />
       </div>
     </MainLayout>
   );
@@ -772,12 +866,16 @@ function ProfileEditForm({
   user, 
   updateProfileMutation, 
   changePasswordMutation,
-  onPhotoUpload
+  onPhotoUpload,
+  onEmailChange,
+  onPhoneChange
 }: { 
   user: any; 
   updateProfileMutation: any; 
   changePasswordMutation: any;
   onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onEmailChange: () => void;
+  onPhoneChange: () => void;
 }) {
   const { t } = useLanguage();
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -785,7 +883,6 @@ function ProfileEditForm({
   const [profileData, setProfileData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
-    phone: user?.phone || '',
   });
   const [passwordData, setPasswordData] = useState({
     current_password: '',
@@ -793,6 +890,14 @@ function ProfileEditForm({
     confirm_password: '',
   });
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Mettre à jour les données du formulaire quand l'utilisateur change
+  useEffect(() => {
+    setProfileData({
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
+    });
+  }, [user]);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     onPhotoUpload(e);
@@ -847,12 +952,56 @@ function ProfileEditForm({
                   />
                 </div>
                 <div>
+                  <Label htmlFor="email">Email</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="email"
+                      type="email"
+                      value={user?.email || ''}
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditProfileOpen(false);
+                        onEmailChange();
+                      }}
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Changer
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pour changer votre email, vous devrez confirmer votre identité avec un code envoyé à votre email actuel.
+                  </p>
+                </div>
+                <div>
                   <Label htmlFor="phone">{t('dashboard.profile.phone')}</Label>
-                  <Input
-                    id="phone"
-                    value={profileData.phone}
-                    onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={user?.phone || ''}
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditProfileOpen(false);
+                        onPhoneChange();
+                      }}
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      Changer
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pour changer votre numéro de téléphone, vous devrez confirmer votre identité avec un code envoyé à votre numéro actuel.
+                  </p>
                 </div>
               </div>
               <DialogFooter>

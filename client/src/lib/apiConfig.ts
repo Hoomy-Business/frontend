@@ -11,7 +11,7 @@ export function getAPIBaseURL(): string {
   // En production (hoomy.site), utiliser le backend de production
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    if (hostname === 'hoomy.site' || hostname === 'www.hoomy.site') {
+    if (hostname === 'hoomy.site' || hostname === 'www.hoomy.site' || hostname.endsWith('.github.io')) {
       return 'https://backend.hoomy.site/api';
     }
     

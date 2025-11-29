@@ -79,8 +79,21 @@ export default function Register() {
     onSuccess: (data, variables) => {
       setLocation(`/verify-email?email=${encodeURIComponent(variables.email)}`);
     },
-    onError: (err: Error) => {
-      setError(err.message || 'Registration failed. Please try again.');
+    onError: (err: Error & { code?: string }) => {
+      // Le message a déjà été traduit par api.ts, mais on peut personnaliser davantage
+      const errorCode = (err as any).code;
+      
+      if (errorCode === 'INVALID_PHONE' || err.message.includes('téléphone')) {
+        setError(err.message);
+      } else if (err.message.includes('email') && err.message.includes('déjà')) {
+        setError('Cette adresse email est déjà utilisée. Essayez de vous connecter ou utilisez une autre adresse.');
+      } else if (err.message.includes('18 ans')) {
+        setError('Vous devez avoir au moins 18 ans pour créer un compte.');
+      } else if (err.message.includes('temporaire')) {
+        setError('Les adresses email temporaires ou jetables ne sont pas acceptées. Utilisez une adresse email permanente.');
+      } else {
+        setError(err.message || 'L\'inscription a échoué. Veuillez vérifier vos informations et réessayer.');
+      }
     },
   });
 
@@ -218,13 +231,16 @@ export default function Register() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone (Optional)</FormLabel>
+                        <FormLabel>Téléphone (Optionnel)</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input {...field} placeholder="+41 76 123 45 67" className="pl-10" data-testid="input-phone" />
                           </div>
                         </FormControl>
+                        <FormDescription className="text-xs">
+                          Format suisse: +41 XX XXX XX XX. Le numéro devra être vérifié par SMS.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

@@ -1,16 +1,24 @@
 {
-  "name": "rest-express",
-  "version": "1.0.0",
+  "name": "hoomy-frontend",
+  "version": "2.0.0",
   "type": "module",
-  "license": "MIT",
+  "description": "Frontend de la plateforme Hoomy - Logement étudiant en Suisse",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "check": "tsc",
-    "deploy": "npm run build && npx gh-pages -d dist",
-    "check-translations": "node check-translations.js"
+    "deploy": "npm run build && npx gh-pages -d dist"
   },
+  "keywords": [
+    "housing",
+    "students",
+    "switzerland",
+    "rental",
+    "frontend"
+  ],
+  "author": "Hoomy Team",
+  "license": "MIT",
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
@@ -86,5 +94,8 @@
     "typescript": "5.6.3",
     "vite": "^5.4.20",
     "vite-plugin-gh-pages": "^1.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

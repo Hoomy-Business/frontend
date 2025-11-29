@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Heart, MessageSquare, FileText, User, Building2, Inbox, X, Sparkles, TrendingUp, Clock, CheckCircle2, Camera } from 'lucide-react';
+import { Heart, MessageSquare, FileText, User, Building2, Inbox, X, Sparkles, TrendingUp, Clock, CheckCircle2, Camera, Phone, AlertTriangle, Lock, Mail } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth, getAuthToken } from '@/lib/auth';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -22,6 +23,11 @@ import { useLanguage } from '@/lib/useLanguage';
 import { getAPIBaseURL } from '@/lib/apiConfig';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
+import { PhoneVerificationDialog } from '@/components/PhoneVerificationDialog';
+import { EmailVerificationDialog } from '@/components/EmailVerificationDialog';
+import { EmailChangeDialog } from '@/components/EmailChangeDialog';
+import { PhoneChangeDialog } from '@/components/PhoneChangeDialog';
+import { KYCVerification } from '@/components/KYCVerification';
 
 export default function StudentDashboard() {
   const { user, isAuthenticated, isStudent, refreshUser } = useAuth();
@@ -44,6 +50,10 @@ export default function StudentDashboard() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('favorites');
+  const [phoneVerificationOpen, setPhoneVerificationOpen] = useState(false);
+  const [emailVerificationOpen, setEmailVerificationOpen] = useState(false);
+  const [emailChangeOpen, setEmailChangeOpen] = useState(false);
+  const [phoneChangeOpen, setPhoneChangeOpen] = useState(false);
 
   const { data: favorites, isLoading: favoritesLoading, error: favoritesError } = useQuery<Property[]>({
     queryKey: ['/favorites'],
@@ -143,17 +153,35 @@ export default function StudentDashboard() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: { first_name?: string; last_name?: string; phone?: string; profile_picture?: string }) =>
-      apiRequest('PUT', '/users/profile', data),
-    onSuccess: async () => {
+    mutationFn: (data: { first_name?: string; last_name?: string; email?: string; phone?: string; current_password?: string; new_password?: string; profile_picture?: string }) =>
+      apiRequest('PUT', '/auth/profile', data),
+    onSuccess: async (response) => {
       queryClient.invalidateQueries({ queryKey: ['/auth/profile'] });
       queryClient.invalidateQueries({ queryKey: ['/auth/user'] });
       // Recharger le profil utilisateur pour avoir les dernières données
       await refreshUser();
-      toast({ title: 'Success', description: 'Profile updated successfully' });
+      toast({ 
+        title: 'Succès', 
+        description: response.message || 'Profil mis à jour avec succès' 
+      });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: (data: { current_password: string; new_password: string }) =>
+      apiRequest('PUT', '/auth/profile', { ...data }),
+    onSuccess: async (response) => {
+      await refreshUser();
+      toast({ 
+        title: 'Succès', 
+        description: response.message || 'Mot de passe modifié avec succès' 
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -632,28 +660,325 @@ export default function StudentDashboard() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.email')}</p>
-                    <p className="font-medium">{user?.email}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{user?.email}</p>
+                      <Badge variant={user?.email_verified ? 'default' : 'secondary'} className="gap-1">
+                        {user?.email_verified ? (
+                          <>
+                            <CheckCircle2 className="h-3 w-3" />
+                            Vérifié
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="h-3 w-3" />
+                            Non vérifié
+                          </>
+                        )}
+                      </Badge>
+                    </div>
+                    {!user?.email_verified && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                        onClick={() => setEmailVerificationOpen(true)}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Vérifier mon email
+                      </Button>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.phone')}</p>
-                    <p className="font-medium">{user?.phone || t('dashboard.phone.not_provided')}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{user?.phone || t('dashboard.phone.not_provided')}</p>
+                      {user?.phone && (
+                        <Badge variant={user?.phone_verified ? 'default' : 'secondary'} className="gap-1">
+                          {user?.phone_verified ? (
+                            <>
+                              <CheckCircle2 className="h-3 w-3" />
+                              Vérifié
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle className="h-3 w-3" />
+                              Non vérifié
+                            </>
+                          )}
+                        </Badge>
+                      )}
+                    </div>
+                    {!user?.phone_verified && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                        onClick={() => setPhoneVerificationOpen(true)}
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        {user?.phone ? 'Vérifier mon numéro' : 'Ajouter un numéro'}
+                      </Button>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.account_type')}</p>
                     <Badge>{user?.role}</Badge>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.email_verified')}</p>
-                    <Badge variant={user?.email_verified ? 'default' : 'secondary'}>
-                      {user?.email_verified ? t('dashboard.profile.verified') : t('dashboard.profile.not_verified')}
-                    </Badge>
-                  </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Profile Edit Form */}
+            <ProfileEditForm 
+              user={user}
+              updateProfileMutation={updateProfileMutation}
+              changePasswordMutation={changePasswordMutation}
+              onEmailChange={() => setEmailChangeOpen(true)}
+              onPhoneChange={() => setPhoneChangeOpen(true)}
+            />
+
+            {/* KYC Verification Section */}
+            <KYCVerification />
+            
+            {/* Phone Verification Dialog */}
+            <PhoneVerificationDialog
+              open={phoneVerificationOpen}
+              onClose={() => setPhoneVerificationOpen(false)}
+              onSuccess={() => refreshUser()}
+              currentPhone={user?.phone}
+            />
+            
+            <EmailVerificationDialog
+              open={emailVerificationOpen}
+              onClose={() => setEmailVerificationOpen(false)}
+              onSuccess={() => refreshUser()}
+              currentEmail={user?.email}
+            />
+            
+            <EmailChangeDialog
+              open={emailChangeOpen}
+              onClose={() => setEmailChangeOpen(false)}
+              onSuccess={() => refreshUser()}
+              currentEmail={user?.email}
+            />
+            
+            <PhoneChangeDialog
+              open={phoneChangeOpen}
+              onClose={() => setPhoneChangeOpen(false)}
+              onSuccess={() => refreshUser()}
+              currentPhone={user?.phone}
+            />
           </TabsContent>
         </Tabs>
       </div>
     </MainLayout>
+  );
+}
+
+function ProfileEditForm({ 
+  user, 
+  updateProfileMutation, 
+  changePasswordMutation,
+  onEmailChange,
+  onPhoneChange
+}: { 
+  user: any; 
+  updateProfileMutation: any; 
+  changePasswordMutation: any;
+  onEmailChange: () => void;
+  onPhoneChange: () => void;
+}) {
+  const { t } = useLanguage();
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [profileData, setProfileData] = useState({
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
+  });
+  const [passwordData, setPasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  });
+
+  // Mettre à jour les données du formulaire quand l'utilisateur change
+  useEffect(() => {
+    setProfileData({
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
+    });
+  }, [user]);
+
+  const handleUpdateProfile = () => {
+    updateProfileMutation.mutate(profileData);
+    setEditProfileOpen(false);
+  };
+
+  const handleChangePassword = () => {
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      return;
+    }
+    changePasswordMutation.mutate({
+      current_password: passwordData.current_password,
+      new_password: passwordData.new_password,
+    });
+    setChangePasswordOpen(false);
+    setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Paramètres du compte</CardTitle>
+        <CardDescription>Modifiez vos informations personnelles</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2">
+          <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">Modifier le profil</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Modifier le profil</DialogTitle>
+                <DialogDescription>Mettez à jour vos informations personnelles</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="first_name">{t('dashboard.profile.first_name')}</Label>
+                  <Input
+                    id="first_name"
+                    value={profileData.first_name}
+                    onChange={(e) => setProfileData({ ...profileData, first_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="last_name">{t('dashboard.profile.last_name')}</Label>
+                  <Input
+                    id="last_name"
+                    value={profileData.last_name}
+                    onChange={(e) => setProfileData({ ...profileData, last_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="email"
+                      type="email"
+                      value={user?.email || ''}
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditProfileOpen(false);
+                        onEmailChange();
+                      }}
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Changer
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pour changer votre email, vous devrez confirmer votre identité avec un code envoyé à votre email actuel.
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="phone">{t('dashboard.profile.phone')}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={user?.phone || ''}
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditProfileOpen(false);
+                        onPhoneChange();
+                      }}
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      Changer
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pour changer votre numéro de téléphone, vous devrez confirmer votre identité avec un code envoyé à votre numéro actuel.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditProfileOpen(false)}>Annuler</Button>
+                <Button onClick={handleUpdateProfile} disabled={updateProfileMutation.isPending}>
+                  {updateProfileMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Lock className="h-4 w-4 mr-2" />
+                {t('dashboard.profile.change_password')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{t('dashboard.profile.change_password')}</DialogTitle>
+                <DialogDescription>{t('dashboard.profile.change_password.desc')}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="current_password">{t('dashboard.profile.current_password')}</Label>
+                  <Input
+                    id="current_password"
+                    type="password"
+                    value={passwordData.current_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="new_password">{t('dashboard.profile.new_password')}</Label>
+                  <Input
+                    id="new_password"
+                    type="password"
+                    value={passwordData.new_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="confirm_password">{t('dashboard.profile.confirm_password')}</Label>
+                  <Input
+                    id="confirm_password"
+                    type="password"
+                    value={passwordData.confirm_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
+                  />
+                  {passwordData.new_password && passwordData.confirm_password && passwordData.new_password !== passwordData.confirm_password && (
+                    <p className="text-sm text-destructive mt-1">Les mots de passe ne correspondent pas</p>
+                  )}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setChangePasswordOpen(false)}>{t('common.cancel')}</Button>
+                <Button 
+                  onClick={handleChangePassword} 
+                  disabled={changePasswordMutation.isPending || passwordData.new_password !== passwordData.confirm_password}
+                >
+                  {changePasswordMutation.isPending ? t('dashboard.profile.changing') : t('dashboard.profile.change_password')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

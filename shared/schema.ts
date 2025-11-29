@@ -290,6 +290,78 @@ export const userSchema = z.object({
   created_at: z.string(),
 });
 
+/**
+ * Valide un numéro de téléphone suisse
+ * Formats acceptés: +41XXXXXXXXX, 0041XXXXXXXXX, 0XXXXXXXXX
+ */
+export function isValidSwissPhone(phone: string): boolean {
+  if (!phone || typeof phone !== 'string') {
+    return false;
+  }
+  
+  // Nettoyer le numéro (retirer espaces, tirets, parenthèses)
+  const cleaned = phone.replace(/[\s\-\(\)\.]/g, '');
+  
+  // Patterns valides pour les numéros suisses
+  const swissPatterns = [
+    /^\+41[1-9][0-9]{8}$/,       // +41 suivi de 9 chiffres
+    /^0041[1-9][0-9]{8}$/,       // 0041 suivi de 9 chiffres
+    /^0[1-9][0-9]{8}$/,          // 0 suivi de 9 chiffres
+  ];
+  
+  return swissPatterns.some(pattern => pattern.test(cleaned));
+}
+
+/**
+ * Vérifie que le numéro n'est pas un numéro bidon/test
+ */
+export function isNotFakePhone(phone: string): boolean {
+  if (!phone || typeof phone !== 'string') {
+    return false;
+  }
+  
+  const cleaned = phone.replace(/[\s\-\(\)\.+]/g, '');
+  
+  // Extraire seulement les chiffres significatifs (sans l'indicatif pays)
+  let significantDigits = cleaned;
+  if (significantDigits.startsWith('41')) {
+    significantDigits = significantDigits.substring(2);
+  } else if (significantDigits.startsWith('0041')) {
+    significantDigits = significantDigits.substring(4);
+  } else if (significantDigits.startsWith('0')) {
+    significantDigits = significantDigits.substring(1);
+  }
+  
+  // Vérifier que ce n'est pas trop court
+  if (significantDigits.length < 9) {
+    return false;
+  }
+  
+  // Vérifier que ce n'est pas uniquement des chiffres répétés
+  if (/^(.)\1+$/.test(significantDigits)) {
+    return false;
+  }
+  
+  // Vérifier que ce n'est pas une séquence simple
+  const sequencePatterns = [
+    '123456789', '234567890', '987654321', '098765432', '012345678',
+    '111111111', '222222222', '333333333', '444444444', '555555555',
+    '666666666', '777777777', '888888888', '999999999', '000000000',
+  ];
+  
+  if (sequencePatterns.includes(significantDigits)) {
+    return false;
+  }
+  
+  // Vérifier que le numéro contient au moins 4 chiffres différents
+  const uniqueDigits = new Set(significantDigits);
+  if (uniqueDigits.size < 4) {
+    return false;
+  }
+  
+  return true;
+}
+
 export const registerSchema = z.object({
   email: z.string()
     .email('Adresse email invalide')
@@ -300,7 +372,24 @@ export const registerSchema = z.object({
   first_name: z.string().min(1),
   last_name: z.string().min(1),
   role: z.enum(['student', 'owner']),
-  phone: z.string().optional(),
+  phone: z.string()
+    .optional()
+    .refine((phone) => {
+      // Si le téléphone est vide ou non fourni, c'est ok (optionnel)
+      if (!phone || phone.trim() === '') return true;
+      // Sinon, vérifier le format suisse
+      return isValidSwissPhone(phone);
+    }, {
+      message: 'Format de numéro de téléphone suisse invalide. Utilisez +41 XX XXX XX XX ou 0XX XXX XX XX',
+    })
+    .refine((phone) => {
+      // Si le téléphone est vide ou non fourni, c'est ok
+      if (!phone || phone.trim() === '') return true;
+      // Sinon, vérifier que ce n'est pas un numéro bidon
+      return isNotFakePhone(phone);
+    }, {
+      message: 'Ce numéro de téléphone n\'est pas valide. Veuillez entrer un vrai numéro de téléphone.',
+    }),
   date_of_birth: z.string(),
   terms_accepted: z.boolean(),
 });

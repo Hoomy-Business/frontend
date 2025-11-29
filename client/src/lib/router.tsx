@@ -79,6 +79,12 @@ export const routes: RouteConfig[] = [
     component: createLazyComponent(() => import('@/pages/VerifyEmail'), 'VerifyEmail'),
   },
   {
+    path: '/properties/create',
+    priority: RoutePriority.HIGH,
+    component: createLazyComponent(() => import('@/pages/CreateProperty'), 'CreateProperty'),
+    preloadOn: 'hover',
+  },
+  {
     path: '/properties/:id',
     priority: RoutePriority.HIGH,
     component: createLazyComponent(() => import('@/pages/PropertyDetail'), 'PropertyDetail'),
@@ -100,12 +106,6 @@ export const routes: RouteConfig[] = [
   },
   
   // === MEDIUM PRIORITY (Tier 2) - Lazy loaded ===
-  {
-    path: '/properties/create',
-    priority: RoutePriority.MEDIUM,
-    component: createLazyComponent(() => import('@/pages/CreateProperty'), 'CreateProperty'),
-    preloadOn: 'hover',
-  },
   {
     path: '/properties/:id/edit',
     priority: RoutePriority.MEDIUM,
