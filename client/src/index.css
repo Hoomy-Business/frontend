@@ -2,117 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===========================================
-   PERFORMANCE OPTIMIZATIONS
-   =========================================== */
-
-/* Font smoothing and touch optimizations */
-*,
-*::before,
-*::after {
+/* Performance optimizations */
+* {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+img {
+  content-visibility: auto;
+}
+
+/* Ultra-responsive optimizations */
+* {
+  /* Optimize touch interactions */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Smooth scrolling with momentum on iOS */
+html {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Optimize button interactions */
+button, a {
+  /* Reduce touch delay on mobile */
+  touch-action: manipulation;
+  /* Improve tap responsiveness */
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Content-visibility for lazy rendering - GPU optimized */
-img, video {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 300px;
-}
-
-/* Reduce layout thrashing */
-html {
-  -webkit-overflow-scrolling: touch;
-  text-size-adjust: 100%;
-  /* Prevent font size adjustment on orientation change */
-  -webkit-text-size-adjust: 100%;
-}
-
-/* Smooth scroll only for users who prefer it */
-@media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
-}
-
-/* Accessibility: Reduce motion */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* Touch optimization for interactive elements */
-button, a, [role="button"], [tabindex]:not([tabindex="-1"]) {
-  touch-action: manipulation;
-}
-
-/* Prevent iOS zoom on input focus */
+/* Optimize input interactions */
 input, textarea, select {
   touch-action: manipulation;
+  /* Prevent zoom on focus on iOS */
   font-size: 16px;
 }
 
-/* ===========================================
-   GPU ACCELERATION UTILITIES
-   =========================================== */
-
-/* Use sparingly - only for animated elements */
-.gpu-accelerated {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
-}
-
-/* Optimize images for rendering */
-img {
-  image-rendering: -webkit-optimize-contrast;
-  transform: translateZ(0); /* Force GPU layer */
-}
-
-/* Skeleton loading optimization */
-@keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.skeleton-animated {
-  background: linear-gradient(90deg, 
-    hsl(var(--muted)) 25%, 
-    hsl(var(--muted) / 0.7) 50%, 
-    hsl(var(--muted)) 75%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-loading 1.2s ease-in-out infinite;
-}
-
-/* ===========================================
-   REDUCE CLS (Cumulative Layout Shift)
-   =========================================== */
-
-/* Reserve space for images */
-.aspect-image {
-  aspect-ratio: 4/3;
-  background: hsl(var(--muted));
-}
-
-/* Reserve space for cards */
-.card-placeholder {
-  min-height: 320px;
-}
-
-/* Fixed header height */
-header {
-  min-height: 56px;
-}
-
-@media (min-width: 640px) {
-  header {
-    min-height: 64px;
+@media (max-width: 640px) {
+  input, textarea, select {
+    font-size: 16px; /* Prevents iOS zoom on focus */
   }
 }
 

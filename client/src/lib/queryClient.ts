@@ -1,37 +1,57 @@
-import { QueryClient, QueryFunction, QueryCache, MutationCache } from "@tanstack/react-query";
+import { QueryClient, type QueryFunction } from "@tanstack/react-query";
 import { getAuthToken } from "./auth";
-import { logger } from "./logger";
 import { getAPIBaseURL } from "./apiConfig";
 
 const API_BASE_URL = getAPIBaseURL();
 
-// Helper function to prevent double slashes in URLs
+// ============================================
+// URL HELPERS
+// ============================================
+
 function normalizeUrl(base: string, endpoint: string): string {
-  const baseClean = base.replace(/\/+$/, ''); // Remove trailing slashes
-  const endpointClean = endpoint.replace(/^\/+/, ''); // Remove leading slashes
+  const baseClean = base.replace(/\/+$/, '');
+  const endpointClean = endpoint.replace(/^\/+/, '');
   return `${baseClean}/${endpointClean}`;
 }
 
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    let errorMessage = res.statusText;
-    try {
-      const errorData = await res.json();
-      errorMessage = errorData.error || errorData.message || errorMessage;
-    } catch {
-      // If JSON parsing fails, use status text
-    }
-    
-    const error = new Error(errorMessage);
-    (error as any).status = res.status;
-    throw error;
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+class APIError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code?: string
+  ) {
+    super(message);
+    this.name = 'APIError';
   }
 }
 
-export async function apiRequest<T = any>(
+async function parseErrorResponse(res: Response): Promise<never> {
+  let errorMessage = res.statusText;
+  let errorCode: string | undefined;
+  
+  try {
+    const errorData = await res.json();
+    errorMessage = errorData.error || errorData.message || errorMessage;
+    errorCode = errorData.code;
+  } catch {
+    // JSON parsing failed, use status text
+  }
+  
+  throw new APIError(errorMessage, res.status, errorCode);
+}
+
+// ============================================
+// API REQUEST FUNCTION
+// ============================================
+
+export async function apiRequest<T>(
   method: string,
   url: string,
-  data?: unknown | undefined,
+  data?: unknown,
 ): Promise<T> {
   const token = getAuthToken();
   const headers: HeadersInit = {
@@ -44,54 +64,49 @@ export async function apiRequest<T = any>(
 
   const fullUrl = url.startsWith('http') ? url : normalizeUrl(API_BASE_URL, url);
 
-  // Protection: bloquer les requêtes vers des endpoints invalides
+  // Block invalid endpoints
   if (fullUrl.includes('/properties/create') || fullUrl.includes('/properties/edit')) {
-    logger.error('🚫 BLOCKED invalid API request in queryClient.apiRequest:', fullUrl);
-    throw new Error(`Invalid API endpoint: ${url}. This appears to be a frontend route, not an API endpoint.`);
+    throw new APIError(`Invalid API endpoint: ${url}`, 400, 'INVALID_ENDPOINT');
   }
 
   const res = await fetch(fullUrl, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: 'include', // Include cookies for cross-origin requests
   });
 
-  await throwIfResNotOk(res);
+  if (!res.ok) {
+    return parseErrorResponse(res);
+  }
   
+  // Handle empty responses
   const contentLength = res.headers.get('content-length');
   if (contentLength === '0' || res.status === 204) {
     return {} as T;
   }
 
   const text = await res.text();
-  if (!text) {
-    return {} as T;
-  }
-
-  return JSON.parse(text);
+  return text ? JSON.parse(text) : ({} as T);
 }
+
+// ============================================
+// QUERY FUNCTION FACTORY
+// ============================================
 
 type UnauthorizedBehavior = "returnNull" | "throw";
 
-export const getQueryFn: <T>(options: {
+export function getQueryFn<T>(options: {
   on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey, signal }) => {
-    // Filtrer les valeurs null/undefined de la queryKey
-    const validKey = queryKey.filter(k => k != null && k !== '');
+}): QueryFunction<T> {
+  return async ({ queryKey, signal }) => {
+    // Filter null/undefined values from queryKey
+    const validKey = queryKey.filter((k): k is string | number => k != null && k !== '');
     const endpoint = validKey.join('/');
     
-    // Rejeter les endpoints invalides
+    // Block invalid patterns
     const invalidPatterns = ['/create', '/edit', '/delete', '/update'];
-    const hasInvalidPattern = invalidPatterns.some(pattern => 
-      endpoint.includes(pattern) || endpoint.endsWith(pattern)
-    );
-    
-    if (hasInvalidPattern) {
-      logger.error('🚫 BLOCKED invalid API request:', endpoint);
-      return Promise.reject(new Error(`Invalid API endpoint: ${endpoint}.`));
+    if (invalidPatterns.some(pattern => endpoint.includes(pattern))) {
+      throw new APIError(`Invalid API endpoint: ${endpoint}`, 400, 'INVALID_ENDPOINT');
     }
     
     const token = getAuthToken();
@@ -103,126 +118,69 @@ export const getQueryFn: <T>(options: {
     
     const fullUrl = endpoint.startsWith('http') ? endpoint : normalizeUrl(API_BASE_URL, endpoint);
 
-    if (fullUrl.includes('/properties/create') || fullUrl.includes('/properties/edit')) {
-      return Promise.reject(new Error(`Invalid API endpoint: ${endpoint}.`));
-    }
-
     const res = await fetch(fullUrl, {
       headers,
       signal, // Support query cancellation
-      credentials: 'include', // Include cookies for cross-origin requests
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    if (options.on401 === "returnNull" && res.status === 401) {
+      return null as T;
     }
 
-    await throwIfResNotOk(res);
+    if (!res.ok) {
+      return parseErrorResponse(res);
+    }
     
     const contentLength = res.headers.get('content-length');
     if (contentLength === '0' || res.status === 204) {
-      return {} as any;
+      return {} as T;
     }
 
     const text = await res.text();
-    if (!text) {
-      return {} as any;
-    }
-
-    return JSON.parse(text);
+    return text ? JSON.parse(text) : ({} as T);
   };
+}
 
-// Query cache with error handling
-const queryCache = new QueryCache({
-  onError: (error, query) => {
-    // Always log errors, not just for queries that have been fetched
-    console.error('Query error:', error);
-    console.error('Query key:', query.queryKey);
-    console.error('Query state:', query.state);
-    
-    // Store error in window for debugging
-    if (typeof window !== 'undefined') {
-      (window as any).__lastQueryError = {
-        error: error instanceof Error ? {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-        } : error,
-        queryKey: query.queryKey,
-        timestamp: new Date().toISOString(),
-      };
-    }
-    
-    logger.error('Query error:', error);
-  },
-});
-
-// Mutation cache with optimistic update support
-const mutationCache = new MutationCache({
-  onError: (error, variables, context, mutation) => {
-    console.error('Mutation error:', error);
-    console.error('Mutation options:', mutation.options);
-    
-    // Store error in window for debugging
-    if (typeof window !== 'undefined') {
-      (window as any).__lastMutationError = {
-        error: error instanceof Error ? {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-        } : error,
-        timestamp: new Date().toISOString(),
-      };
-    }
-    
-    logger.error('Mutation error:', error);
-  },
-});
+// ============================================
+// QUERY CLIENT CONFIGURATION
+// ============================================
 
 export const queryClient = new QueryClient({
-  queryCache,
-  mutationCache,
   defaultOptions: {
     queries: {
       // Require explicit queryFn for safety
       queryFn: async ({ queryKey }) => {
-        const keyStr = JSON.stringify(queryKey);
-        logger.error('❌ Query without explicit queryFn:', keyStr);
-        throw new Error(`Query missing explicit queryFn. QueryKey: ${keyStr}.`);
+        throw new Error(`Query missing explicit queryFn. QueryKey: ${JSON.stringify(queryKey)}`);
       },
-      // Performance optimizations
-      refetchInterval: false,
+      
+      // Refetch settings
       refetchOnWindowFocus: false,
-      refetchOnReconnect: 'always',
+      refetchOnReconnect: true,
       refetchOnMount: false,
+      refetchInterval: false,
       
-      // Caching strategy
-      staleTime: 1000 * 60 * 10, // 10 minutes - data considered fresh
-      gcTime: 1000 * 60 * 60, // 1 hour - keep in cache
+      // Cache settings - optimized for performance
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 30, // 30 minutes garbage collection
       
-      // Structural sharing for performance
+      // Structural sharing for memoization
       structuralSharing: true,
       
-      // Network mode for better offline support
-      networkMode: 'offlineFirst',
-      
-      // Retry logic
+      // Smart retry logic
       retry: (failureCount, error) => {
-        // Don't retry on client errors
-        if (error instanceof Error) {
-          const message = error.message.toLowerCase();
-          if (message.includes('401') || message.includes('403') || message.includes('404')) {
-            return false;
-          }
+        // Don't retry client errors
+        if (error instanceof APIError) {
+          if (error.status >= 400 && error.status < 500) return false;
         }
         // Retry network errors up to 2 times
         return failureCount < 2;
       },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
       
-      // Placeholder data during loading
-      placeholderData: (previousData: unknown) => previousData,
+      // Network mode
+      networkMode: 'offlineFirst',
     },
+    
     mutations: {
       retry: false,
       gcTime: 0,
@@ -231,27 +189,14 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Prefetch helper with deduplication
-export function prefetchQuery<T>(
-  queryKey: string[],
-  queryFn: () => Promise<T>,
-  staleTime = 1000 * 60 * 5
-) {
-  return queryClient.prefetchQuery({
-    queryKey,
-    queryFn,
-    staleTime,
-  });
-}
+// ============================================
+// QUERY INVALIDATION HELPERS
+// ============================================
 
-// Invalidate related queries helper
-export function invalidateQueries(patterns: string[]) {
-  patterns.forEach(pattern => {
-    queryClient.invalidateQueries({
-      predicate: (query) => {
-        const key = query.queryKey[0];
-        return typeof key === 'string' && key.includes(pattern);
-      },
-    });
-  });
-}
+export const invalidateQueries = {
+  properties: () => queryClient.invalidateQueries({ queryKey: ['/properties'] }),
+  conversations: () => queryClient.invalidateQueries({ queryKey: ['/conversations'] }),
+  contracts: () => queryClient.invalidateQueries({ queryKey: ['/contracts'] }),
+  requests: () => queryClient.invalidateQueries({ queryKey: ['/requests'] }),
+  user: () => queryClient.invalidateQueries({ queryKey: ['/auth'] }),
+};

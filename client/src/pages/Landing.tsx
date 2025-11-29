@@ -75,7 +75,6 @@ export default function Landing() {
   return (
     <MainLayout>
       <div className="relative overflow-hidden min-h-screen sm:min-h-[600px] md:min-h-screen">
-        {/* Optimized hero background with LCP priority */}
         {!videoError ? (
           <video
             autoPlay
@@ -83,31 +82,27 @@ export default function Landing() {
             muted
             playsInline
             preload="auto"
-            poster="https://images.unsplash.com/photo-1531971589569-0d9370cbe1e5?w=1200&h=800&fit=crop&q=75&auto=format"
             className="absolute inset-0 w-full h-full object-cover z-0"
-            style={{ minHeight: '100vh', contentVisibility: 'auto' }}
-            onError={() => setVideoError(true)}
+            style={{ minHeight: '100vh' }}
+            onError={(e) => {
+              console.error('Video loading error:', e);
+              setVideoError(true);
+            }}
+            onLoadedMetadata={() => {
+              // Vidéo chargée avec succès
+              console.log('Video metadata loaded successfully');
+            }}
           >
             <source src="/video/background.webm" type="video/webm" />
             <source src="/video/background.mp4" type="video/mp4" />
           </video>
         ) : (
-          <picture className="absolute inset-0 z-0">
-            <source
-              srcSet="https://images.unsplash.com/photo-1531971589569-0d9370cbe1e5?w=640&h=480&fit=crop&q=75&auto=format 640w,
-                      https://images.unsplash.com/photo-1531971589569-0d9370cbe1e5?w=1024&h=768&fit=crop&q=75&auto=format 1024w,
-                      https://images.unsplash.com/photo-1531971589569-0d9370cbe1e5?w=1920&h=1080&fit=crop&q=80&auto=format 1920w"
-              sizes="100vw"
-              type="image/webp"
-            />
-            <img 
-              src="https://images.unsplash.com/photo-1531971589569-0d9370cbe1e5?w=1920&h=1080&fit=crop&q=80"
-              alt=""
-              className="w-full h-full object-cover"
-              loading="eager"
-              decoding="async"
-            />
-          </picture>
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center"
+            style={{
+              backgroundImage: 'linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url(https://images.unsplash.com/photo-1531971589569-0d9370cbe1e5?w=1920&h=1080&fit=crop&q=80)',
+            }}
+          />
         )}
         <div 
           className="absolute inset-0 z-[1] bg-gradient-to-b from-black/40 to-black/60"
@@ -191,16 +186,17 @@ export default function Landing() {
             {featuredCities.map((city) => (
               <Link key={city.code} href={`/properties?canton=${city.code}`}>
                 <Card className="overflow-hidden hover-elevate cursor-pointer" data-testid={`card-city-${city.code}`}>
-                  <div className="relative aspect-[3/2] bg-muted">
+                  <div className="relative aspect-[3/2]">
                     <img 
                       src={city.image} 
                       alt={getCityName(city.name)}
-                      width={400}
-                      height={267}
-                      className="w-full h-full object-cover transition-transform duration-200 hover:scale-105 gpu-accelerated"
+                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                       loading="lazy"
                       decoding="async"
+                      // @ts-expect-error - fetchpriority is a valid HTML attribute but TypeScript types don't include it yet
+                      fetchpriority="low"
                       onError={(e) => {
+                        // Fallback to a placeholder if image fails to load
                         e.currentTarget.src = 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&h=600&fit=crop&q=80';
                       }}
                     />

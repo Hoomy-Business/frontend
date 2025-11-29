@@ -182,9 +182,13 @@
     <div id="root"></div>
     
     <script>
-      // Performance: Add loaded class and remove initial loader ASAP
+      // App version for cache busting
+      window.APP_VERSION = 'v8-' + Date.now();
+      
+      // CRITICAL: Clear stale caches and service workers on load errors
       (function() {
         var loader = document.getElementById('initial-loader');
+        var hasError = false;
         
         function hideLoader() {
           document.body.classList.add('loaded');
@@ -194,9 +198,90 @@
           }
         }
         
-        // Hide loader when React mounts or after timeout
         window.__hideLoader = hideLoader;
         
+        // Clear ALL caches and service workers
+        function clearAllCaches() {
+          console.log('[Hoomy] Clearing all caches...');
+          var promises = [];
+          
+          // Clear service worker caches
+          if ('caches' in window) {
+            promises.push(
+              caches.keys().then(function(names) {
+                return Promise.all(names.map(function(name) {
+                  console.log('[Hoomy] Deleting cache:', name);
+                  return caches.delete(name);
+                }));
+              })
+            );
+          }
+          
+          // Unregister all service workers
+          if ('serviceWorker' in navigator) {
+            promises.push(
+              navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                return Promise.all(registrations.map(function(reg) {
+                  console.log('[Hoomy] Unregistering service worker');
+                  return reg.unregister();
+                }));
+              })
+            );
+          }
+          
+          return Promise.all(promises);
+        }
+        
+        // Handle module load errors - clear cache and reload
+        function handleLoadError(error) {
+          if (hasError) return; // Prevent multiple reloads
+          hasError = true;
+          
+          var errorMsg = error && error.message ? error.message : String(error);
+          console.error('[Hoomy] Load error:', errorMsg);
+          
+          // Check if we already tried to fix this
+          var fixAttempted = sessionStorage.getItem('hoomy_cache_fix_' + window.APP_VERSION);
+          
+          if (!fixAttempted) {
+            sessionStorage.setItem('hoomy_cache_fix_' + window.APP_VERSION, 'true');
+            console.log('[Hoomy] Clearing cache and reloading...');
+            
+            clearAllCaches().finally(function() {
+              // Force reload from server
+              window.location.reload(true);
+            });
+          } else {
+            // Show error UI if already tried
+            hideLoader();
+            document.getElementById('root').innerHTML = 
+              '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center;font-family:Inter,system-ui,sans-serif">' +
+              '<h1 style="margin-bottom:16px;color:#1f2937">Erreur de chargement</h1>' +
+              '<p style="color:#6b7280;margin-bottom:24px">Le site n\'a pas pu charger correctement.</p>' +
+              '<button onclick="sessionStorage.clear();localStorage.clear();location.reload(true)" ' +
+              'style="background:#2563eb;color:white;padding:12px 24px;border:none;border-radius:8px;cursor:pointer;font-size:16px">' +
+              'Recharger la page</button></div>';
+          }
+        }
+        
+        // Listen for script loading errors
+        window.addEventListener('error', function(event) {
+          if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
+            handleLoadError(new Error('Failed to load: ' + (event.target.src || event.target.href)));
+          }
+        }, true);
+        
+        // Listen for unhandled promise rejections (module loading errors)
+        window.addEventListener('unhandledrejection', function(event) {
+          if (event.reason && event.reason.message && 
+              (event.reason.message.includes('Failed to fetch dynamically imported module') ||
+               event.reason.message.includes('Loading chunk') ||
+               event.reason.message.includes('Loading module'))) {
+            handleLoadError(event.reason);
+          }
+        });
+        
+        // Hide loader on successful load
         if (document.readyState === 'complete') {
           setTimeout(hideLoader, 100);
         } else {
@@ -208,9 +293,6 @@
         // Fallback: hide after 3s max
         setTimeout(hideLoader, 3000);
       })();
-      
-      // Note: Service worker registration is handled in main.tsx
-      // The service worker will automatically update when a new version is deployed
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

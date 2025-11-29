@@ -72,46 +72,43 @@ export default function StudentDashboard() {
       }
       
       const data = await res.json();
-      // Gérer la nouvelle structure avec pagination
-      if (Array.isArray(data)) {
-        return data;
-      }
-      // Si c'est un objet avec pagination, extraire le tableau favorites
-      return data?.favorites || [];
+      return Array.isArray(data) ? data : [];
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 15, // 15 minutes
   });
 
-  const { data: contracts, isLoading: contractsLoading } = useQuery<{ success: boolean; contracts: Contract[] }, Error, Contract[]>({
+  const { data: contractsData, isLoading: contractsLoading } = useQuery<any>({
     queryKey: ['/contracts/my-contracts'],
     queryFn: async () => {
-      return apiRequest<{ success: boolean; contracts: Contract[] }>('GET', '/contracts/my-contracts');
+      const response = await apiRequest<any>('GET', '/contracts/my-contracts');
+      // Gérer les deux formats: { contracts: [...] } ou tableau direct
+      if (Array.isArray(response)) return response;
+      if (response?.contracts && Array.isArray(response.contracts)) return response.contracts;
+      return [];
     },
-    select: (data) => data?.contracts || [],
     staleTime: 1000 * 60 * 5, // 5 minutes - contracts don't change often
     gcTime: 1000 * 60 * 15, // 15 minutes
   });
 
-  const { data: conversationsData, isLoading: conversationsLoading } = useQuery<{ conversations: Conversation[]; pagination?: any } | Conversation[]>({
+  // S'assurer que contracts est toujours un tableau
+  const contracts: Contract[] = Array.isArray(contractsData) ? contractsData : [];
+
+  const { data: conversationsData, isLoading: conversationsLoading } = useQuery<any>({
     queryKey: ['/conversations'],
     queryFn: async () => {
       const response = await apiRequest<any>('GET', '/conversations');
-      // Gérer la compatibilité : si c'est un tableau (ancien format), le convertir
-      if (Array.isArray(response)) {
-        return response;
-      }
-      // Sinon, c'est déjà le nouveau format avec pagination
-      return response;
+      // Gérer les deux formats: tableau direct ou { conversations: [...] }
+      if (Array.isArray(response)) return response;
+      if (response?.conversations && Array.isArray(response.conversations)) return response.conversations;
+      return [];
     },
     staleTime: 1000 * 30, // 30 seconds - conversations can change frequently
     gcTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Extraire le tableau conversations de la réponse (gère ancien et nouveau format)
-  const conversations = Array.isArray(conversationsData) 
-    ? conversationsData 
-    : (conversationsData?.conversations || []);
+  // S'assurer que conversations est toujours un tableau
+  const conversations: Conversation[] = Array.isArray(conversationsData) ? conversationsData : [];
 
   const removeFavoriteMutation = useMutation({
     mutationFn: (propertyId: number) => apiRequest('DELETE', `/favorites/${propertyId}`),
@@ -120,14 +117,21 @@ export default function StudentDashboard() {
     },
   });
 
-  const { data: sentRequests, isLoading: sentRequestsLoading } = useQuery<any[]>({
+  const { data: sentRequestsData, isLoading: sentRequestsLoading } = useQuery<any>({
     queryKey: ['/requests/sent'],
     queryFn: async () => {
-      return apiRequest<any[]>('GET', '/requests/sent');
+      const response = await apiRequest<any>('GET', '/requests/sent');
+      // Gérer les deux formats: tableau direct ou { requests: [...] }
+      if (Array.isArray(response)) return response;
+      if (response?.requests && Array.isArray(response.requests)) return response.requests;
+      return [];
     },
     staleTime: 1000 * 30, // 30 seconds - requests can change frequently
     gcTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  // S'assurer que sentRequests est toujours un tableau
+  const sentRequests = Array.isArray(sentRequestsData) ? sentRequestsData : [];
 
   const deleteRequestMutation = useMutation({
     mutationFn: (requestId: number) => apiRequest('DELETE', `/requests/${requestId}`),

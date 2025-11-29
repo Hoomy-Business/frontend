@@ -85,25 +85,37 @@ export default function Properties() {
     return () => clearTimeout(timeoutId);
   }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, debouncedSearchQuery, setLocation, search]);
 
-  const { data: cantons } = useQuery<Canton[]>({
+  const { data: cantonsData } = useQuery<any>({
     queryKey: ['/locations/cantons'],
     queryFn: async () => {
-      return apiRequest<Canton[]>('GET', '/locations/cantons');
+      const response = await apiRequest<any>('GET', '/locations/cantons');
+      if (Array.isArray(response)) return response;
+      if (response?.cantons && Array.isArray(response.cantons)) return response.cantons;
+      return [];
     },
     staleTime: 1000 * 60 * 60, // 1 hour - cantons are very static
     gcTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 
-  const { data: cities } = useQuery<City[]>({
+  // S'assurer que cantons est toujours un tableau
+  const cantons: Canton[] = Array.isArray(cantonsData) ? cantonsData : [];
+
+  const { data: citiesData } = useQuery<any>({
     queryKey: [`/locations/cities/${selectedCanton}`],
     enabled: !!selectedCanton && selectedCanton !== '___all___',
     queryFn: async () => {
       if (!selectedCanton || selectedCanton === '___all___') throw new Error('Canton required');
-      return apiRequest<City[]>('GET', `/locations/cities?canton=${selectedCanton}`);
+      const response = await apiRequest<any>('GET', `/locations/cities?canton=${selectedCanton}`);
+      if (Array.isArray(response)) return response;
+      if (response?.cities && Array.isArray(response.cities)) return response.cities;
+      return [];
     },
     staleTime: 1000 * 60 * 60, // 1 hour - cities are very static
     gcTime: 1000 * 60 * 60 * 24, // 24 hours
   });
+
+  // S'assurer que cities est toujours un tableau
+  const cities: City[] = Array.isArray(citiesData) ? citiesData : [];
 
   const queryParams = useMemo(() => {
     const filters: Record<string, string> = {};
@@ -117,7 +129,7 @@ export default function Properties() {
     return queryString ? `?${queryString}` : '';
   }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, debouncedSearchQuery]);
   
-  const { data: propertiesData, isLoading, error } = useQuery<{ properties: Property[]; pagination?: any } | Property[]>({
+  const { data: propertiesData, isLoading, error } = useQuery<any>({
     queryKey: ['/properties', queryParams],
     // S'assurer que queryParams ne contient jamais "create"
     enabled: !queryParams.includes('create'),
@@ -144,28 +156,24 @@ export default function Properties() {
         throw new Error(errorData.error || errorData.message || res.statusText);
       }
       
-      const response = await res.json();
-      // Gérer la compatibilité : si c'est un tableau (ancien format), le convertir
-      if (Array.isArray(response)) {
-        return response;
-      }
-      // Sinon, c'est le nouveau format avec pagination
-      return response;
+      const data = await res.json();
+      // Gérer les deux formats: tableau direct ou { properties: [...] }
+      if (Array.isArray(data)) return data;
+      if (data?.properties && Array.isArray(data.properties)) return data.properties;
+      return [];
     },
     staleTime: 1000 * 60 * 3, // 3 minutes - properties can change but not too frequently
     gcTime: 1000 * 60 * 15, // 15 minutes - keep in cache longer
   });
 
-  // Extraire le tableau properties de la réponse (gère ancien et nouveau format)
-  const properties = Array.isArray(propertiesData) 
-    ? propertiesData 
-    : (propertiesData?.properties || []);
+  // S'assurer que properties est toujours un tableau
+  const properties: Property[] = Array.isArray(propertiesData) ? propertiesData : [];
 
-  // Fetch favorites if user is authenticated and is a student
+  // Fetch favorites for all authenticated users
   // Always call useQuery but enable it conditionally
   const { data: favorites, error: favoritesError } = useQuery<Property[]>({
     queryKey: ['/favorites'],
-    enabled: isAuthenticated && isStudent,
+    enabled: isAuthenticated,
     retry: false,
     queryFn: async () => {
       const token = getAuthToken();
@@ -188,12 +196,7 @@ export default function Properties() {
       }
       
       const data = await res.json();
-      // Gérer la nouvelle structure avec pagination
-      if (Array.isArray(data)) {
-        return data;
-      }
-      // Si c'est un objet avec pagination, extraire le tableau favorites
-      return data?.favorites || [];
+      return Array.isArray(data) ? data : [];
     },
     staleTime: 1000 * 60 * 10, // 10 minutes - favorites don't change often
     gcTime: 1000 * 60 * 30, // 30 minutes - keep favorites in cache longer
@@ -227,15 +230,8 @@ export default function Properties() {
         let property: Property | undefined;
         
         for (const query of cache.getAll()) {
-          if (query.queryKey[0] === '/properties') {
-            const data = query.state.data;
-            let propertiesArray: Property[] = [];
-            if (Array.isArray(data)) {
-              propertiesArray = data;
-            } else if (data && typeof data === 'object' && 'properties' in data) {
-              propertiesArray = (data as any).properties || [];
-            }
-            property = propertiesArray.find(p => p.id === propertyId);
+          if (query.queryKey[0] === '/properties' && Array.isArray(query.state.data)) {
+            property = (query.state.data as Property[]).find(p => p.id === propertyId);
             if (property) break;
           }
         }
@@ -297,9 +293,9 @@ export default function Properties() {
     },
   });
 
-  // Handler to toggle favorite status
+  // Handler to toggle favorite status - available to all authenticated users
   const handleFavoriteToggle = useCallback((propertyId: number) => {
-    if (!isAuthenticated || !isStudent) {
+    if (!isAuthenticated) {
       // Redirect to login if not authenticated
       setLocation('/login?redirect=/properties');
       return;
@@ -310,7 +306,7 @@ export default function Properties() {
     } else {
       addFavoriteMutation.mutate(propertyId);
     }
-  }, [isAuthenticated, isStudent, favoriteIds, addFavoriteMutation, removeFavoriteMutation, setLocation]);
+  }, [isAuthenticated, favoriteIds, addFavoriteMutation, removeFavoriteMutation, setLocation]);
 
   const filteredProperties = useMemo(() => {
     if (!properties) return [];
@@ -367,7 +363,7 @@ export default function Properties() {
           <label className="text-sm font-medium mb-2 block">{t('properties.city')}</label>
           <div className="space-y-2">
             <CityAutocomplete
-              value={selectedCity !== '___all___' && selectedCity && cities ? cities.find(c => c.id.toString() === selectedCity)?.name || '' : ''}
+              value={selectedCity !== '___all___' && selectedCity && Array.isArray(cities) && cities.length > 0 ? cities.find(c => c.id.toString() === selectedCity)?.name || '' : ''}
               onChange={(value) => {
                 if (!value) {
                   setSelectedCity('___all___');
@@ -513,7 +509,7 @@ export default function Properties() {
                 <Filter className="h-3 w-3" />
                 {activeFiltersCount} filtre{activeFiltersCount > 1 ? 's' : ''} actif{activeFiltersCount > 1 ? 's' : ''}
               </Badge>
-              {selectedCanton && selectedCanton !== '___all___' && cantons && (
+              {selectedCanton && selectedCanton !== '___all___' && Array.isArray(cantons) && cantons.length > 0 && (
                 <Badge variant="outline" className="gap-1">
                   {getCantonName(cantons.find(c => c.code === selectedCanton) || { code: selectedCanton, name_fr: selectedCanton, name_de: selectedCanton })}
                   <button
@@ -524,7 +520,7 @@ export default function Properties() {
                   </button>
                 </Badge>
               )}
-              {selectedCity && selectedCity !== '___all___' && cities && (
+              {selectedCity && selectedCity !== '___all___' && Array.isArray(cities) && cities.length > 0 && (
                 <Badge variant="outline" className="gap-1">
                   {getCityName(cities.find(c => c.id.toString() === selectedCity)?.name || '')}
                   <button
@@ -716,7 +712,7 @@ export default function Properties() {
                   <PropertyCard 
                     key={property.id} 
                     property={property}
-                    isFavorited={isAuthenticated && isStudent ? favoriteIds.has(property.id) : false}
+                    isFavorited={isAuthenticated ? favoriteIds.has(property.id) : false}
                     onFavoriteToggle={handleFavoriteToggle}
                   />
                 ))}

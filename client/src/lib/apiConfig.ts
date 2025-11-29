@@ -8,16 +8,21 @@ export function getAPIBaseURL(): string {
     return import.meta.env.VITE_API_BASE_URL;
   }
   
-  // En développement, utiliser le backend de production (https://backend.hoomy.site/api)
-  if (import.meta.env.DEV) {
-    return 'https://backend.hoomy.site/api';
-  }
-  
   // En production (hoomy.site), utiliser le backend de production
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     if (hostname === 'hoomy.site' || hostname === 'www.hoomy.site') {
       return 'https://backend.hoomy.site/api';
+    }
+    
+    // En développement local
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:3000/api';
+    }
+    
+    // LAN (développement)
+    if (import.meta.env.DEV) {
+      return `http://${hostname}:3000/api`;
     }
   }
   

@@ -1,8 +1,9 @@
-import { memo, useState, useEffect, useRef, useCallback, startTransition } from 'react';
+import { memo, useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'wouter';
 import { MapPin, Home, Bath, Maximize, Heart } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { Property } from '@shared/schema';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 import { usePrefetchProperty } from '@/hooks/use-prefetch';
@@ -72,10 +73,7 @@ export const PropertyCard = memo(function PropertyCard({ property, onFavoriteTog
   }, [property.id, prefetchProperty]);
 
   const handleImageLoad = useCallback(() => {
-    // Use startTransition for non-urgent state update
-    startTransition(() => {
-      setImageLoaded(true);
-    });
+    setImageLoaded(true);
   }, []);
 
   const handleImageError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -86,12 +84,10 @@ export const PropertyCard = memo(function PropertyCard({ property, onFavoriteTog
       setImageLoaded(true);
       return;
     }
-    startTransition(() => {
-      setImageError(true);
-      setImageLoaded(true);
-    });
+    setImageError(true);
+    setImageLoaded(true);
     // Utiliser un placeholder SVG inline pour éviter les requêtes HTTP
-    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="14"%3EImage non disponible%3C/text%3E%3C/svg%3E';
+    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16"%3EImage non disponible%3C/text%3E%3C/svg%3E';
   }, []);
 
   return (
@@ -112,13 +108,13 @@ export const PropertyCard = memo(function PropertyCard({ property, onFavoriteTog
                 ref={imageRef}
                 src={imageError ? 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="16"%3EImage non disponible%3C/text%3E%3C/svg%3E' : imageUrl}
                 alt={property.title}
-                width={400}
-                height={300}
                 className={`w-full h-full object-cover transition-all duration-200 group-hover:scale-105 will-change-transform ${
                   imageLoaded ? 'opacity-100' : 'opacity-0'
                 }`}
                 loading="lazy"
                 decoding="async"
+                // @ts-expect-error - fetchpriority is a valid HTML attribute but TypeScript types don't include it yet
+                fetchpriority="low"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 onLoad={handleImageLoad}
                 onError={handleImageError}

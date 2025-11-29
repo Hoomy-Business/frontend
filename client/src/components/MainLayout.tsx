@@ -1,4 +1,3 @@
-import { memo, useMemo, useCallback } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Home, Search, MessageSquare, User, LogOut, FileText, Shield, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,45 +16,10 @@ import { useLanguage } from '@/lib/useLanguage';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 import { formatUserDisplayName, getUserProfilePicture, getUserInitials, isUserDeleted } from '@/lib/userUtils';
 
-export const MainLayout = memo(function MainLayout({ children }: { children: React.ReactNode }) {
+export function MainLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, isAuthenticated, isStudent, isOwner } = useAuth();
   const { t } = useLanguage();
-
-  // Memoize computed values
-  const profilePicture = useMemo(() => 
-    user ? getUserProfilePicture(user) : null, 
-    [user]
-  );
-  const normalizedProfilePicture = useMemo(() => 
-    profilePicture ? normalizeImageUrl(profilePicture) : undefined, 
-    [profilePicture]
-  );
-  const userInitials = useMemo(() => 
-    user ? getUserInitials(user) : '', 
-    [user]
-  );
-  const userDisplayName = useMemo(() => 
-    user ? formatUserDisplayName(user) : '', 
-    [user]
-  );
-  const userEmail = useMemo(() => 
-    user ? (isUserDeleted(user) ? 'Compte supprimé' : user.email) : '', 
-    [user]
-  );
-
-  // Memoize location checks
-  const isPropertiesPage = useMemo(() => location === '/properties', [location]);
-  const isStudentDashboard = useMemo(() => location.startsWith('/dashboard/student'), [location]);
-  const isOwnerDashboard = useMemo(() => location.startsWith('/dashboard/owner'), [location]);
-  const isAdminDashboard = useMemo(() => location.startsWith('/admin/dashboard'), [location]);
-  const isMessagesPage = useMemo(() => location === '/messages', [location]);
-  const isUserAdmin = useMemo(() => user?.role === 'admin', [user?.role]);
-
-  // Memoize handlers
-  const handleLogout = useCallback(() => {
-    logout();
-  }, [logout]);
 
   // Utiliser la fonction helper pour gérer les utilisateurs supprimés
 
@@ -75,7 +39,7 @@ export const MainLayout = memo(function MainLayout({ children }: { children: Rea
                 <Link href="/properties" data-testid="link-properties">
                   <Button 
                     variant="ghost" 
-                    className={isPropertiesPage ? 'bg-accent' : ''}
+                    className={location === '/properties' ? 'bg-accent' : ''}
                     data-testid="button-browse"
                   >
                     <Search className="h-4 w-4 mr-2" />
@@ -94,7 +58,7 @@ export const MainLayout = memo(function MainLayout({ children }: { children: Rea
                       <Button 
                         variant="ghost"
                         size="sm"
-                        className={`${isStudentDashboard ? 'bg-accent' : ''} hidden sm:flex active:scale-95 transition-transform duration-100`}
+                        className={`${location.startsWith('/dashboard/student') ? 'bg-accent' : ''} hidden sm:flex active:scale-95 transition-transform duration-100`}
                       >
                         <User className="h-4 w-4 mr-1.5 sm:mr-2" />
                         <span className="hidden lg:inline">{t('nav.dashboard')}</span>
@@ -107,7 +71,7 @@ export const MainLayout = memo(function MainLayout({ children }: { children: Rea
                       <Button 
                         variant="ghost"
                         size="sm"
-                        className={`${isOwnerDashboard ? 'bg-accent' : ''} hidden sm:flex active:scale-95 transition-transform duration-100`}
+                        className={`${location.startsWith('/dashboard/owner') ? 'bg-accent' : ''} hidden sm:flex active:scale-95 transition-transform duration-100`}
                       >
                         <Building2 className="h-4 w-4 mr-1.5 sm:mr-2" />
                         <span className="hidden lg:inline">{t('nav.dashboard')}</span>
@@ -115,12 +79,12 @@ export const MainLayout = memo(function MainLayout({ children }: { children: Rea
                     </Link>
                   )}
 
-                  {isUserAdmin && (
+                  {user.role === 'admin' && (
                     <Link href="/admin/dashboard" data-testid="link-dashboard-admin">
                       <Button 
                         variant="ghost"
                         size="sm"
-                        className={`${isAdminDashboard ? 'bg-accent' : ''} hidden sm:flex active:scale-95 transition-transform duration-100 border-primary/20`}
+                        className={`${location.startsWith('/admin/dashboard') ? 'bg-accent' : ''} hidden sm:flex active:scale-95 transition-transform duration-100 border-primary/20`}
                       >
                         <Shield className="h-4 w-4 mr-1.5 sm:mr-2" />
                         <span className="hidden lg:inline">Admin</span>
@@ -132,7 +96,7 @@ export const MainLayout = memo(function MainLayout({ children }: { children: Rea
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className={`${isMessagesPage ? 'bg-accent' : ''} h-9 w-9 sm:h-10 sm:w-10 active:scale-95 transition-transform duration-100`}
+                      className={`${location === '/messages' ? 'bg-accent' : ''} h-9 w-9 sm:h-10 sm:w-10 active:scale-95 transition-transform duration-100`}
                     >
                       <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
                     </Button>
@@ -142,18 +106,18 @@ export const MainLayout = memo(function MainLayout({ children }: { children: Rea
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={normalizedProfilePicture} />
+                          <AvatarImage src={getUserProfilePicture(user) ? normalizeImageUrl(getUserProfilePicture(user)!) : undefined} />
                           <AvatarFallback className="bg-primary text-primary-foreground">
-                            {userInitials}
+                            {getUserInitials(user)}
                           </AvatarFallback>
                         </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                       <div className="px-2 py-2">
-                        <p className="text-sm font-medium">{userDisplayName}</p>
+                        <p className="text-sm font-medium">{formatUserDisplayName(user)}</p>
                         <p className="text-xs text-muted-foreground">
-                          {userEmail}
+                          {isUserDeleted(user) ? 'Compte supprimé' : user.email}
                         </p>
                       </div>
                       <DropdownMenuSeparator />
@@ -182,7 +146,7 @@ export const MainLayout = memo(function MainLayout({ children }: { children: Rea
                           <DropdownMenuSeparator />
                         </>
                       )}
-                      {isUserAdmin && (
+                      {user.role === 'admin' && (
                         <>
                           <Link href="/admin/dashboard" data-testid="link-dashboard-admin-mobile">
                             <DropdownMenuItem className="cursor-pointer">
@@ -194,7 +158,7 @@ export const MainLayout = memo(function MainLayout({ children }: { children: Rea
                         </>
                       )}
                       <DropdownMenuItem 
-                        onClick={handleLogout} 
+                        onClick={logout} 
                         className="cursor-pointer text-destructive focus:text-destructive"
                         data-testid="button-logout"
                       >
@@ -269,4 +233,4 @@ export const MainLayout = memo(function MainLayout({ children }: { children: Rea
       </footer>
     </div>
   );
-});
+}

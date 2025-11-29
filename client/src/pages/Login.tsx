@@ -42,7 +42,7 @@ export default function Login() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: (data: LoginInput) => apiRequest<AuthResponse>('POST', '/auth/login', data),
+    mutationFn: (data: LoginInput) => apiRequest<AuthResponse>('POST', '/login', data),
     onSuccess: (data) => {
       // Mettre à jour l'état d'authentification
       login(data.token, data.user);
