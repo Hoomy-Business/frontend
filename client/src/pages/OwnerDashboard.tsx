@@ -28,6 +28,7 @@ import { formatUserDisplayName } from '@/lib/userUtils';
 import { PhoneVerificationDialog } from '@/components/PhoneVerificationDialog';
 import { EmailVerificationDialog } from '@/components/EmailVerificationDialog';
 import { EmailChangeDialog } from '@/components/EmailChangeDialog';
+import { PhoneChangeDialog } from '@/components/PhoneChangeDialog';
 
 export default function OwnerDashboard() {
   const { user, isAuthenticated, isOwner, refreshUser } = useAuth();
@@ -53,6 +54,7 @@ export default function OwnerDashboard() {
   const [phoneVerificationOpen, setPhoneVerificationOpen] = useState(false);
   const [emailVerificationOpen, setEmailVerificationOpen] = useState(false);
   const [emailChangeOpen, setEmailChangeOpen] = useState(false);
+  const [phoneChangeOpen, setPhoneChangeOpen] = useState(false);
 
   const { data: propertiesData, isLoading: propertiesLoading, error: propertiesError } = useQuery<{ properties: Property[]; pagination?: any }>({
     queryKey: ['/properties/my-properties'],
@@ -760,6 +762,7 @@ export default function OwnerDashboard() {
                   changePasswordMutation={changePasswordMutation}
                   onPhotoUpload={handlePhotoUpload}
                   onEmailChange={() => setEmailChangeOpen(true)}
+                  onPhoneChange={() => setPhoneChangeOpen(true)}
                 />
 
                 <Separator />
@@ -847,6 +850,13 @@ export default function OwnerDashboard() {
           onSuccess={() => refreshUser()}
           currentEmail={user?.email}
         />
+        
+        <PhoneChangeDialog
+          open={phoneChangeOpen}
+          onClose={() => setPhoneChangeOpen(false)}
+          onSuccess={() => refreshUser()}
+          currentPhone={user?.phone}
+        />
       </div>
     </MainLayout>
   );
@@ -857,13 +867,15 @@ function ProfileEditForm({
   updateProfileMutation, 
   changePasswordMutation,
   onPhotoUpload,
-  onEmailChange
+  onEmailChange,
+  onPhoneChange
 }: { 
   user: any; 
   updateProfileMutation: any; 
   changePasswordMutation: any;
   onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onEmailChange: () => void;
+  onPhoneChange: () => void;
 }) {
   const { t } = useLanguage();
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -871,7 +883,6 @@ function ProfileEditForm({
   const [profileData, setProfileData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
-    phone: user?.phone || '',
   });
   const [passwordData, setPasswordData] = useState({
     current_password: '',
@@ -885,7 +896,6 @@ function ProfileEditForm({
     setProfileData({
       first_name: user?.first_name || '',
       last_name: user?.last_name || '',
-      phone: user?.phone || '',
     });
   }, [user]);
 
@@ -969,17 +979,29 @@ function ProfileEditForm({
                 </div>
                 <div>
                   <Label htmlFor="phone">{t('dashboard.profile.phone')}</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={profileData.phone}
-                    onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                  />
-                  {user?.phone_verified && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      ⚠️ Si vous changez votre numéro, vous devrez le vérifier à nouveau.
-                    </p>
-                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={user?.phone || ''}
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditProfileOpen(false);
+                        onPhoneChange();
+                      }}
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      Changer
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pour changer votre numéro de téléphone, vous devrez confirmer votre identité avec un code envoyé à votre numéro actuel.
+                  </p>
                 </div>
               </div>
               <DialogFooter>

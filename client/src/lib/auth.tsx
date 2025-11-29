@@ -79,7 +79,10 @@ function decodeTokenPayload(token: string): Record<string, unknown> | null {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     
-    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payloadPart = parts[1];
+    if (!payloadPart) return null;
+    
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
     const payload = JSON.parse(atob(base64));
     return payload;
   } catch {
