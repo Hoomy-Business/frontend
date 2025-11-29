@@ -316,7 +316,7 @@ export default function CreateProperty() {
                 </Alert>
               )}
 
-              {kycStatus && !kycStatus.is_verified && !kycStatus.kyc_verified && (
+              {kycStatus && kycStatus.status !== 'approved' && (
                 <Alert className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
                   <AlertCircle className="h-4 w-4 text-yellow-600" />
                   <AlertDescription className="text-yellow-800 dark:text-yellow-200">
@@ -713,7 +713,7 @@ export default function CreateProperty() {
                     <Button
                       type="submit"
                       size="lg"
-                      disabled={createPropertyMutation.isPending || (kycStatus && !kycStatus.is_verified && !kycStatus.kyc_verified)}
+                      disabled={createPropertyMutation.isPending || (kycStatus && kycStatus.status !== 'approved')}
                       className="flex-1"
                       data-testid="button-submit"
                     >
