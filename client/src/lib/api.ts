@@ -52,7 +52,7 @@ function getRateLimitConfig(endpoint: string): { max: number; window: number } {
       return config;
     }
   }
-  return RATE_LIMITS.default;
+  return RATE_LIMITS.default || { max: 60, window: 60000 };
 }
 
 /**
@@ -229,8 +229,10 @@ export async function apiRequest<T = any>(
         case 503:
         case 504:
           // Server errors - don't treat as auth errors
-          const serverError = new Error('Le serveur est temporairement indisponible. Veuillez réessayer dans quelques instants.');
+          const serverError = new Error(errorMessage || 'Le serveur est temporairement indisponible. Veuillez réessayer dans quelques instants.');
           (serverError as any).status = response.status;
+          (serverError as any).code = errorData.code;
+          (serverError as any).debug_code = errorData.debug_code;
           throw serverError;
         default:
           throw new Error(errorMessage || 'Une erreur inattendue est survenue. Veuillez réessayer.');

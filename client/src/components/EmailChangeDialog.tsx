@@ -54,9 +54,25 @@ export function EmailChangeDialog({
         title: 'Code envoyé',
         description: `Un code de confirmation a été envoyé à ${maskedEmail || currentEmail}`,
       });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de l\'envoi du code';
+    } catch (err: any) {
+      let errorMessage = 'Erreur lors de l\'envoi du code';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (err.code === 'EMAIL_SERVICE_UNAVAILABLE') {
+        errorMessage = 'Le service d\'envoi d\'email est temporairement indisponible. Veuillez contacter le support ou réessayer plus tard.';
+        if (err.debug_code && process.env.NODE_ENV !== 'production') {
+          errorMessage += `\n\nCode de développement: ${err.debug_code}`;
+        }
+      }
+      
       setError(errorMessage);
+      
+      toast({
+        title: 'Erreur',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
