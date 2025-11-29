@@ -988,6 +988,7 @@ app.get('/api/properties', async (req, res) => {
         const total = parseInt(countResult.rows[0]?.total || 0);
         
         // Formater les utilisateurs supprimés et normaliser les URLs d'images
+        // Masquer les téléphones non vérifiés
         const formattedRows = result.rows.map(row => {
             const formatted = { ...row };
             
@@ -997,6 +998,11 @@ app.get('/api/properties', async (req, res) => {
                 formatted.email = `deleted_user_${row.owner_id}@deleted.local`;
                 formatted.phone = null;
                 formatted.profile_picture = null;
+            }
+            
+            // Masquer le téléphone si non vérifié
+            if (!formatted.phone_verified) {
+                formatted.phone = null;
             }
             
             // Normaliser l'URL de la photo principale
@@ -1124,6 +1130,11 @@ app.get('/api/properties/:id', async (req, res) => {
             property.last_name = property.owner_id?.toString() || '';
             property.email = `deleted_user_${property.owner_id}@deleted.local`;
             property.profile_picture = null;
+            property.phone = null;
+        }
+        
+        // Masquer le téléphone si non vérifié
+        if (!property.phone_verified) {
             property.phone = null;
         }
 
@@ -1868,6 +1879,10 @@ app.get('/api/messages/:conversation_id', authenticateToken, async (req, res) =>
 // =========================================
 // ROUTES PARAMÈTRES
 // =========================================
+
+// Import du service de validation téléphone
+const { validatePhoneNumber, normalizePhoneNumber } = require('./utils/sms');
+
 app.put('/api/users/profile', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
@@ -1886,10 +1901,48 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
             updates.push(`last_name = $${paramIndex++}`);
             values.push(last_name);
         }
+        
+        // Gestion spéciale du téléphone
+        // Si le téléphone est modifié, on le valide et on reset phone_verified
         if (phone !== undefined) {
-            updates.push(`phone = $${paramIndex++}`);
-            values.push(phone);
+            // Si le téléphone n'est pas vide, le valider
+            if (phone && phone.trim() !== '') {
+                const phoneValidation = validatePhoneNumber(phone);
+                if (!phoneValidation.valid) {
+                    return res.status(400).json({ 
+                        error: phoneValidation.error,
+                        code: 'INVALID_PHONE'
+                    });
+                }
+                
+                // Normaliser le numéro
+                const normalizedPhone = normalizePhoneNumber(phone);
+                
+                // Vérifier si le téléphone a changé
+                const currentUser = await client.query(
+                    'SELECT phone FROM users WHERE id = $1',
+                    [req.user.id]
+                );
+                
+                const currentPhone = currentUser.rows[0]?.phone;
+                
+                if (normalizedPhone !== currentPhone) {
+                    // Le téléphone a changé - on doit passer par la vérification SMS
+                    return res.status(400).json({ 
+                        error: 'Pour modifier votre numéro de téléphone, veuillez utiliser la vérification par SMS. Allez dans Paramètres > Vérifier le téléphone.',
+                        code: 'PHONE_VERIFICATION_REQUIRED',
+                        requires_verification: true
+                    });
+                }
+            } else {
+                // Suppression du téléphone (téléphone vide)
+                updates.push(`phone = $${paramIndex++}`);
+                values.push(null);
+                updates.push(`phone_verified = $${paramIndex++}`);
+                values.push(false);
+            }
         }
+        
         if (profile_picture !== undefined) {
             updates.push(`profile_picture = $${paramIndex++}`);
             values.push(profile_picture);

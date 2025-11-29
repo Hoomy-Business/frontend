@@ -5,8 +5,15 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { sendEmail, sendVerificationEmail, sendWelcomeEmail } = require('../utils/email');
+const { 
+    validatePhoneNumber, 
+    normalizePhoneNumber, 
+    generateVerificationCode, 
+    sendVerificationSMS 
+} = require('../utils/sms');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const PHONE_CODE_EXPIRY_MINUTES = 15; // 15 minutes d'expiration
 
 // Utiliser le pool partagé depuis db.js
 const { pool } = require('../db');
@@ -55,6 +62,17 @@ router.post('/register', async (req, res) => {
             const age = Math.abs(ageDate.getUTCFullYear() - 1970);
             if (age < 18) {
                 return res.status(400).json({ error: 'Vous devez avoir au moins 18 ans.' });
+            }
+        }
+
+        // Validation du numéro de téléphone si fourni
+        if (phone && phone.trim() !== '') {
+            const phoneValidation = validatePhoneNumber(phone);
+            if (!phoneValidation.valid) {
+                return res.status(400).json({ 
+                    error: phoneValidation.error,
+                    code: 'INVALID_PHONE'
+                });
             }
         }
 
@@ -162,6 +180,9 @@ router.post('/register', async (req, res) => {
         const verification_code = crypto.randomInt(100000, 999999).toString();
         const code_expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+        // Normaliser le téléphone si fourni
+        const normalizedPhone = (phone && phone.trim() !== '') ? normalizePhoneNumber(phone) : null;
+
         // --- INSERTION BDD ---
         // Vérifier quelles colonnes existent dans la table users
         const columnsInfo = await client.query(`
@@ -176,10 +197,11 @@ router.post('/register', async (req, res) => {
         const hasTermsAcceptedAt = existingColumns.includes('terms_accepted_at');
         const hasEmailVerificationCode = existingColumns.includes('email_verification_code');
         const hasEmailCodeExpiresAt = existingColumns.includes('email_code_expires_at');
+        const hasPhoneVerified = existingColumns.includes('phone_verified');
         
         // Construire dynamiquement la requête INSERT
         let columns = ['email', 'password_hash', 'first_name', 'last_name', 'role', 'phone'];
-        let queryValues = [email.toLowerCase(), password_hash, first_name, last_name, role, phone || null];
+        let queryValues = [email.toLowerCase(), password_hash, first_name, last_name, role, normalizedPhone];
         let paramIndex = queryValues.length;
         
         if (hasDateOfBirth && date_of_birth) {
@@ -213,6 +235,12 @@ router.post('/register', async (req, res) => {
         
         columns.push('email_verified');
         queryValues.push(false);
+        
+        // Ajouter phone_verified = false (le téléphone doit être vérifié par SMS)
+        if (hasPhoneVerified) {
+            columns.push('phone_verified');
+            queryValues.push(false);
+        }
         
         // Construire les placeholders pour les paramètres
         let placeholderIndex = 1;
@@ -538,6 +566,306 @@ router.get('/profile', authenticateToken, async (req, res) => {
         res.json({ user: result.rows[0] });
 
     } catch (error) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    } finally {
+        client.release();
+    }
+});
+
+// =========================================
+// 6. ROUTE: DEMANDE DE VÉRIFICATION TÉLÉPHONE
+// =========================================
+router.post('/phone/request-verification', authenticateToken, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { phone } = req.body;
+
+        if (!phone) {
+            return res.status(400).json({ error: 'Numéro de téléphone requis' });
+        }
+
+        // Valider le format du numéro
+        const validation = validatePhoneNumber(phone);
+        if (!validation.valid) {
+            return res.status(400).json({ error: validation.error });
+        }
+
+        // Normaliser le numéro
+        const normalizedPhone = normalizePhoneNumber(phone);
+
+        // Vérifier si ce numéro est déjà utilisé par un autre utilisateur
+        const existingUser = await client.query(
+            'SELECT id FROM users WHERE phone = $1 AND id != $2',
+            [normalizedPhone, req.user.id]
+        );
+
+        if (existingUser.rows.length > 0) {
+            return res.status(400).json({ error: 'Ce numéro de téléphone est déjà utilisé par un autre compte' });
+        }
+
+        // Générer un code de vérification
+        const verificationCode = generateVerificationCode();
+        const expiresAt = new Date(Date.now() + PHONE_CODE_EXPIRY_MINUTES * 60 * 1000);
+
+        // Vérifier quelles colonnes existent
+        const columnsInfo = await client.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name IN ('phone_verification_code', 'phone_code_expires_at', 'phone_pending')
+        `);
+        
+        const existingColumns = columnsInfo.rows.map(row => row.column_name);
+        
+        if (!existingColumns.includes('phone_verification_code') || 
+            !existingColumns.includes('phone_code_expires_at') || 
+            !existingColumns.includes('phone_pending')) {
+            // Créer les colonnes si elles n'existent pas
+            await client.query(`
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verification_code VARCHAR(6);
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_code_expires_at TIMESTAMP;
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_pending VARCHAR(20);
+            `);
+        }
+
+        // Stocker le code et le numéro en attente
+        await client.query(`
+            UPDATE users 
+            SET phone_verification_code = $1, 
+                phone_code_expires_at = $2, 
+                phone_pending = $3
+            WHERE id = $4
+        `, [verificationCode, expiresAt, normalizedPhone, req.user.id]);
+
+        // Envoyer le SMS
+        const smsResult = await sendVerificationSMS(normalizedPhone, verificationCode);
+        
+        if (!smsResult.success) {
+            return res.status(500).json({ error: smsResult.error || 'Erreur lors de l\'envoi du SMS' });
+        }
+
+        console.log(`📱 Code de vérification envoyé à ${normalizedPhone} pour l'utilisateur ${req.user.id}`);
+
+        res.json({ 
+            message: 'Code de vérification envoyé par SMS',
+            expires_in_minutes: PHONE_CODE_EXPIRY_MINUTES,
+            phone_masked: normalizedPhone.slice(0, -4) + '****'
+        });
+
+    } catch (error) {
+        console.error('❌ Erreur demande vérification téléphone:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    } finally {
+        client.release();
+    }
+});
+
+// =========================================
+// 7. ROUTE: VÉRIFICATION DU CODE TÉLÉPHONE
+// =========================================
+router.post('/phone/verify', authenticateToken, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { code } = req.body;
+
+        if (!code) {
+            return res.status(400).json({ error: 'Code de vérification requis' });
+        }
+
+        // Vérifier quelles colonnes existent
+        const columnsInfo = await client.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name IN ('phone_verification_code', 'phone_code_expires_at', 'phone_pending')
+        `);
+        
+        const existingColumns = columnsInfo.rows.map(row => row.column_name);
+        
+        if (!existingColumns.includes('phone_verification_code')) {
+            return res.status(400).json({ error: 'Aucune vérification en cours' });
+        }
+
+        // Récupérer les informations de vérification
+        const result = await client.query(`
+            SELECT phone_verification_code, phone_code_expires_at, phone_pending
+            FROM users WHERE id = $1
+        `, [req.user.id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        const user = result.rows[0];
+
+        // Vérifier qu'il y a une vérification en cours
+        if (!user.phone_pending || !user.phone_verification_code) {
+            return res.status(400).json({ error: 'Aucune vérification de téléphone en cours. Veuillez d\'abord demander un nouveau code.' });
+        }
+
+        // Vérifier si le code a expiré
+        if (user.phone_code_expires_at && new Date() > new Date(user.phone_code_expires_at)) {
+            // Nettoyer le code expiré
+            await client.query(`
+                UPDATE users 
+                SET phone_verification_code = NULL, 
+                    phone_code_expires_at = NULL
+                WHERE id = $1
+            `, [req.user.id]);
+            
+            return res.status(400).json({ 
+                error: 'Le code a expiré. Veuillez demander un nouveau code.',
+                code: 'CODE_EXPIRED'
+            });
+        }
+
+        // Vérifier le code
+        if (user.phone_verification_code !== code) {
+            return res.status(400).json({ error: 'Code incorrect' });
+        }
+
+        // Code valide - mettre à jour le numéro et marquer comme vérifié
+        await client.query(`
+            UPDATE users 
+            SET phone = $1, 
+                phone_verified = TRUE, 
+                phone_verification_code = NULL, 
+                phone_code_expires_at = NULL,
+                phone_pending = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+        `, [user.phone_pending, req.user.id]);
+
+        console.log(`✅ Téléphone vérifié pour l'utilisateur ${req.user.id}: ${user.phone_pending}`);
+
+        // Récupérer le profil mis à jour
+        const updatedUser = await client.query(`
+            SELECT id, email, first_name, last_name, role, phone, email_verified, phone_verified, profile_picture
+            FROM users WHERE id = $1
+        `, [req.user.id]);
+
+        res.json({ 
+            message: 'Numéro de téléphone vérifié avec succès',
+            user: updatedUser.rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Erreur vérification code téléphone:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    } finally {
+        client.release();
+    }
+});
+
+// =========================================
+// 8. ROUTE: RENVOYER LE CODE TÉLÉPHONE
+// =========================================
+router.post('/phone/resend-code', authenticateToken, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        // Vérifier quelles colonnes existent
+        const columnsInfo = await client.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name IN ('phone_verification_code', 'phone_code_expires_at', 'phone_pending')
+        `);
+        
+        const existingColumns = columnsInfo.rows.map(row => row.column_name);
+        
+        if (!existingColumns.includes('phone_pending')) {
+            return res.status(400).json({ error: 'Aucune vérification en cours' });
+        }
+
+        // Récupérer le numéro en attente
+        const result = await client.query(`
+            SELECT phone_pending FROM users WHERE id = $1
+        `, [req.user.id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        const user = result.rows[0];
+
+        if (!user.phone_pending) {
+            return res.status(400).json({ error: 'Aucune vérification de téléphone en cours. Veuillez d\'abord soumettre un numéro.' });
+        }
+
+        // Générer un nouveau code
+        const verificationCode = generateVerificationCode();
+        const expiresAt = new Date(Date.now() + PHONE_CODE_EXPIRY_MINUTES * 60 * 1000);
+
+        // Mettre à jour le code
+        await client.query(`
+            UPDATE users 
+            SET phone_verification_code = $1, 
+                phone_code_expires_at = $2
+            WHERE id = $3
+        `, [verificationCode, expiresAt, req.user.id]);
+
+        // Envoyer le SMS
+        const smsResult = await sendVerificationSMS(user.phone_pending, verificationCode);
+        
+        if (!smsResult.success) {
+            return res.status(500).json({ error: smsResult.error || 'Erreur lors de l\'envoi du SMS' });
+        }
+
+        console.log(`📱 Nouveau code de vérification envoyé à ${user.phone_pending}`);
+
+        res.json({ 
+            message: 'Nouveau code envoyé par SMS',
+            expires_in_minutes: PHONE_CODE_EXPIRY_MINUTES
+        });
+
+    } catch (error) {
+        console.error('❌ Erreur renvoi code téléphone:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    } finally {
+        client.release();
+    }
+});
+
+// =========================================
+// 9. ROUTE: STATUT DE VÉRIFICATION TÉLÉPHONE
+// =========================================
+router.get('/phone/verification-status', authenticateToken, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        // Vérifier quelles colonnes existent
+        const columnsInfo = await client.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name IN ('phone_verified', 'phone_pending', 'phone_code_expires_at')
+        `);
+        
+        const existingColumns = columnsInfo.rows.map(row => row.column_name);
+        const hasPhoneVerified = existingColumns.includes('phone_verified');
+        const hasPhonePending = existingColumns.includes('phone_pending');
+        const hasPhoneCodeExpires = existingColumns.includes('phone_code_expires_at');
+
+        let selectFields = 'phone';
+        if (hasPhoneVerified) selectFields += ', phone_verified';
+        if (hasPhonePending) selectFields += ', phone_pending';
+        if (hasPhoneCodeExpires) selectFields += ', phone_code_expires_at';
+
+        const result = await client.query(`
+            SELECT ${selectFields} FROM users WHERE id = $1
+        `, [req.user.id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        const user = result.rows[0];
+
+        res.json({
+            phone: user.phone || null,
+            phone_verified: user.phone_verified || false,
+            has_pending_verification: !!user.phone_pending,
+            pending_phone: user.phone_pending ? user.phone_pending.slice(0, -4) + '****' : null,
+            code_expires_at: user.phone_code_expires_at || null
+        });
+
+    } catch (error) {
+        console.error('❌ Erreur statut vérification téléphone:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     } finally {
         client.release();
