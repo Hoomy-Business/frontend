@@ -23,6 +23,7 @@ import { getAPIBaseURL } from '@/lib/apiConfig';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
 import { PhoneVerificationDialog } from '@/components/PhoneVerificationDialog';
+import { KYCVerification } from '@/components/KYCVerification';
 
 export default function StudentDashboard() {
   const { user, isAuthenticated, isStudent, refreshUser } = useAuth();
@@ -681,6 +682,9 @@ export default function StudentDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* KYC Verification Section */}
+            <KYCVerification />
             
             {/* Phone Verification Dialog */}
             <PhoneVerificationDialog
