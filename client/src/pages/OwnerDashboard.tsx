@@ -271,28 +271,35 @@ export default function OwnerDashboard() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: { first_name?: string; last_name?: string; phone?: string; profile_picture?: string }) =>
-      apiRequest('PUT', '/users/profile', data),
-    onSuccess: async () => {
+    mutationFn: (data: { first_name?: string; last_name?: string; email?: string; phone?: string; current_password?: string; new_password?: string }) =>
+      apiRequest('PUT', '/auth/profile', data),
+    onSuccess: async (response) => {
       queryClient.invalidateQueries({ queryKey: ['/auth/profile'] });
       queryClient.invalidateQueries({ queryKey: ['/auth/user'] });
       // Recharger le profil utilisateur pour avoir les dernières données
       await refreshUser();
-      toast({ title: 'Success', description: 'Profile updated successfully' });
+      toast({ 
+        title: 'Succès', 
+        description: response.message || 'Profil mis à jour avec succès' 
+      });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     },
   });
 
   const changePasswordMutation = useMutation({
     mutationFn: (data: { current_password: string; new_password: string }) =>
-      apiRequest('PUT', '/users/change-password', data),
-    onSuccess: () => {
-      toast({ title: 'Success', description: 'Password changed successfully' });
+      apiRequest('PUT', '/auth/profile', { ...data }),
+    onSuccess: async (response) => {
+      await refreshUser();
+      toast({ 
+        title: 'Succès', 
+        description: response.message || 'Mot de passe modifié avec succès' 
+      });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -823,6 +830,7 @@ function ProfileEditForm({
   const [profileData, setProfileData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
+    email: user?.email || '',
     phone: user?.phone || '',
   });
   const [passwordData, setPasswordData] = useState({
@@ -831,6 +839,16 @@ function ProfileEditForm({
     confirm_password: '',
   });
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Mettre à jour les données du formulaire quand l'utilisateur change
+  useEffect(() => {
+    setProfileData({
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+    });
+  }, [user]);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     onPhotoUpload(e);
@@ -885,12 +903,32 @@ function ProfileEditForm({
                   />
                 </div>
                 <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profileData.email}
+                    onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                  />
+                  {user?.email_verified && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ⚠️ Si vous changez votre email, vous devrez le vérifier à nouveau.
+                    </p>
+                  )}
+                </div>
+                <div>
                   <Label htmlFor="phone">{t('dashboard.profile.phone')}</Label>
                   <Input
                     id="phone"
+                    type="tel"
                     value={profileData.phone}
                     onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
                   />
+                  {user?.phone_verified && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ⚠️ Si vous changez votre numéro, vous devrez le vérifier à nouveau.
+                    </p>
+                  )}
                 </div>
               </div>
               <DialogFooter>
