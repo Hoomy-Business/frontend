@@ -1,12 +1,13 @@
 {
   "name": "hoomy-suisse",
   "version": "2.0.0",
+  "type": "module",
   "description": "Plateforme de logement étudiant pour la Suisse",
-  "main": "server.js",
+  "main": "server.cjs",
   "scripts": {
-    "start": "node server.js",
-    "dev": "concurrently \"node server.js\" \"vite\"",
-    "dev:backend": "nodemon server.js",
+    "start": "node server.cjs",
+    "dev": "concurrently \"node server.cjs\" \"vite\"",
+    "dev:backend": "nodemon server.cjs",
     "dev:frontend": "vite",
     "build": "vite build",
     "preview": "vite preview",

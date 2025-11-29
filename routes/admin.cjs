@@ -1,7 +1,7 @@
 // routes/admin.js
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../db');
+const { pool } = require('../db.cjs');
 
 // Middleware d'authentification
 const authenticateToken = (req, res, next) => {

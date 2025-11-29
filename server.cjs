@@ -12,12 +12,12 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const authRoutes = require('./routes/auth');
-const paymentRoutes = require('./routes/payments');
-const contractsRoutes = require('./routes/contracts');
-const stripeWebhooksRoutes = require('./routes/stripe-webhooks');
-const kycRoutes = require('./routes/kyc');
-const adminRoutes = require('./routes/admin');
+const authRoutes = require('./routes/auth.cjs');
+const paymentRoutes = require('./routes/payments.cjs');
+const contractsRoutes = require('./routes/contracts.cjs');
+const stripeWebhooksRoutes = require('./routes/stripe-webhooks.cjs');
+const kycRoutes = require('./routes/kyc.cjs');
+const adminRoutes = require('./routes/admin.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -64,7 +64,7 @@ console.log(`
 // POSTGRESQL POOL OPTIMISÉ - ULTRA RAPIDE
 // =========================================
 // Utiliser le pool partagé depuis db.js
-const { pool } = require('./db');
+const { pool } = require('./db.cjs');
 
 // =========================================
 // CACHE EN MÉMOIRE POUR PERFORMANCE
@@ -1881,7 +1881,7 @@ app.get('/api/messages/:conversation_id', authenticateToken, async (req, res) =>
 // =========================================
 
 // Import du service de validation téléphone
-const { validatePhoneNumber, normalizePhoneNumber } = require('./utils/sms');
+const { validatePhoneNumber, normalizePhoneNumber } = require('./utils/sms.cjs');
 
 app.put('/api/users/profile', authenticateToken, async (req, res) => {
     const client = await pool.connect();

@@ -7,7 +7,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Utiliser le pool partagé depuis db.js
-const { pool } = require('../db');
+const { pool } = require('../db.cjs');
 
 // Middleware d'authentification
 const authenticateToken = (req, res, next) => {

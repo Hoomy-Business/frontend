@@ -8,7 +8,7 @@ const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Utiliser le pool partagé depuis db.js
-const { pool } = require('../db');
+const { pool } = require('../db.cjs');
 
 // ⚠️ IMPORTANT: Cette route doit utiliser express.raw() pour la vérification de signature
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {

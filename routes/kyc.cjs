@@ -5,7 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { pool } = require('../db');
+const { pool } = require('../db.cjs');
 
 // Fonction pour obtenir l'IP locale
 function getLocalIP() {

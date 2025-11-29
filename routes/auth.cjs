@@ -4,19 +4,19 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { sendEmail, sendVerificationEmail, sendWelcomeEmail } = require('../utils/email');
+const { sendEmail, sendVerificationEmail, sendWelcomeEmail } = require('../utils/email.cjs');
 const { 
     validatePhoneNumber, 
     normalizePhoneNumber, 
     generateVerificationCode, 
     sendVerificationSMS 
-} = require('../utils/sms');
+} = require('../utils/sms.cjs');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const PHONE_CODE_EXPIRY_MINUTES = 15; // 15 minutes d'expiration
 
 // Utiliser le pool partagé depuis db.js
-const { pool } = require('../db');
+const { pool } = require('../db.cjs');
 
 // Middleware d'authentification
 const authenticateToken = (req, res, next) => {
