@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { LanguageProvider } from "./lib/useLanguage";
+import "./lib/cacheUtils"; // Load cache utilities globally
 
 // Corriger le pathname si on est sur /index.html/...
 if (window.location.pathname.startsWith('/index.html/')) {
