@@ -60,13 +60,17 @@ export default function Login() {
       // Cela force un re-render complet de l'application
       window.location.href = redirectPath;
     },
-    onError: (err: Error) => {
-      if (err.message.includes('EMAIL_NOT_VERIFIED')) {
-        setError('Please verify your email before logging in. Check your inbox for the verification code.');
-      } else if (err.message.includes('ACCOUNT_DELETED')) {
-        setError('This account has been deleted.');
+    onError: (err: Error & { code?: string }) => {
+      // Utiliser le code d'erreur si disponible pour des messages plus précis
+      const errorCode = (err as any).code;
+      
+      if (errorCode === 'EMAIL_NOT_VERIFIED' || err.message.includes('EMAIL_NOT_VERIFIED')) {
+        setError('Votre adresse email n\'est pas encore vérifiée. Consultez votre boîte mail (et les spams) pour trouver le code de vérification.');
+      } else if (errorCode === 'ACCOUNT_DELETED' || err.message.includes('ACCOUNT_DELETED')) {
+        setError('Ce compte a été supprimé et n\'est plus accessible.');
       } else {
-        setError(err.message || 'Login failed. Please check your credentials.');
+        // Le message a déjà été traduit par api.ts
+        setError(err.message || 'La connexion a échoué. Vérifiez votre email et mot de passe.');
       }
     },
   });

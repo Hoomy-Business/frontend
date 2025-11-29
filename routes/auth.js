@@ -47,11 +47,11 @@ router.post('/register', async (req, res) => {
 
         // --- Validations ---
         if (!email || !password || !first_name || !last_name || !role) {
-            return res.status(400).json({ error: 'Tous les champs obligatoires doivent être remplis' });
+            return res.status(400).json({ error: 'Veuillez remplir tous les champs obligatoires (email, mot de passe, prénom, nom et type de compte).' });
         }
 
         if (!terms_accepted) {
-            return res.status(400).json({ error: 'Vous devez accepter les conditions d\'utilisation' });
+            return res.status(400).json({ error: 'Vous devez accepter les conditions d\'utilisation pour créer un compte.' });
         }
 
         // Vérification âge (18 ans) - optionnel si date_of_birth est fourni
@@ -172,7 +172,7 @@ router.post('/register', async (req, res) => {
         // Vérification doublon email
         const existingUser = await client.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
         if (existingUser.rows.length > 0) {
-            return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+            return res.status(400).json({ error: 'Cette adresse email est déjà utilisée. Essayez de vous connecter ou utilisez une autre adresse.' });
         }
 
         // Préparation des données
@@ -325,7 +325,9 @@ router.post('/verify-email', async (req, res) => {
     try {
         const { email, code } = req.body;
 
-        if (!email || !code) return res.status(400).json({ error: 'Email et code requis' });
+        if (!email || !code) {
+            return res.status(400).json({ error: 'Veuillez entrer votre adresse email et le code de vérification reçu par email.' });
+        }
 
         // Vérifier quelles colonnes existent
         const columnsInfo = await client.query(`
@@ -473,7 +475,11 @@ router.post('/login', async (req, res) => {
     const client = await pool.connect();
     try {
         const { email, password } = req.body;
-        if (!email || !password) return res.status(400).json({ error: 'Champs requis' });
+        if (!email || !password) {
+            return res.status(400).json({ 
+                error: 'Veuillez remplir votre email et votre mot de passe.' 
+            });
+        }
 
         // Vérifier si la colonne deleted_at existe
         const hasDeletedAt = await client.query(`
@@ -489,25 +495,33 @@ router.post('/login', async (req, res) => {
             FROM users WHERE email = $1
         `, [email.toLowerCase()]);
 
-        if (result.rows.length === 0) return res.status(401).json({ error: 'Identifiants incorrects' });
+        if (result.rows.length === 0) {
+            return res.status(401).json({ 
+                error: 'Aucun compte trouvé avec cette adresse email. Vérifiez l\'orthographe ou créez un compte.' 
+            });
+        }
 
         const user = result.rows[0];
         
         // Empêcher la connexion si l'utilisateur est supprimé
         if (deletedAtExists && user.deleted_at) {
             return res.status(403).json({ 
-                error: 'Ce compte a été supprimé',
+                error: 'Ce compte a été supprimé et n\'est plus accessible.',
                 code: 'ACCOUNT_DELETED' 
             });
         }
         
         const validPass = await bcrypt.compare(password, user.password_hash);
 
-        if (!validPass) return res.status(401).json({ error: 'Identifiants incorrects' });
+        if (!validPass) {
+            return res.status(401).json({ 
+                error: 'Mot de passe incorrect. Vérifiez votre mot de passe et réessayez.' 
+            });
+        }
 
         if (!user.email_verified) {
             return res.status(403).json({ 
-                error: 'Email non vérifié',
+                error: 'Votre adresse email n\'est pas encore vérifiée. Consultez votre boîte mail (et les spams) pour trouver le code de vérification.',
                 code: 'EMAIL_NOT_VERIFIED' 
             });
         }

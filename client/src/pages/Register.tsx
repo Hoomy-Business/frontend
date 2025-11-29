@@ -79,8 +79,21 @@ export default function Register() {
     onSuccess: (data, variables) => {
       setLocation(`/verify-email?email=${encodeURIComponent(variables.email)}`);
     },
-    onError: (err: Error) => {
-      setError(err.message || 'Registration failed. Please try again.');
+    onError: (err: Error & { code?: string }) => {
+      // Le message a déjà été traduit par api.ts, mais on peut personnaliser davantage
+      const errorCode = (err as any).code;
+      
+      if (errorCode === 'INVALID_PHONE' || err.message.includes('téléphone')) {
+        setError(err.message);
+      } else if (err.message.includes('email') && err.message.includes('déjà')) {
+        setError('Cette adresse email est déjà utilisée. Essayez de vous connecter ou utilisez une autre adresse.');
+      } else if (err.message.includes('18 ans')) {
+        setError('Vous devez avoir au moins 18 ans pour créer un compte.');
+      } else if (err.message.includes('temporaire')) {
+        setError('Les adresses email temporaires ou jetables ne sont pas acceptées. Utilisez une adresse email permanente.');
+      } else {
+        setError(err.message || 'L\'inscription a échoué. Veuillez vérifier vos informations et réessayer.');
+      }
     },
   });
 

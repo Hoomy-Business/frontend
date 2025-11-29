@@ -183,19 +183,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Validate token format
     if (!isValidTokenFormat(newToken)) {
       reportSecurityViolation('invalid_token_format', { tokenLength: newToken?.length });
-      throw new Error('Token invalide');
+      throw new Error('Un problème technique est survenu lors de la connexion. Veuillez réessayer.');
     }
     
     // Check if token is already expired
     if (isTokenExpired(newToken)) {
       reportSecurityViolation('expired_token_login', {});
-      throw new Error('Token expiré');
+      throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
     }
     
     // Validate user data
     if (!newUser || !newUser.id || !newUser.email) {
       reportSecurityViolation('invalid_user_data', { hasId: !!newUser?.id, hasEmail: !!newUser?.email });
-      throw new Error('Données utilisateur invalides');
+      throw new Error('Les informations du compte sont incomplètes. Veuillez réessayer.');
     }
     
     // Create new session
