@@ -680,7 +680,7 @@ export default function OwnerDashboard() {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.phone')}</p>
                     <div className="flex items-center gap-2">
-                      <p className="font-medium">{user?.phone || t('dashboard.phone.not_provided')}</p>
+                    <p className="font-medium">{user?.phone || t('dashboard.phone.not_provided')}</p>
                       {user?.phone && (
                         <Badge variant={user?.phone_verified ? 'default' : 'secondary'} className="gap-1">
                           {user?.phone_verified ? (
