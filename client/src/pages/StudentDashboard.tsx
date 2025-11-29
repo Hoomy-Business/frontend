@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Heart, MessageSquare, FileText, User, Building2, Inbox, X, Sparkles, TrendingUp, Clock, CheckCircle2, Camera, Phone, AlertTriangle, Lock } from 'lucide-react';
+import { Heart, MessageSquare, FileText, User, Building2, Inbox, X, Sparkles, TrendingUp, Clock, CheckCircle2, Camera, Phone, AlertTriangle, Lock, Mail } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,8 @@ import { getAPIBaseURL } from '@/lib/apiConfig';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
 import { PhoneVerificationDialog } from '@/components/PhoneVerificationDialog';
+import { EmailVerificationDialog } from '@/components/EmailVerificationDialog';
+import { EmailChangeDialog } from '@/components/EmailChangeDialog';
 import { KYCVerification } from '@/components/KYCVerification';
 
 export default function StudentDashboard() {
@@ -48,6 +50,8 @@ export default function StudentDashboard() {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('favorites');
   const [phoneVerificationOpen, setPhoneVerificationOpen] = useState(false);
+  const [emailVerificationOpen, setEmailVerificationOpen] = useState(false);
+  const [emailChangeOpen, setEmailChangeOpen] = useState(false);
 
   const { data: favorites, isLoading: favoritesLoading, error: favoritesError } = useQuery<Property[]>({
     queryKey: ['/favorites'],
@@ -654,7 +658,33 @@ export default function StudentDashboard() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.email')}</p>
-                    <p className="font-medium">{user?.email}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{user?.email}</p>
+                      <Badge variant={user?.email_verified ? 'default' : 'secondary'} className="gap-1">
+                        {user?.email_verified ? (
+                          <>
+                            <CheckCircle2 className="h-3 w-3" />
+                            Vérifié
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="h-3 w-3" />
+                            Non vérifié
+                          </>
+                        )}
+                      </Badge>
+                    </div>
+                    {!user?.email_verified && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                        onClick={() => setEmailVerificationOpen(true)}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Vérifier mon email
+                      </Button>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.phone')}</p>
@@ -692,12 +722,6 @@ export default function StudentDashboard() {
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.account_type')}</p>
                     <Badge>{user?.role}</Badge>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.email_verified')}</p>
-                    <Badge variant={user?.email_verified ? 'default' : 'secondary'}>
-                      {user?.email_verified ? t('dashboard.profile.verified') : t('dashboard.profile.not_verified')}
-                    </Badge>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -707,6 +731,7 @@ export default function StudentDashboard() {
               user={user}
               updateProfileMutation={updateProfileMutation}
               changePasswordMutation={changePasswordMutation}
+              onEmailChange={() => setEmailChangeOpen(true)}
             />
 
             {/* KYC Verification Section */}
@@ -719,6 +744,20 @@ export default function StudentDashboard() {
               onSuccess={() => refreshUser()}
               currentPhone={user?.phone}
             />
+            
+            <EmailVerificationDialog
+              open={emailVerificationOpen}
+              onClose={() => setEmailVerificationOpen(false)}
+              onSuccess={() => refreshUser()}
+              currentEmail={user?.email}
+            />
+            
+            <EmailChangeDialog
+              open={emailChangeOpen}
+              onClose={() => setEmailChangeOpen(false)}
+              onSuccess={() => refreshUser()}
+              currentEmail={user?.email}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -729,11 +768,13 @@ export default function StudentDashboard() {
 function ProfileEditForm({ 
   user, 
   updateProfileMutation, 
-  changePasswordMutation
+  changePasswordMutation,
+  onEmailChange
 }: { 
   user: any; 
   updateProfileMutation: any; 
   changePasswordMutation: any;
+  onEmailChange: () => void;
 }) {
   const { t } = useLanguage();
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -741,7 +782,6 @@ function ProfileEditForm({
   const [profileData, setProfileData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
-    email: user?.email || '',
     phone: user?.phone || '',
   });
   const [passwordData, setPasswordData] = useState({
@@ -755,7 +795,6 @@ function ProfileEditForm({
     setProfileData({
       first_name: user?.first_name || '',
       last_name: user?.last_name || '',
-      email: user?.email || '',
       phone: user?.phone || '',
     });
   }, [user]);
@@ -813,17 +852,29 @@ function ProfileEditForm({
                 </div>
                 <div>
                   <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={profileData.email}
-                    onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                  />
-                  {user?.email_verified && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      ⚠️ Si vous changez votre email, vous devrez le vérifier à nouveau.
-                    </p>
-                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      id="email"
+                      type="email"
+                      value={user?.email || ''}
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditProfileOpen(false);
+                        onEmailChange();
+                      }}
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Changer
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pour changer votre email, vous devrez confirmer votre identité avec un code envoyé à votre email actuel.
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="phone">{t('dashboard.profile.phone')}</Label>
