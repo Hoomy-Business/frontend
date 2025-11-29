@@ -6,3 +6,16 @@ vite.config.ts.*
 *.tar.gz
 *.env
 attached_assets/*.env
+
+# Backend files (hosted separately on backend.hoomy.site)
+server.cjs
+server.js
+db.cjs
+db.js
+ecosystem.config.cjs
+ecosystem.config.js
+routes/
+utils/
+public/uploads/
+logs/
+*.log
