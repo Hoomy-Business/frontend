@@ -11,8 +11,8 @@ export function getAPIBaseURL(): string {
   // En production (hoomy.site), utiliser le backend de production
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    if (hostname === 'hoomy.site' || hostname === 'www.hoomy.site') {
-      return 'https://backend.hoomy.site/api';
+    if (hostname === 'hoomy.site' || hostname === 'www.hoomy.site' || hostname.endsWith('.github.io')) {
+      return 'https://www.backend.hoomy.site/api';
     }
     
     // En développement local
@@ -27,7 +27,7 @@ export function getAPIBaseURL(): string {
   }
   
   // Par défaut en production
-  return 'https://backend.hoomy.site/api';
+  return 'https://www.backend.hoomy.site/api';
 }
 
 /**
@@ -35,6 +35,6 @@ export function getAPIBaseURL(): string {
  */
 export function getBackendBaseURL(): string {
   const apiBase = getAPIBaseURL();
-  return apiBase.replace(/\/api$/, '') || (apiBase.includes('https') ? 'https://backend.hoomy.site' : 'http://localhost:3000');
+  return apiBase.replace(/\/api$/, '') || (apiBase.includes('https') ? 'https://www.backend.hoomy.site' : 'http://localhost:3000');
 }
 
