@@ -1,1 +1,0 @@
-import{h as c}from"./index-iWuRHTV7.js";const r=c("Check",[["path",{d:"M20 6 9 17l-5-5",key:"1gmf2c"}]]);const a=c("Circle",[["circle",{cx:"12",cy:"12",r:"10",key:"1mglay"}]]);const s=c("User",[["path",{d:"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2",key:"975kel"}],["circle",{cx:"12",cy:"7",r:"4",key:"17ys0d"}]]);export{r as C,s as U,a};
