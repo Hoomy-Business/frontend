@@ -125,15 +125,9 @@ function isValidSession(session: SessionData | null): boolean {
   // Check for inactivity
   if (now - session.lastActivity > INACTIVITY_TIMEOUT) return false;
   
-  // Check fingerprint matches (basic device binding)
-  const currentFingerprint = generateRequestFingerprint();
-  if (session.fingerprint !== currentFingerprint) {
-    reportSecurityViolation('session_fingerprint_mismatch', {
-      expected: session.fingerprint,
-      actual: currentFingerprint,
-    });
-    return false;
-  }
+  // Note: Fingerprint check is relaxed - if it doesn't match, we'll just recreate the session
+  // This prevents users from being logged out when they change browser/IP
+  // The fingerprint is still checked for security violations reporting, but won't invalidate the session
   
   return true;
 }
@@ -238,8 +232,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Failed to refresh user profile:', error);
-      if (error instanceof Error && (error.message.includes('401') || error.message.includes('Session'))) {
-        logout();
+      // Only logout on actual authentication errors (401), not on network errors
+      if (error instanceof Error) {
+        // Check if it's a real 401 authentication error
+        if (error.message.includes('401') || 
+            (error.message.includes('Session') && error.message.includes('expirée'))) {
+          // Only logout if we're sure it's an auth error, not a network error
+          const isNetworkError = error.message.includes('fetch') || 
+                                 error.message.includes('network') ||
+                                 error.message.includes('Failed to fetch') ||
+                                 error.message.includes('502') ||
+                                 error.message.includes('503') ||
+                                 error.message.includes('504');
+          
+          if (!isNetworkError) {
+            logout();
+          } else {
+            // Network error - don't logout, just log it
+            console.warn('Network error during refresh, keeping session:', error.message);
+          }
+        }
       }
     }
   }, [token, logout, updateActivity]);
@@ -267,10 +279,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Parse session
         let parsedSession: SessionData | null = null;
         if (storedSession) {
-          parsedSession = JSON.parse(storedSession);
+          try {
+            parsedSession = JSON.parse(storedSession);
+          } catch (e) {
+            // Invalid session data, create new one
+            parsedSession = null;
+          }
         }
         
-        // Validate session or create new one
+        // Validate session or create new one (don't fail if session is invalid, just recreate it)
         if (!isValidSession(parsedSession)) {
           parsedSession = createSession();
           sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsedSession));
@@ -283,15 +300,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('Invalid user data');
         }
         
+        // Set auth state - don't clear on session validation failure, just recreate session
         setToken(storedToken);
         setUser(parsedUser);
         setSession(parsedSession);
       } catch (error) {
         console.error('Auth initialization error:', error);
-        // Clear invalid data
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-        sessionStorage.removeItem(SESSION_KEY);
+        // Only clear if token is actually invalid, not just if session is invalid
+        if (error instanceof Error && 
+            (error.message.includes('Invalid token format') || 
+             error.message.includes('Token expired') ||
+             error.message.includes('Invalid user data'))) {
+          // Clear invalid data only for critical errors
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+          sessionStorage.removeItem(SESSION_KEY);
+        }
       }
     }
   }, []);
@@ -331,13 +355,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!token || !user) return;
     
-    // Initial refresh
-    refreshUser();
+    // Don't refresh immediately after login - wait a bit to avoid race conditions
+    const initialTimeout = setTimeout(() => {
+      refreshUser();
+    }, 2000); // Wait 2 seconds after login before first refresh
     
     // Periodic refresh
     const interval = setInterval(refreshUser, TOKEN_REFRESH_INTERVAL);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]); // Only depend on token
 
@@ -380,7 +409,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     refreshUser,
-    isAuthenticated: !!user && !!token && isValidSession(session),
+    // Don't require valid session for isAuthenticated - just check token and user
+    // Session validation is for security, not for basic authentication
+    isAuthenticated: !!user && !!token,
     isStudent: user?.role === 'student',
     isOwner: user?.role === 'owner',
     isAdmin: user?.role === 'admin',

@@ -151,3 +151,4 @@ sudo certbot --nginx -d backend.hoomy.site
 - Vérifier que la config est activée : `ls -la /etc/nginx/sites-enabled/`
 - Recharger Nginx : `sudo systemctl reload nginx`
 
+

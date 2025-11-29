@@ -48,3 +48,4 @@ echo "   pm2 logs hoomy-backend"
 echo "   pm2 monit"
 echo "   pm2 restart hoomy-backend"
 
+

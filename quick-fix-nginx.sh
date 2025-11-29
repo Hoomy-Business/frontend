@@ -82,3 +82,4 @@ echo "   sudo systemctl status nginx"
 echo "   pm2 status"
 echo "   sudo ufw status"
 
+

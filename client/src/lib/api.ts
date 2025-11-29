@@ -168,16 +168,27 @@ export async function apiRequest<T = any>(
       // Handle specific error codes
       switch (response.status) {
         case 401:
-          // Token expired or invalid - will be handled by auth context
-          throw new Error('Session expirée. Veuillez vous reconnecter.');
+          // Token expired or invalid - include status code for better error handling
+          const authError = new Error('Session expirée. Veuillez vous reconnecter.');
+          (authError as any).status = 401;
+          throw authError;
         case 403:
           reportSecurityViolation('forbidden_access', { endpoint, status: 403 });
-          throw new Error('Accès non autorisé.');
+          const forbiddenError = new Error(errorData.error || errorData.message || 'Accès non autorisé.');
+          (forbiddenError as any).status = 403;
+          throw forbiddenError;
         case 429:
           const retryAfter = errorData.retryAfter || response.headers.get('Retry-After') || 60;
           throw new Error(`Trop de requêtes. Veuillez réessayer dans ${retryAfter} secondes.`);
         case 400:
           throw new Error(errorData.error || errorData.message || 'Données invalides.');
+        case 502:
+        case 503:
+        case 504:
+          // Server errors - don't treat as auth errors
+          const serverError = new Error(errorData.error || errorData.message || 'Le serveur ne répond pas. Veuillez réessayer.');
+          (serverError as any).status = response.status;
+          throw serverError;
         default:
           throw new Error(errorData.error || errorData.message || 'Une erreur est survenue.');
       }

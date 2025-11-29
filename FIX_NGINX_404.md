@@ -130,3 +130,4 @@ curl http://164.92.237.171/api/locations/cantons
 
 Vous devriez recevoir le JSON des cantons au lieu d'une erreur 404.
 
+

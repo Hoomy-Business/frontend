@@ -66,3 +66,4 @@ echo "   Password: [celui que vous avez défini]"
 echo ""
 echo "💡 N'oubliez pas de mettre à jour votre fichier .env avec ces informations!"
 
+

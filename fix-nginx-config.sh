@@ -74,3 +74,4 @@ echo "📊 Vérifications :"
 echo "   sudo systemctl status nginx"
 echo "   pm2 status"
 
+

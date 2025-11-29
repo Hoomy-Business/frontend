@@ -87,3 +87,4 @@ echo "   sudo systemctl status nginx"
 echo "   pm2 status"
 echo "   sudo tail -f /var/log/nginx/hoomy-backend-error.log"
 
+

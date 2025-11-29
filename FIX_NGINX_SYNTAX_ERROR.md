@@ -109,3 +109,4 @@ sudo cat -n /etc/nginx/sites-available/hoomy-backend
 sudo cat -A /etc/nginx/sites-available/hoomy-backend | head -30
 ```
 
+

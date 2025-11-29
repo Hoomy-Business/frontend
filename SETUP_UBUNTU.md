@@ -522,3 +522,4 @@ psql -U postgres -h 127.0.0.1 -d hoomy_ch
 
 **Note** : Remplacez tous les mots de passe et secrets par des valeurs sécurisées !
 
+
