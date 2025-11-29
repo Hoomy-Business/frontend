@@ -273,7 +273,8 @@ export function KYCVerification() {
     );
   }
 
-  const isVerified = kycStatus?.is_verified || kycStatus?.kyc_verified;
+  // Vérifier explicitement que le statut est 'approved' pour être considéré comme vérifié
+  const isVerified = kycStatus?.status === 'approved';
   const isPending = kycStatus?.status === 'pending';
   const isRejected = kycStatus?.status === 'rejected';
 
