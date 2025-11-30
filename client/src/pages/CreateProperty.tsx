@@ -82,12 +82,46 @@ export default function CreateProperty() {
         throw new Error('Au moins une image est requise');
       }
       
-      const payload = {
-        ...data,
-        image_urls: imageUrls
+      // S'assurer que image_urls est un tableau de strings valides
+      const validImageUrls = imageUrls
+        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0)
+        .map(url => url.trim());
+      
+      if (validImageUrls.length === 0) {
+        throw new Error('Aucune URL d\'image valide fournie');
+      }
+      
+      // Créer un payload propre avec uniquement les champs attendus
+      const payload: Record<string, any> = {
+        title: data.title,
+        description: data.description,
+        property_type: data.property_type,
+        address: data.address,
+        city_name: data.city_name,
+        postal_code: data.postal_code,
+        canton_code: data.canton_code,
+        price: typeof data.price === 'number' ? data.price : Number(data.price) || 0,
+        image_urls: validImageUrls
       };
-      // Remove photos from payload as backend expects image_urls
-      delete (payload as any).photos;
+      
+      // Ajouter les champs optionnels seulement s'ils sont définis
+      if (data.rooms !== undefined && data.rooms !== null) {
+        payload.rooms = typeof data.rooms === 'number' ? data.rooms : Number(data.rooms);
+      }
+      if (data.bathrooms !== undefined && data.bathrooms !== null) {
+        payload.bathrooms = typeof data.bathrooms === 'number' ? data.bathrooms : Number(data.bathrooms);
+      }
+      if (data.surface_area !== undefined && data.surface_area !== null) {
+        payload.surface_area = typeof data.surface_area === 'number' ? data.surface_area : Number(data.surface_area);
+      }
+      if (data.available_from) {
+        payload.available_from = data.available_from;
+      }
+      
+      // Log du payload pour débogage (seulement en développement)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Payload envoyé au serveur:', JSON.stringify(payload, null, 2));
+      }
       
       // Sending property creation request
       return apiRequest('POST', '/properties', payload);
@@ -96,7 +130,18 @@ export default function CreateProperty() {
       setLocation('/dashboard/owner');
     },
     onError: (err: Error) => {
-      setError(err.message || 'Failed to create property');
+      // Améliorer le message d'erreur pour les erreurs de base de données
+      let errorMessage = err.message || 'Failed to create property';
+      
+      // Détecter l'erreur spécifique de property_id
+      if (errorMessage.includes('property_id') && errorMessage.includes('boolean')) {
+        errorMessage = 'Erreur serveur lors de la création des photos. Veuillez contacter le support technique si le problème persiste.';
+        console.error('Erreur backend property_id:', err.message);
+      } else if (errorMessage.includes('out of range')) {
+        errorMessage = 'Une valeur numérique est hors limite. Veuillez vérifier vos données.';
+      }
+      
+      setError(errorMessage);
     },
   });
 
@@ -269,30 +314,19 @@ export default function CreateProperty() {
       return;
     }
 
-    // Nettoyer et valider les données avant envoi
-    const submitData = {
-      title: data.title,
-      description: data.description,
-      property_type: data.property_type,
-      address: data.address,
-      city_name: data.city_name,
-      postal_code: data.postal_code, // Assurer que c'est une string de 4 chiffres
-      canton_code: data.canton_code,
-      price: typeof data.price === 'number' ? data.price : Number(data.price) || 0,
-      rooms: data.rooms ? Number(data.rooms) : undefined,
-      bathrooms: data.bathrooms ? Number(data.bathrooms) : undefined,
-      surface_area: data.surface_area ? Number(data.surface_area) : undefined,
-      available_from: data.available_from || null,
-      image_urls: imageUrls
-    };
-
     // Validation supplémentaire du code postal
-    if (submitData.postal_code && (!/^\d{4}$/.test(submitData.postal_code))) {
+    if (data.postal_code && (!/^\d{4}$/.test(data.postal_code))) {
       setError('Le code postal doit contenir exactement 4 chiffres');
       return;
     }
 
-    createPropertyMutation.mutate(submitData as any);
+    // Préparer les données avec les URLs d'images
+    const submitData: CreatePropertyInput & { image_urls: string[] } = {
+      ...data,
+      image_urls: imageUrls
+    };
+
+    createPropertyMutation.mutate(submitData);
   };
 
   if (!isOwner) {
