@@ -64,6 +64,7 @@ export default function CreateProperty() {
       postal_code: '',
       canton_code: '',
       price: 0,
+      charges: undefined,
       rooms: undefined,
       bathrooms: undefined,
       surface_area: undefined,
@@ -138,6 +139,12 @@ export default function CreateProperty() {
         const surfaceValue = typeof data.surface_area === 'number' ? data.surface_area : Number(data.surface_area);
         if (!isNaN(surfaceValue) && surfaceValue > 0) {
           payload.surface_area = surfaceValue;
+        }
+      }
+      if (data.charges !== undefined && data.charges !== null) {
+        const chargesValue = typeof data.charges === 'number' ? data.charges : Number(data.charges);
+        if (!isNaN(chargesValue) && chargesValue >= 0) {
+          payload.charges = chargesValue;
         }
       }
       
@@ -645,30 +652,57 @@ export default function CreateProperty() {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Monthly Rent (CHF)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              type="number" 
-                              placeholder="1500"
-                              value={field.value || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                field.onChange(val === '' ? undefined : parseFloat(val) || undefined);
-                              }}
-                              data-testid="input-price"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                      <FormField
+                        control={form.control}
+                        name="price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Monthly Rent (CHF)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                placeholder="1500"
+                                value={field.value || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  field.onChange(val === '' ? undefined : parseFloat(val) || undefined);
+                                }}
+                                data-testid="input-price"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                  <FormField
+                    control={form.control}
+                    name="charges"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Charges mensuelles (CHF) - Optionnel</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            type="number" 
+                            placeholder="200"
+                            value={field.value || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === '' ? undefined : parseFloat(val) || undefined);
+                            }}
+                            data-testid="input-charges"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Charges mensuelles (électricité, eau, chauffage, etc.)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}

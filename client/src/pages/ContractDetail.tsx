@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Link, useParams } from 'wouter';
-import { ArrowLeft, FileText, Download, CheckCircle2, XCircle, Clock, CreditCard, History } from 'lucide-react';
+import { ArrowLeft, FileText, Download, CheckCircle2, XCircle, Clock, CreditCard, History, Edit } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +9,9 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
@@ -21,6 +25,14 @@ export default function ContractDetail() {
   const contractId = params.id ? parseInt(params.id) : null;
   const { user, isStudent, isOwner } = useAuth();
   const { toast } = useToast();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editData, setEditData] = useState({
+    monthly_rent: 0,
+    charges: 0,
+    deposit_amount: 0,
+    start_date: '',
+    end_date: '',
+  });
 
   const { data: contractData, isLoading } = useQuery<{ success: boolean; contract: Contract }>({
     queryKey: ['/contracts', contractId],
@@ -32,6 +44,34 @@ export default function ContractDetail() {
   });
 
   const contract = contractData?.contract;
+
+  // Initialiser les données d'édition quand le contrat est chargé
+  useEffect(() => {
+    if (contract) {
+      setEditData({
+        monthly_rent: contract.monthly_rent,
+        charges: contract.charges || 0,
+        deposit_amount: contract.deposit_amount,
+        start_date: contract.start_date.split('T')[0],
+        end_date: contract.end_date.split('T')[0],
+      });
+    }
+  }, [contract]);
+
+  const updateContractMutation = useMutation({
+    mutationFn: (data: typeof editData) => {
+      return apiRequest('PUT', `/contracts/${contractId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/contracts', contractId] });
+      queryClient.invalidateQueries({ queryKey: ['/contracts/my-contracts'] });
+      toast({ title: 'Succès', description: 'Contrat mis à jour avec succès' });
+      setEditDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
 
   const signContractMutation = useMutation({
     mutationFn: () => {
@@ -235,12 +275,41 @@ export default function ContractDetail() {
               <Separator />
 
               <div>
-                <h3 className="font-semibold mb-3">Financial Details</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold">Financial Details</h3>
+                  {(contract.status === 'pending' || contract.is_editable) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (contract) {
+                          setEditData({
+                            monthly_rent: contract.monthly_rent,
+                            charges: contract.charges || 0,
+                            deposit_amount: contract.deposit_amount,
+                            start_date: contract.start_date.split('T')[0],
+                            end_date: contract.end_date.split('T')[0],
+                          });
+                          setEditDialogOpen(true);
+                        }
+                      }}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Modifier
+                    </Button>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Monthly Rent</p>
                     <p className="font-semibold text-lg">CHF {contract.monthly_rent.toLocaleString()}</p>
                   </div>
+                  {contract.charges !== null && contract.charges !== undefined && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Charges</p>
+                      <p className="font-semibold text-lg">CHF {contract.charges.toLocaleString()}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm text-muted-foreground">Deposit</p>
                     <p className="font-semibold text-lg">CHF {contract.deposit_amount.toLocaleString()}</p>
@@ -250,6 +319,13 @@ export default function ContractDetail() {
                       <p className="text-sm text-muted-foreground">Your Monthly Payout</p>
                       <p className="font-semibold text-lg">CHF {contract.owner_payout.toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground mt-1">After platform fee</p>
+                    </div>
+                  )}
+                  {contract.charges !== null && contract.charges !== undefined && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total mensuel</p>
+                      <p className="font-semibold text-lg">CHF {(contract.monthly_rent + contract.charges).toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Loyer + Charges</p>
                     </div>
                   )}
                 </div>
@@ -384,6 +460,78 @@ export default function ContractDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Dialog d'édition du contrat */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier le contrat</DialogTitle>
+            <DialogDescription>
+              Vous pouvez modifier les détails du contrat. Les deux parties doivent être d'accord avec les modifications.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="monthly_rent">Loyer mensuel (CHF)</Label>
+              <Input
+                id="monthly_rent"
+                type="number"
+                value={editData.monthly_rent}
+                onChange={(e) => setEditData({ ...editData, monthly_rent: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="charges">Charges mensuelles (CHF)</Label>
+              <Input
+                id="charges"
+                type="number"
+                value={editData.charges}
+                onChange={(e) => setEditData({ ...editData, charges: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="deposit_amount">Caution (CHF)</Label>
+              <Input
+                id="deposit_amount"
+                type="number"
+                value={editData.deposit_amount}
+                onChange={(e) => setEditData({ ...editData, deposit_amount: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start_date">Date de début</Label>
+                <Input
+                  id="start_date"
+                  type="date"
+                  value={editData.start_date}
+                  onChange={(e) => setEditData({ ...editData, start_date: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="end_date">Date de fin</Label>
+                <Input
+                  id="end_date"
+                  type="date"
+                  value={editData.end_date}
+                  onChange={(e) => setEditData({ ...editData, end_date: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={() => updateContractMutation.mutate(editData)}
+              disabled={updateContractMutation.isPending}
+            >
+              {updateContractMutation.isPending ? 'Enregistrement...' : 'Enregistrer les modifications'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

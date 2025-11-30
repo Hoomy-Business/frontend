@@ -442,6 +442,7 @@ export const propertySchema = z.object({
   canton_code: z.string(),
   canton_name: z.string().optional(),
   price: z.number(),
+  charges: z.number().nullable().optional(),
   rooms: z.number().nullable(),
   bathrooms: z.number().nullable(),
   surface_area: z.number().nullable(),
@@ -563,6 +564,7 @@ export const contractSchema = z.object({
   owner_id: z.number(),
   conversation_id: z.number().nullable(),
   monthly_rent: z.number(),
+  charges: z.number().nullable().optional(),
   hoomy_commission: z.number(),
   owner_payout: z.number(),
   start_date: z.string(),
@@ -579,6 +581,8 @@ export const contractSchema = z.object({
   student_last_name: z.string().optional(),
   owner_first_name: z.string().optional(),
   owner_last_name: z.string().optional(),
+  is_editable: z.boolean().optional(),
+  edited_by: z.number().nullable().optional(),
 });
 
 export const createContractSchema = z.object({
@@ -587,6 +591,7 @@ export const createContractSchema = z.object({
   student_id: z.number().optional(),
   conversation_id: z.number().optional(),
   monthly_rent: z.number().positive(),
+  charges: z.number().nonnegative().optional(),
   start_date: z.string(),
   end_date: z.string(),
   deposit_amount: z.number().nonnegative().optional(),

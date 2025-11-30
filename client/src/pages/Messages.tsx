@@ -1,22 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useSearch } from 'wouter';
-import { Send, Building2, ArrowLeft } from 'lucide-react';
+import { Link, useSearch, useLocation } from 'wouter';
+import { Send, Building2, ArrowLeft, FileText, Check, X } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
-import type { Conversation, Message } from '@shared/schema';
+import type { Conversation, Message, Property } from '@shared/schema';
 import { apiRequest } from '@/lib/api';
 import { useLanguage } from '@/lib/useLanguage';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Messages() {
-  const { user } = useAuth();
+  const { user, isOwner } = useAuth();
   const { t } = useLanguage();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const searchParams = useSearch();
   const conversationIdParam = new URLSearchParams(searchParams).get('conversation');
   const propertyIdParam = new URLSearchParams(searchParams).get('property');
@@ -26,6 +31,8 @@ export default function Messages() {
     conversationIdParam ? parseInt(conversationIdParam) : null
   );
   const [messageText, setMessageText] = useState('');
+  const [proposeContractDialogOpen, setProposeContractDialogOpen] = useState(false);
+  const [pendingContractId, setPendingContractId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -168,6 +175,132 @@ export default function Messages() {
     ? conversations.find(c => c.id === selectedConversation) 
     : undefined;
 
+  // Récupérer les informations de la propriété pour le contrat
+  const { data: property } = useQuery<Property>({
+    queryKey: ['/properties', selectedConvData?.property_id],
+    enabled: !!selectedConvData?.property_id && !!isOwner,
+    queryFn: async () => {
+      if (!selectedConvData?.property_id) throw new Error('Property ID required');
+      return apiRequest<Property>('GET', `/properties/${selectedConvData.property_id}`);
+    },
+  });
+
+  // Vérifier s'il existe déjà un contrat pour cette conversation
+  const { data: existingContract } = useQuery<any>({
+    queryKey: ['/contracts/by-conversation', selectedConversation],
+    enabled: !!selectedConversation,
+    queryFn: async () => {
+      if (!selectedConversation) return null;
+      try {
+        return await apiRequest<any>('GET', `/contracts/by-conversation/${selectedConversation}`);
+      } catch {
+        return null;
+      }
+    },
+  });
+
+  // Proposer un contrat
+  const proposeContractMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedConvData?.property_id || !selectedConvData?.student_id || !property) {
+        throw new Error('Informations manquantes pour créer le contrat');
+      }
+      
+      // Calculer les dates par défaut (1 an à partir d'aujourd'hui)
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      
+      const contractData = {
+        property_id: selectedConvData.property_id,
+        student_id: selectedConvData.student_id,
+        conversation_id: selectedConversation,
+        monthly_rent: property.price,
+        charges: property.charges || 0,
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0],
+        deposit_amount: property.price * 3, // 3 mois de loyer
+      };
+      
+      return apiRequest<any>('POST', '/contracts/propose', contractData);
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Contrat proposé',
+        description: 'Le contrat a été proposé à l\'étudiant. Il pourra l\'accepter ou le refuser.',
+      });
+      setProposeContractDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['/messages', selectedConversation] });
+      queryClient.invalidateQueries({ queryKey: ['/contracts/by-conversation', selectedConversation] });
+      // Envoyer un message automatique
+      sendMessageMutation.mutate({
+        conversation_id: selectedConversation!,
+        content: 'J\'ai proposé un contrat de location. Vous pouvez le consulter et l\'accepter si vous êtes d\'accord avec les conditions.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message || 'Impossible de proposer le contrat',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Accepter un contrat
+  const acceptContractMutation = useMutation({
+    mutationFn: async (contractId: number) => {
+      return apiRequest<any>('PUT', `/contracts/${contractId}/accept`, {});
+    },
+    onSuccess: (data, contractId) => {
+      toast({
+        title: 'Contrat accepté',
+        description: 'Le contrat a été accepté et est maintenant actif.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/messages', selectedConversation] });
+      queryClient.invalidateQueries({ queryKey: ['/contracts/by-conversation', selectedConversation] });
+      queryClient.invalidateQueries({ queryKey: ['/contracts/my-contracts'] });
+      setPendingContractId(null);
+      // Envoyer un message automatique
+      sendMessageMutation.mutate({
+        conversation_id: selectedConversation!,
+        content: 'J\'ai accepté le contrat. Merci !',
+      });
+      // Rediriger vers le détail du contrat
+      setLocation(`/contracts/${contractId}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message || 'Impossible d\'accepter le contrat',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Refuser un contrat
+  const rejectContractMutation = useMutation({
+    mutationFn: async (contractId: number) => {
+      return apiRequest<any>('PUT', `/contracts/${contractId}/reject`, {});
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Contrat refusé',
+        description: 'Le contrat a été refusé.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/messages', selectedConversation] });
+      queryClient.invalidateQueries({ queryKey: ['/contracts/by-conversation', selectedConversation] });
+      setPendingContractId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message || 'Impossible de refuser le contrat',
+        variant: 'destructive',
+      });
+    },
+  });
+
   return (
     <MainLayout>
       <div className="flex-1 flex flex-col overflow-hidden min-h-0 h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)]">
@@ -276,6 +409,59 @@ export default function Messages() {
                             {selectedConvData?.other_user_name}
                           </p>
                         </div>
+                        {isOwner && !existingContract && selectedConvData?.property_id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setProposeContractDialogOpen(true)}
+                            className="hidden sm:flex gap-1.5 sm:gap-2"
+                            data-testid="button-propose-contract"
+                          >
+                            <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden md:inline">Proposer un contrat</span>
+                          </Button>
+                        )}
+                        {existingContract && existingContract.status === 'pending' && !isOwner && (
+                          <div className="flex gap-1.5 sm:gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setPendingContractId(existingContract.id);
+                                acceptContractMutation.mutate(existingContract.id);
+                              }}
+                              disabled={acceptContractMutation.isPending}
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                              <span className="hidden sm:inline">Accepter</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setPendingContractId(existingContract.id);
+                                rejectContractMutation.mutate(existingContract.id);
+                              }}
+                              disabled={rejectContractMutation.isPending}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <X className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                              <span className="hidden sm:inline">Refuser</span>
+                            </Button>
+                          </div>
+                        )}
+                        {existingContract && existingContract.status === 'active' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setLocation(`/contracts/${existingContract.id}`)}
+                            className="gap-1.5 sm:gap-2"
+                          >
+                            <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden sm:inline">Voir le contrat</span>
+                          </Button>
+                        )}
                       </div>
                     </CardHeader>
 
@@ -325,9 +511,65 @@ export default function Messages() {
                             <div ref={messagesEndRef} />
                           </div>
                         )}
+                        
+                        {/* Afficher une alerte si un contrat est en attente */}
+                        {existingContract && existingContract.status === 'pending' && (
+                          <Alert className="m-2 sm:m-3 md:m-4">
+                            <FileText className="h-4 w-4" />
+                            <AlertDescription>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-semibold">
+                                    {isOwner ? 'Contrat proposé en attente' : 'Contrat proposé - Action requise'}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {isOwner 
+                                      ? 'L\'étudiant doit accepter ou refuser le contrat.'
+                                      : 'Veuillez accepter ou refuser le contrat proposé.'}
+                                  </p>
+                                </div>
+                                {!isOwner && (
+                                  <div className="flex gap-2 ml-4">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => acceptContractMutation.mutate(existingContract.id)}
+                                      disabled={acceptContractMutation.isPending}
+                                      className="bg-green-600 hover:bg-green-700"
+                                    >
+                                      <Check className="h-4 w-4 mr-1" />
+                                      Accepter
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => rejectContractMutation.mutate(existingContract.id)}
+                                      disabled={rejectContractMutation.isPending}
+                                    >
+                                      <X className="h-4 w-4 mr-1" />
+                                      Refuser
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </ScrollArea>
 
-                      <div className="border-t p-1.5 sm:p-2 md:p-3 lg:p-4 bg-background flex-shrink-0">
+                      <div className="border-t p-1.5 sm:p-2 md:p-3 lg:p-4 bg-background flex-shrink-0 space-y-2">
+                        {/* Bouton mobile pour proposer un contrat */}
+                        {isOwner && !existingContract && selectedConvData?.property_id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setProposeContractDialogOpen(true)}
+                            className="w-full sm:hidden gap-2"
+                            data-testid="button-propose-contract-mobile"
+                          >
+                            <FileText className="h-4 w-4" />
+                            Proposer un contrat
+                          </Button>
+                        )}
                         <form
                           onSubmit={(e) => {
                             e.preventDefault();
@@ -373,6 +615,47 @@ export default function Messages() {
           </div>
         </div>
       </div>
+
+      {/* Dialog pour proposer un contrat */}
+      <Dialog open={proposeContractDialogOpen} onOpenChange={setProposeContractDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Proposer un contrat</DialogTitle>
+            <DialogDescription>
+              Un contrat sera automatiquement généré avec les informations de la propriété. L'étudiant pourra l'accepter ou le refuser.
+            </DialogDescription>
+          </DialogHeader>
+          {property && (
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-muted rounded-md">
+                <h4 className="font-semibold mb-2">Détails du contrat</h4>
+                <div className="space-y-1 text-sm">
+                  <p><span className="font-medium">Loyer mensuel:</span> CHF {property.price.toLocaleString()}</p>
+                  {property.charges && (
+                    <p><span className="font-medium">Charges:</span> CHF {property.charges.toLocaleString()}</p>
+                  )}
+                  <p><span className="font-medium">Caution:</span> CHF {(property.price * 3).toLocaleString()} (3 mois)</p>
+                  <p><span className="font-medium">Durée:</span> 1 an (à partir d'aujourd'hui)</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Vous pourrez modifier le contrat après sa création si nécessaire.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProposeContractDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={() => proposeContractMutation.mutate()} 
+              disabled={proposeContractMutation.isPending || !property}
+            >
+              {proposeContractMutation.isPending ? 'Création...' : 'Proposer le contrat'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
