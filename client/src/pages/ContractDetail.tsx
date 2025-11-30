@@ -43,6 +43,42 @@ export default function ContractDetail() {
     }
   }, [isAuthenticated, setLocation]);
 
+  // Handle Stripe payment return
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const payment = urlParams.get('payment');
+    const type = urlParams.get('type');
+    
+    if (payment === 'success') {
+      queryClient.invalidateQueries({ queryKey: ['/contracts', contractId] });
+      queryClient.invalidateQueries({ queryKey: ['/contracts/payments', contractId] });
+      
+      if (type === 'deposit') {
+        toast({
+          title: 'Deposit Payment Successful',
+          description: 'Your security deposit has been successfully processed.',
+        });
+      } else {
+        toast({
+          title: 'Payment Setup Successful',
+          description: 'Your subscription has been set up successfully. Monthly payments will be processed automatically.',
+        });
+      }
+      
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (payment === 'cancelled') {
+      toast({
+        title: 'Payment Cancelled',
+        description: 'The payment was cancelled. You can try again anytime.',
+        variant: 'destructive',
+      });
+      
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [contractId, toast]);
+
   const { data: contractData, isLoading } = useQuery<{ success: boolean; contract: Contract }>({
     queryKey: ['/contracts', contractId],
     enabled: !!contractId && isAuthenticated,
@@ -104,14 +140,37 @@ export default function ContractDetail() {
   });
 
   const createSubscriptionMutation = useMutation({
-    mutationFn: () => apiRequest<{ success: boolean; checkout_url: string }>('POST', '/contracts/create-subscription', { contract_id: contractId }),
+    mutationFn: () => apiRequest<{ success: boolean; checkout_url: string; requires_owner_setup?: boolean }>('POST', '/contracts/create-subscription', { contract_id: contractId }),
     onSuccess: (data) => {
+      if (data.requires_owner_setup) {
+        toast({ 
+          title: 'Owner Setup Required', 
+          description: 'The property owner must complete their Stripe setup before payments can be processed.',
+          variant: 'destructive' 
+        });
+        return;
+      }
       if (data.checkout_url) {
+        toast({ 
+          title: 'Redirecting to Stripe', 
+          description: 'You will be redirected to complete your payment setup.' 
+        });
         window.location.href = data.checkout_url;
+      } else {
+        toast({ 
+          title: 'Error', 
+          description: 'No checkout URL received from server.',
+          variant: 'destructive' 
+        });
       }
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      const errorMessage = error.message || 'Failed to create subscription. Please try again.';
+      toast({ 
+        title: 'Payment Setup Error', 
+        description: errorMessage, 
+        variant: 'destructive' 
+      });
     },
   });
 
@@ -119,10 +178,53 @@ export default function ContractDetail() {
     mutationFn: () => apiRequest('POST', '/contracts/cancel-subscription', { contract_id: contractId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/contracts', contractId] });
-      toast({ title: 'Success', description: 'Subscription cancelled successfully' });
+      queryClient.invalidateQueries({ queryKey: ['/contracts/payments', contractId] });
+      toast({ 
+        title: 'Subscription Cancelled', 
+        description: 'Your subscription has been cancelled. Automatic payments will stop.' 
+      });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ 
+        title: 'Cancellation Error', 
+        description: error.message || 'Failed to cancel subscription. Please try again.',
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  const payDepositMutation = useMutation({
+    mutationFn: () => apiRequest<{ success: boolean; checkout_url: string; requires_owner_setup?: boolean }>('POST', '/contracts/pay-deposit', { contract_id: contractId }),
+    onSuccess: (data) => {
+      if (data.requires_owner_setup) {
+        toast({ 
+          title: 'Owner Setup Required', 
+          description: 'The property owner must complete their Stripe setup before payments can be processed.',
+          variant: 'destructive' 
+        });
+        return;
+      }
+      if (data.checkout_url) {
+        toast({ 
+          title: 'Redirecting to Stripe', 
+          description: 'You will be redirected to complete your deposit payment.' 
+        });
+        window.location.href = data.checkout_url;
+      } else {
+        toast({ 
+          title: 'Error', 
+          description: 'No checkout URL received from server.',
+          variant: 'destructive' 
+        });
+      }
+    },
+    onError: (error: Error) => {
+      const errorMessage = error.message || 'Failed to process deposit payment. Please try again.';
+      toast({ 
+        title: 'Payment Error', 
+        description: errorMessage, 
+        variant: 'destructive' 
+      });
     },
   });
 
@@ -469,61 +571,249 @@ export default function ContractDetail() {
                 {contract?.status === 'active' && (
                   <>
                     <TabsContent value="payments" className="space-y-4">
-                      <div>
-                        <h3 className="font-semibold mb-3">Payment Setup</h3>
-                        {!contract.stripe_subscription_id ? (
-                          <Alert>
-                            <AlertDescription className="flex items-center justify-between">
-                              <span>Set up automatic monthly payments</span>
-                              <Button
-                                onClick={() => createSubscriptionMutation.mutate()}
-                                disabled={createSubscriptionMutation.isPending}
-                              >
-                                {createSubscriptionMutation.isPending ? 'Setting up...' : 'Set Up Payments'}
-                              </Button>
-                            </AlertDescription>
-                          </Alert>
-                        ) : (
-                          <Alert>
-                            <AlertDescription className="flex items-center justify-between">
-                              <span>Subscription is active. Payments will be processed automatically.</span>
-                              <Button
-                                variant="destructive"
-                                onClick={() => {
-                                  if (confirm('Are you sure you want to cancel the subscription?')) {
-                                    cancelSubscriptionMutation.mutate();
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-semibold mb-3 flex items-center gap-2">
+                            <CreditCard className="h-5 w-5" />
+                            Payment Management
+                          </h3>
+                          
+                          {/* Subscription Status */}
+                          <Card className="mb-4">
+                            <CardHeader>
+                              <CardTitle className="text-lg">Monthly Subscription</CardTitle>
+                              <CardDescription>
+                                {contract.stripe_subscription_id 
+                                  ? 'Automatic monthly payments are active'
+                                  : 'Set up automatic monthly rent payments'}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              {!contract.stripe_subscription_id ? (
+                                <div className="space-y-3">
+                                  <Alert>
+                                    <AlertDescription>
+                                      <div className="flex items-center justify-between">
+                                        <div>
+                                          <p className="font-medium mb-1">Set up automatic payments</p>
+                                          <p className="text-sm text-muted-foreground">
+                                            Your monthly rent of CHF {Number(contract.monthly_rent || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} will be charged automatically each month.
+                                          </p>
+                                        </div>
+                                        <Button
+                                          onClick={() => createSubscriptionMutation.mutate()}
+                                          disabled={createSubscriptionMutation.isPending}
+                                          className="ml-4"
+                                        >
+                                          {createSubscriptionMutation.isPending ? (
+                                            <>
+                                              <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                              Setting up...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <CreditCard className="h-4 w-4 mr-2" />
+                                              Set Up Payments
+                                            </>
+                                          )}
+                                        </Button>
+                                      </div>
+                                    </AlertDescription>
+                                  </Alert>
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  <Alert className="border-green-200 bg-green-50">
+                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                    <AlertDescription>
+                                      <div className="flex items-center justify-between">
+                                        <div>
+                                          <p className="font-medium text-green-900 mb-1">Subscription Active</p>
+                                          <p className="text-sm text-green-700">
+                                            Payments are processed automatically on the 1st of each month.
+                                          </p>
+                                        </div>
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          onClick={() => {
+                                            if (confirm('Are you sure you want to cancel the subscription? This will stop automatic payments.')) {
+                                              cancelSubscriptionMutation.mutate();
+                                            }
+                                          }}
+                                          disabled={cancelSubscriptionMutation.isPending}
+                                        >
+                                          {cancelSubscriptionMutation.isPending ? 'Cancelling...' : 'Cancel'}
+                                        </Button>
+                                      </div>
+                                    </AlertDescription>
+                                  </Alert>
+                                  <div className="grid grid-cols-2 gap-4 pt-2">
+                                    <div>
+                                      <p className="text-sm text-muted-foreground">Next Payment</p>
+                                      <p className="font-semibold">
+                                        {new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString('fr-CH', { 
+                                          day: 'numeric', 
+                                          month: 'long',
+                                          year: 'numeric'
+                                        })}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm text-muted-foreground">Amount</p>
+                                      <p className="font-semibold">
+                                        CHF {Number(contract.monthly_rent || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+
+                          {/* Deposit Payment */}
+                          {contract.deposit_amount > 0 && (
+                            <Card>
+                              <CardHeader>
+                                <CardTitle className="text-lg">Security Deposit</CardTitle>
+                                <CardDescription>
+                                  One-time payment of CHF {Number(contract.deposit_amount || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                {(() => {
+                                  const depositPaid = paymentsData?.payments?.some(
+                                    (p: any) => p.payment_type === 'deposit' && p.payment_status === 'succeeded'
+                                  );
+                                  
+                                  if (depositPaid) {
+                                    return (
+                                      <Alert className="border-green-200 bg-green-50">
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                        <AlertDescription>
+                                          <p className="font-medium text-green-900 mb-1">Deposit Paid</p>
+                                          <p className="text-sm text-green-700">
+                                            Your security deposit has been successfully paid. It will be returned at the end of the contract, minus any damages or unpaid fees.
+                                          </p>
+                                        </AlertDescription>
+                                      </Alert>
+                                    );
                                   }
-                                }}
-                                disabled={cancelSubscriptionMutation.isPending}
-                              >
-                                {cancelSubscriptionMutation.isPending ? 'Cancelling...' : 'Cancel Subscription'}
-                              </Button>
-                            </AlertDescription>
-                          </Alert>
-                        )}
+                                  
+                                  return (
+                                    <Alert>
+                                      <AlertDescription>
+                                        <div className="space-y-3">
+                                          <div>
+                                            <p className="font-medium mb-1">Pay Security Deposit</p>
+                                            <p className="text-sm text-muted-foreground">
+                                              The security deposit of CHF {Number(contract.deposit_amount || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} will be returned at the end of the contract, minus any damages or unpaid fees.
+                                            </p>
+                                          </div>
+                                          {isStudent && (
+                                            <Button
+                                              onClick={() => payDepositMutation.mutate()}
+                                              disabled={payDepositMutation.isPending}
+                                              className="w-full sm:w-auto"
+                                            >
+                                              {payDepositMutation.isPending ? (
+                                                <>
+                                                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                                  Processing...
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <CreditCard className="h-4 w-4 mr-2" />
+                                                  Pay Deposit
+                                                </>
+                                              )}
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </AlertDescription>
+                                    </Alert>
+                                  );
+                                })()}
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
                       </div>
                     </TabsContent>
 
                     <TabsContent value="history" className="space-y-4">
                       <div>
-                        <h3 className="font-semibold mb-3">Payment History</h3>
+                        <h3 className="font-semibold mb-3 flex items-center gap-2">
+                          <History className="h-5 w-5" />
+                          Payment History
+                        </h3>
                         {!paymentsData?.payments || paymentsData.payments.length === 0 ? (
-                          <p className="text-muted-foreground">No payment history available</p>
+                          <Card>
+                            <CardContent className="p-8 text-center">
+                              <History className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                              <p className="text-muted-foreground">No payment history available yet</p>
+                              <p className="text-sm text-muted-foreground mt-2">
+                                Payments will appear here once they are processed.
+                              </p>
+                            </CardContent>
+                          </Card>
                         ) : (
-                          <div className="space-y-2">
-                            {paymentsData.payments.map((payment) => (
+                          <div className="space-y-3">
+                            {paymentsData.payments.map((payment: any) => (
                               <Card key={payment.id}>
                                 <CardContent className="p-4">
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <p className="font-medium">CHF {payment.amount?.toLocaleString()}</p>
-                                      <p className="text-sm text-muted-foreground">
-                                        {new Date(payment.created_at).toLocaleDateString()}
-                                      </p>
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <p className="font-semibold text-lg">
+                                          CHF {Number(payment.amount || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </p>
+                                        <Badge 
+                                          variant={
+                                            payment.payment_status === 'succeeded' ? 'default' :
+                                            payment.payment_status === 'pending' ? 'secondary' :
+                                            'destructive'
+                                          }
+                                        >
+                                          {payment.payment_status === 'succeeded' ? 'Paid' :
+                                           payment.payment_status === 'pending' ? 'Pending' :
+                                           payment.payment_status === 'failed' ? 'Failed' :
+                                           payment.payment_status}
+                                        </Badge>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <p className="text-sm text-muted-foreground">
+                                          {payment.payment_type === 'monthly_rent' ? 'Monthly Rent' :
+                                           payment.payment_type === 'deposit' ? 'Security Deposit' :
+                                           payment.payment_type}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {new Date(payment.created_at).toLocaleDateString('fr-CH', {
+                                            day: 'numeric',
+                                            month: 'long',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          })}
+                                        </p>
+                                        {payment.paid_at && (
+                                          <p className="text-xs text-green-600">
+                                            Paid on {new Date(payment.paid_at).toLocaleDateString('fr-CH')}
+                                          </p>
+                                        )}
+                                        {payment.failure_reason && (
+                                          <p className="text-xs text-red-600">
+                                            {payment.failure_reason}
+                                          </p>
+                                        )}
+                                      </div>
                                     </div>
-                                    <Badge variant={payment.status === 'completed' ? 'default' : 'secondary'}>
-                                      {payment.status}
-                                    </Badge>
+                                    {payment.payment_status === 'succeeded' && (
+                                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+                                    )}
+                                    {payment.payment_status === 'failed' && (
+                                      <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                                    )}
                                   </div>
                                 </CardContent>
                               </Card>
