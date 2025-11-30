@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Store error for debugging
     if (typeof window !== 'undefined') {
       (window as Window & { __lastError?: unknown }).__lastError = {
@@ -83,11 +83,34 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   handleReload = (): void => {
+    // Clear module cache if possible
+    if (typeof window !== 'undefined' && 'caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => {
+          if (name.includes('workbox') || name.includes('vite')) {
+            caches.delete(name);
+          }
+        });
+      });
+    }
+    
     this.handleReset();
+    // Force a hard reload to clear module cache
     window.location.reload();
   };
+  
+  handleRetry = async (): Promise<void> => {
+    // Try to clear the error and retry loading
+    this.handleReset();
+    
+    // If it's a module loading error, try to reload the page
+    if (this.state.error?.message?.includes('loading dynamically imported module')) {
+      // Force a hard reload
+      window.location.reload();
+    }
+  };
 
-  render(): ReactNode {
+  override render(): ReactNode {
     if (this.state.hasError && this.state.error) {
       // Support function-as-fallback pattern
       if (typeof this.props.fallback === 'function') {
@@ -135,11 +158,33 @@ export class ErrorBoundary extends Component<Props, State> {
                 </div>
               )}
 
+              {this.state.error?.message?.includes('loading dynamically imported module') && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
+                    <strong>Erreur de chargement de module :</strong> Le fichier JavaScript n&apos;a pas pu être chargé. Cela peut être dû à :
+                  </p>
+                  <ul className="text-sm text-blue-800 dark:text-blue-200 list-disc list-inside space-y-1">
+                    <li>Un problème de cache du navigateur</li>
+                    <li>Un problème de réseau</li>
+                    <li>Un fichier manquant après un déploiement</li>
+                  </ul>
+                  <p className="text-sm text-blue-800 dark:text-blue-200 mt-2">
+                    Essayez de vider le cache de votre navigateur (Ctrl+Shift+Delete) ou utilisez le bouton &quot;Recharger la page&quot; ci-dessous.
+                  </p>
+                </div>
+              )}
+              
               <div className="flex gap-2 flex-wrap">
                 <Button onClick={this.handleReload} variant="default">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Recharger la page
                 </Button>
+                {this.state.error?.message?.includes('loading dynamically imported module') && (
+                  <Button onClick={this.handleRetry} variant="outline">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Réessayer
+                  </Button>
+                )}
                 <Button asChild variant="outline">
                   <Link href="/">
                     <Home className="h-4 w-4 mr-2" />

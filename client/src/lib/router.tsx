@@ -24,20 +24,44 @@ interface RouteConfig {
   prefetchData?: string[]; // Query keys to prefetch
 }
 
-// Lazy loaders with webpack magic comments for better debugging
+// Lazy loaders with retry mechanism for better reliability
 const createLazyComponent = (
   importFn: () => Promise<{ default: ComponentType<unknown> }>,
   chunkName: string
 ) => {
-  return lazy(() => 
-    importFn().catch((error) => {
-      // Log error but don't crash - let ErrorBoundary handle it
-      if (import.meta.env.DEV) {
-        console.error(`Failed to load chunk: ${chunkName}`, error);
+  return lazy(async () => {
+    let lastError: Error | null = null;
+    const maxRetries = 3;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const module = await importFn();
+        return module;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        // Log error with attempt number
+        if (import.meta.env.DEV) {
+          console.warn(`Failed to load chunk: ${chunkName} (attempt ${attempt}/${maxRetries})`, error);
+        }
+        
+        // If it's the last attempt, throw the error
+        if (attempt === maxRetries) {
+          // Try to reload the page if it's a network error
+          if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+            console.error(`Failed to load chunk after ${maxRetries} attempts. This might be a network issue.`, error);
+          }
+          throw lastError;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
-      throw error;
-    })
-  );
+    }
+    
+    // This should never be reached, but TypeScript needs it
+    throw lastError || new Error(`Failed to load chunk: ${chunkName}`);
+  });
 };
 
 // ============================================
@@ -114,9 +138,9 @@ export const routes: RouteConfig[] = [
   },
   {
     path: '/messages',
-    priority: RoutePriority.MEDIUM,
+    priority: RoutePriority.HIGH, // Augmenté à HIGH pour précharger plus tôt
     component: createLazyComponent(() => import('@/pages/Messages'), 'Messages'),
-    preloadOn: 'hover',
+    preloadOn: 'idle', // Précharger dès que possible
     prefetchData: ['/conversations'],
   },
   {
