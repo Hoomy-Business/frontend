@@ -344,8 +344,8 @@ export default function Properties() {
       <div>
         <label className="text-sm font-medium mb-2 block">{t('properties.canton')}</label>
         <Select value={selectedCanton} onValueChange={handleCantonChange}>
-          <SelectTrigger data-testid="select-canton">
-            <SelectValue placeholder={t('properties.canton.all')} />
+          <SelectTrigger data-testid="select-canton" className="min-w-0">
+            <SelectValue placeholder={t('properties.canton.all')} className="truncate" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="___all___">{t('properties.canton.all')}</SelectItem>
@@ -392,8 +392,8 @@ export default function Properties() {
       <div>
         <label className="text-sm font-medium mb-2 block">{t('properties.type')}</label>
         <Select value={propertyType} onValueChange={setPropertyType}>
-          <SelectTrigger data-testid="select-type">
-            <SelectValue placeholder={t('properties.type.all')} />
+          <SelectTrigger data-testid="select-type" className="min-w-0">
+            <SelectValue placeholder={t('properties.type.all')} className="truncate" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="___all___">{t('properties.type.all')}</SelectItem>
@@ -424,8 +424,8 @@ export default function Properties() {
       <div>
         <label className="text-sm font-medium mb-2 block">{t('properties.rooms.min')}</label>
         <Select value={minRooms} onValueChange={setMinRooms}>
-          <SelectTrigger data-testid="select-rooms">
-            <SelectValue placeholder={t('properties.rooms.any')} />
+          <SelectTrigger data-testid="select-rooms" className="min-w-0">
+            <SelectValue placeholder={t('properties.rooms.any')} className="truncate" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="___all___">{t('properties.rooms.any')}</SelectItem>

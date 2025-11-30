@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Search, MapPin, Shield, CreditCard, CheckCircle, ArrowRight, Sparkles, TrendingUp, Users, Home, Star } from 'lucide-react';
+import { Search, MapPin, Shield, CreditCard, CheckCircle, ArrowRight, Sparkles, TrendingUp, Users, Home, Star, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -128,12 +128,11 @@ export default function Landing() {
                     {t('landing.search.quick.subtitle')}
                   </p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1.5 sm:mb-2 block">{t('landing.search.canton.label')}</label>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-3 items-stretch">
+                  <div className="flex-1 min-w-0">
                     <Select value={selectedCanton} onValueChange={setSelectedCanton}>
-                      <SelectTrigger data-testid="select-canton" className="h-11 sm:h-12 text-base min-w-0">
-                        <SelectValue placeholder={t('landing.search.canton')} />
+                      <SelectTrigger data-testid="select-canton" className="h-14 text-[15px] bg-white border-2 border-border/50 hover:border-border focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-none hover:shadow-sm rounded-lg">
+                        <SelectValue placeholder={t('landing.search.canton')} className="truncate text-muted-foreground" />
                       </SelectTrigger>
                       <SelectContent>
                         {cantons?.map((canton) => (
@@ -145,29 +144,55 @@ export default function Landing() {
                     </Select>
                   </div>
 
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1.5 sm:mb-2 block">{t('landing.search.budget.label')}</label>
+                  <div className="flex-1 min-w-0 relative">
                     <Input 
                       type="number"
                       placeholder={t('landing.search.budget')}
                       value={maxBudget}
                       onChange={(e) => setMaxBudget(e.target.value)}
+                      step="100"
+                      min="0"
                       data-testid="input-budget"
-                      className="h-11 sm:h-12 text-base"
+                      className="h-14 text-[15px] bg-white border-2 border-border/50 hover:border-border focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-none hover:shadow-sm rounded-lg placeholder:text-muted-foreground pr-12"
                     />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = parseInt(maxBudget) || 0;
+                          setMaxBudget(String(current + 100));
+                        }}
+                        className="h-5 w-6 flex items-center justify-center rounded-sm hover:bg-muted/60 transition-colors group"
+                        aria-label="Augmenter"
+                      >
+                        <ChevronUp className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = parseInt(maxBudget) || 0;
+                          if (current >= 100) {
+                            setMaxBudget(String(current - 100));
+                          }
+                        }}
+                        className="h-5 w-6 flex items-center justify-center rounded-sm hover:bg-muted/60 transition-colors group"
+                        aria-label="Diminuer"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex items-end">
-                    <Button 
-                      onClick={handleSearch} 
-                      size="lg" 
-                      className="w-full h-11 sm:h-12 text-base sm:text-lg touch-manipulation whitespace-normal break-words"
-                      data-testid="button-search"
-                    >
-                      <Search className="h-4 w-4 mr-2 flex-shrink-0" />
-                      <span className="break-words">{t('landing.search.button')}</span>
-                    </Button>
-                  </div>
+                  <Button 
+                    onClick={handleSearch} 
+                    size="lg" 
+                    className="h-14 px-6 sm:px-10 text-[15px] font-semibold shadow-md hover:shadow-lg transition-all hover:scale-[1.01] active:scale-[0.99] whitespace-nowrap rounded-lg"
+                    data-testid="button-search"
+                  >
+                    <Search className="h-5 w-5 mr-2 flex-shrink-0" />
+                    <span className="hidden sm:inline">{t('landing.search.button')}</span>
+                    <span className="sm:hidden">Rechercher</span>
+                  </Button>
                 </div>
               </CardContent>
             </Card>

@@ -279,6 +279,19 @@ input, textarea, select {
     @apply hidden;
   }
 
+  /* Hide default number input spinners completely - we'll use custom buttons */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+  }
+
+  /* Firefox: hide spinner */
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
   /* Placeholder styling for contentEditable div */
   [contenteditable][data-placeholder]:empty::before {
     content: attr(data-placeholder);

@@ -94,6 +94,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'property.description.empty': 'Aucune description disponible.',
     'property.owner.own': 'Ceci est votre propriété',
     'property.owner.student': 'Connectez-vous en tant qu\'étudiant pour contacter le propriétaire',
+    'property.owner.verified': 'Propriétaire Vérifié',
     
     // Dashboard
     'dashboard.welcome': 'Bonjour, {name}!',
@@ -149,6 +150,14 @@ export const translations: Record<Language, Record<string, string>> = {
     'dashboard.profile.current_password': 'Mot de Passe Actuel',
     'dashboard.profile.new_password': 'Nouveau Mot de Passe',
     'dashboard.profile.confirm_password': 'Confirmer le Nouveau Mot de Passe',
+    'dashboard.profile.settings': 'Paramètres du compte',
+    'dashboard.profile.edit': 'Modifier le profil',
+    'dashboard.profile.edit.desc': 'Mettez à jour vos informations personnelles',
+    'dashboard.contract.rent': 'Loyer mensuel',
+    'dashboard.contract.duration': 'Durée',
+    'dashboard.contract.payout': 'Votre paiement',
+    'dashboard.requests.empty': 'Aucune demande pour le moment',
+    'dashboard.requests.empty.desc': 'Les candidatures apparaîtront ici',
     'dashboard.student.messages': 'Messages',
     'dashboard.student.messages.empty': 'Aucun message pour le moment',
     'dashboard.student.messages.empty.desc': 'Contactez les propriétaires pour démarrer une conversation',
@@ -240,6 +249,12 @@ export const translations: Record<Language, Record<string, string>> = {
     'property.form.cancel': 'Annuler',
     'property.form.error.upload': 'Échec du téléchargement des images',
     'property.form.error.unknown': 'Erreur inconnue',
+    'property.form.error.images.required': 'Au moins une image est requise',
+    'property.form.error.images.invalid_urls': 'Les URLs d\'images ne sont pas valides. Veuillez réessayer de télécharger les images.',
+    'property.form.error.images.no_urls': 'Aucune URL d\'image retournée après le téléchargement. Veuillez réessayer.',
+    'property.form.error.images.partial': 'La propriété a été créée mais les photos n\'ont pas pu être ajoutées. Vérifiez votre tableau de bord et ajoutez les photos depuis la page d\'édition si nécessaire.',
+    'property.form.error.address.required': 'Veuillez remplir tous les champs d\'adresse (rue, canton, ville, code postal)',
+    'property.form.error.postal_code': 'Le code postal doit contenir exactement 4 chiffres',
     
     // Common
     'common.loading': 'Chargement...',
@@ -383,6 +398,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'property.description.empty': 'No description available.',
     'property.owner.own': 'This is your property',
     'property.owner.student': 'Sign in as a student to contact the owner',
+    'property.owner.verified': 'Verified Owner',
     
     // Dashboard
     'dashboard.welcome': 'Welcome back, {name}!',
@@ -459,6 +475,14 @@ export const translations: Record<Language, Record<string, string>> = {
     'dashboard.profile.current_password': 'Current Password',
     'dashboard.profile.new_password': 'New Password',
     'dashboard.profile.confirm_password': 'Confirm New Password',
+    'dashboard.profile.settings': 'Account Settings',
+    'dashboard.profile.edit': 'Edit Profile',
+    'dashboard.profile.edit.desc': 'Update your personal information',
+    'dashboard.contract.rent': 'Monthly Rent',
+    'dashboard.contract.duration': 'Duration',
+    'dashboard.contract.payout': 'Your Payout',
+    'dashboard.requests.empty': 'No requests yet',
+    'dashboard.requests.empty.desc': 'Applications will appear here',
     
     // Login & Register
     'login.title': 'Login',
@@ -672,6 +696,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'property.description.empty': 'Nessuna descrizione disponibile.',
     'property.owner.own': 'Questa è la tua proprietà',
     'property.owner.student': 'Accedi come studente per contattare il proprietario',
+    'property.owner.verified': 'Proprietario Verificato',
     
     // Dashboard
     'dashboard.welcome': 'Bentornato, {name}!',
@@ -748,6 +773,14 @@ export const translations: Record<Language, Record<string, string>> = {
     'dashboard.profile.current_password': 'Password Attuale',
     'dashboard.profile.new_password': 'Nuova Password',
     'dashboard.profile.confirm_password': 'Conferma Nuova Password',
+    'dashboard.profile.settings': 'Impostazioni Account',
+    'dashboard.profile.edit': 'Modifica Profilo',
+    'dashboard.profile.edit.desc': 'Aggiorna le tue informazioni personali',
+    'dashboard.contract.rent': 'Affitto Mensile',
+    'dashboard.contract.duration': 'Durata',
+    'dashboard.contract.payout': 'Il Tuo Pagamento',
+    'dashboard.requests.empty': 'Nessuna richiesta ancora',
+    'dashboard.requests.empty.desc': 'Le candidature appariranno qui',
     
     // Login & Register
     'login.title': 'Accesso',
@@ -961,6 +994,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'property.description.empty': 'Keine Beschreibung verfügbar.',
     'property.owner.own': 'Das ist Deine Immobilie',
     'property.owner.student': 'Als Student anmelden, um den Vermieter zu kontaktieren',
+    'property.owner.verified': 'Verifizierter Vermieter',
     
     // Dashboard
     'dashboard.welcome': 'Willkommen zurück, {name}!',
@@ -1037,6 +1071,14 @@ export const translations: Record<Language, Record<string, string>> = {
     'dashboard.profile.current_password': 'Aktuelles Passwort',
     'dashboard.profile.new_password': 'Neues Passwort',
     'dashboard.profile.confirm_password': 'Neues Passwort bestätigen',
+    'dashboard.profile.settings': 'Kontoeinstellungen',
+    'dashboard.profile.edit': 'Profil bearbeiten',
+    'dashboard.profile.edit.desc': 'Aktualisiere Deine persönlichen Informationen',
+    'dashboard.contract.rent': 'Monatliche Miete',
+    'dashboard.contract.duration': 'Dauer',
+    'dashboard.contract.payout': 'Deine Auszahlung',
+    'dashboard.requests.empty': 'Noch keine Anfragen',
+    'dashboard.requests.empty.desc': 'Bewerbungen werden hier angezeigt',
     'login.title': 'Anmelden',
     'login.subtitle': 'Melde Dich in Deinem Konto an',
     'login.email': 'E-Mail',

@@ -523,7 +523,7 @@ export default function PropertyDetail() {
                       {property.email_verified && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <CheckCircle2 className="h-3 w-3 text-green-600" />
-                          Verified Owner
+                          {t('property.owner.verified')}
                         </p>
                       )}
                     </div>

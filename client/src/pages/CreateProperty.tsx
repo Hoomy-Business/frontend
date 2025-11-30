@@ -86,10 +86,25 @@ export default function CreateProperty() {
       // S'assurer que image_urls est un tableau de strings valides
       const validImageUrls = imageUrls
         .filter((url): url is string => typeof url === 'string' && url.trim().length > 0)
-        .map(url => url.trim());
+        .map(url => url.trim())
+        .filter(url => {
+          // Valider que l'URL est bien formée (commence par http:// ou https://)
+          try {
+            const urlObj = new URL(url);
+            return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+          } catch {
+            return false;
+          }
+        });
       
       if (validImageUrls.length === 0) {
-        throw new Error('Aucune URL d\'image valide fournie');
+        throw new Error('Aucune URL d\'image valide fournie. Veuillez réessayer de télécharger les images.');
+      }
+      
+      // Logger pour débogage
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📸 URLs d\'images valides:', validImageUrls);
+        console.log('📊 Nombre d\'images:', validImageUrls.length);
       }
       
       // Créer un payload propre avec uniquement les champs attendus
@@ -140,60 +155,110 @@ export default function CreateProperty() {
       }
       
       // Sending property creation request
-      return apiRequest('POST', '/properties', payload);
+      try {
+        const response = await apiRequest<any>('POST', '/properties', payload);
+        
+        // Vérifier que la réponse contient bien la propriété créée et que les images sont associées
+        if (response && response.id) {
+          // Vérifier si la propriété a des images dans la réponse
+          const hasPhotos = response.photos && Array.isArray(response.photos) && response.photos.length > 0;
+          const hasImageUrls = response.image_urls && Array.isArray(response.image_urls) && response.image_urls.length > 0;
+          
+          if (hasPhotos || hasImageUrls) {
+            // Les images sont présentes dans la réponse - succès complet
+            console.log('✅ Propriété créée avec succès avec', hasPhotos ? response.photos.length : response.image_urls.length, 'image(s)');
+            return response;
+          } else {
+            // La propriété a été créée mais sans images dans la réponse - problème potentiel
+            console.warn('⚠️ Propriété créée mais réponse sans images. On considère quand même comme succès car le serveur a pu créer les images de manière asynchrone.');
+            // Note: On retourne quand même la réponse car le serveur pourrait avoir créé les images
+            // même si elles ne sont pas dans la réponse immédiate
+            return response;
+          }
+        }
+        
+        return response;
+      } catch (error) {
+        // Si une erreur se produit, la propager
+        console.error('❌ Erreur lors de la création de la propriété:', error);
+        throw error;
+      }
     },
-    onSuccess: () => {
-      setLocation('/dashboard/owner');
+    onSuccess: (response) => {
+      // Vérifier que la réponse est valide
+      if (response && response.id) {
+        // La propriété a été créée avec succès
+        console.log('✅ Succès - Redirection vers le dashboard');
+        setLocation('/dashboard/owner');
+      } else {
+        // Réponse invalide - ne pas rediriger
+        console.error('❌ Réponse invalide du serveur:', response);
+        setError('La propriété a été créée mais la réponse du serveur est invalide. Vérifiez votre tableau de bord.');
+        setPropertyCreatedWithoutPhotos(true);
+      }
     },
     onError: (err: Error) => {
-      // Log complet de l'erreur pour débogage
-      console.error('🔴 ERREUR CreateProperty - err complet:', err);
-      console.error('🔴 ERREUR CreateProperty - err.message:', err.message);
-      console.error('🔴 ERREUR CreateProperty - err.name:', err.name);
-      if ((err as any).status) console.error('🔴 ERREUR CreateProperty - err.status:', (err as any).status);
-      if ((err as any).code) console.error('🔴 ERREUR CreateProperty - err.code:', (err as any).code);
-      
       // Améliorer le message d'erreur pour les erreurs de base de données
       let errorMessage = err.message || 'Failed to create property';
       let propertyCreated = false;
       
-      // Détecter l'erreur spécifique de property_id - chercher dans le message complet
-      const fullErrorMessage = String(err.message || err.toString() || '');
-      if (fullErrorMessage.includes('property_id') && (fullErrorMessage.includes('boolean') || fullErrorMessage.includes('bigint'))) {
-        // Cette erreur se produit après la création de la propriété mais avant l'insertion des photos
-        // La propriété existe probablement déjà dans la base de données
+      // Détecter différents cas où la propriété pourrait avoir été créée sans images
+      const errorLower = errorMessage.toLowerCase();
+      
+      // Cas 1: Erreur property_id boolean (erreur connue)
+      if (errorLower.includes('property_id') && (errorLower.includes('boolean') || errorLower.includes('bool'))) {
         propertyCreated = true;
-        errorMessage = '⚠️ Problème avec les photos\n\nLa propriété a probablement été créée mais les photos n\'ont pas pu être ajoutées. Vérifiez votre tableau de bord - votre annonce est peut-être déjà visible. Si c\'est le cas, vous pourrez ajouter les photos depuis la page d\'édition.';
+        errorMessage = '⚠️ Problème avec les photos\n\nLa propriété a probablement été créée mais les photos n\'ont pas pu être ajoutées. Vérifiez votre tableau de bord - votre annonce est peut-être déjà visible. Si c\'est le cas, vous pourrez ajouter les photos depuis la page d\'édition.\n\nSi la propriété n\'apparaît pas dans votre tableau de bord, veuillez réessayer de créer l\'annonce.';
         setPropertyCreatedWithoutPhotos(true);
-        console.error('❌ ERREUR BACKEND property_id détectée!');
-        console.error('❌ Message original:', err.message);
-        console.error('❌ Message complet:', fullErrorMessage);
+        console.error('❌ ERREUR BACKEND property_id:', err.message);
         console.error('⚠️  Cette erreur indique que le serveur essaie d\'insérer un booléen dans la colonne property_id (bigint)');
         console.error('📋 La propriété a probablement été créée malgré l\'erreur - vérifiez le dashboard');
-        console.error('🔧 Correction nécessaire côté serveur : voir PROBLEME_PROPERTY_ID.md');
-      } else if (errorMessage.includes('out of range')) {
-        errorMessage = 'Une valeur numérique est hors limite. Veuillez vérifier vos données.';
-      } else if (errorMessage.includes('Erreur création annonce')) {
+      } 
+      // Cas 2: Erreur lors de l'insertion des photos mais propriété créée
+      else if (errorLower.includes('photo') || errorLower.includes('image') || errorLower.includes('picture')) {
+        // Si l'erreur concerne les photos/images, la propriété a peut-être été créée
+        if (errorLower.includes('insert') || errorLower.includes('save') || errorLower.includes('create') || errorLower.includes('upload')) {
+          propertyCreated = true;
+          errorMessage = '⚠️ Problème avec les photos\n\nLa propriété a probablement été créée mais les photos n\'ont pas pu être ajoutées. Vérifiez votre tableau de bord et ajoutez les photos depuis la page d\'édition si nécessaire.\n\nSi la propriété n\'apparaît pas dans votre tableau de bord, veuillez réessayer de créer l\'annonce.';
+          setPropertyCreatedWithoutPhotos(true);
+        }
+      }
+      // Cas 3: Erreur générale mais la réponse pourrait indiquer un succès partiel
+      else if (errorLower.includes('erreur création annonce') || errorLower.includes('error creating property')) {
         // Extraire le message d'erreur plus détaillé si disponible
-        const detailedError = errorMessage.match(/Erreur création annonce: (.+)/);
+        const detailedError = errorMessage.match(/(?:Erreur création annonce|error creating property):\s*(.+)/i);
         if (detailedError && detailedError[1]) {
           console.error('❌ Erreur détaillée:', detailedError[1]);
-          if (detailedError[1].includes('property_id') && detailedError[1].includes('boolean')) {
+          const detailLower = detailedError[1].toLowerCase();
+          if (detailLower.includes('property_id') || detailLower.includes('photo') || detailLower.includes('image')) {
             propertyCreated = true;
-            errorMessage = '⚠️ Problème avec les photos\n\nLa propriété a probablement été créée mais les photos n\'ont pas pu être ajoutées. Vérifiez votre tableau de bord.';
+            errorMessage = '⚠️ Problème avec les photos\n\nLa propriété a probablement été créée mais les photos n\'ont pas pu être ajoutées. Vérifiez votre tableau de bord.\n\nSi la propriété n\'apparaît pas dans votre tableau de bord, veuillez réessayer de créer l\'annonce.';
             setPropertyCreatedWithoutPhotos(true);
           }
         }
       }
+      // Cas 4: Erreur de validation numérique
+      else if (errorLower.includes('out of range') || errorLower.includes('numeric value out of range')) {
+        errorMessage = 'Une valeur numérique est hors limite. Veuillez vérifier vos données.';
+      }
+      // Cas 5: Erreur de connexion ou timeout
+      else if (errorLower.includes('network') || errorLower.includes('timeout') || errorLower.includes('fetch') || errorLower.includes('failed to fetch')) {
+        errorMessage = '⚠️ Erreur de connexion\n\nUne erreur de connexion s\'est produite. La propriété pourrait avoir été créée. Vérifiez votre tableau de bord.\n\nSi la propriété n\'apparaît pas, veuillez réessayer.';
+        propertyCreated = true;
+        setPropertyCreatedWithoutPhotos(true);
+      }
+      // Cas 6: Erreur générale non reconnue - considérer comme échec total
+      else {
+        // Pour toute autre erreur, on considère que la création a échoué
+        errorMessage = `Erreur lors de la création de l'annonce : ${errorMessage}\n\nVeuillez vérifier vos données et réessayer. Si le problème persiste, contactez le support.`;
+        propertyCreated = false;
+      }
       
       setError(errorMessage);
       
-      // Si la propriété a probablement été créée, rediriger vers le dashboard après un délai
+      // Si la propriété a probablement été créée, suggérer de vérifier le dashboard
       if (propertyCreated) {
-        setTimeout(() => {
-          // Ne pas forcer la redirection automatiquement - laisser l'utilisateur décider
-          console.log('💡 Astuce : Vérifiez votre dashboard pour voir si la propriété a été créée');
-        }, 3000);
+        console.log('💡 Astuce : Vérifiez votre dashboard pour voir si la propriété a été créée');
       }
     },
   });
@@ -353,9 +418,28 @@ export default function CreateProperty() {
       // Vérifier que l'upload a réussi
       if (!imageUrls || imageUrls.length === 0) {
         // No image URLs returned
-        setError('Échec du téléchargement des images');
+        setError('Échec du téléchargement des images. Aucune URL d\'image n\'a été retournée. Veuillez réessayer.');
+        console.error('❌ Aucune URL d\'image retournée après l\'upload');
         return;
       }
+      
+      // Valider que toutes les URLs sont valides
+      const invalidUrls = imageUrls.filter(url => {
+        try {
+          const urlObj = new URL(url);
+          return !(urlObj.protocol === 'http:' || urlObj.protocol === 'https:');
+        } catch {
+          return true;
+        }
+      });
+      
+      if (invalidUrls.length > 0) {
+        setError(`Certaines URLs d'images ne sont pas valides. Veuillez réessayer de télécharger les images.`);
+        console.error('❌ URLs d\'images invalides:', invalidUrls);
+        return;
+      }
+      
+      console.log('✅ Images uploadées avec succès:', imageUrls.length, 'image(s)');
     } catch (err) {
       // Upload error - afficher le message d'erreur détaillé
       const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';

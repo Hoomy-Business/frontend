@@ -295,26 +295,26 @@ export default function StudentDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="favorites" className="gap-2" data-testid="tab-favorites">
-              <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('dashboard.student.favorites')}</span>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 lg:w-auto lg:inline-grid gap-1 sm:gap-2">
+            <TabsTrigger value="favorites" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap min-w-0" data-testid="tab-favorites">
+              <Heart className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="truncate hidden xs:inline">{t('dashboard.student.favorites')}</span>
             </TabsTrigger>
-            <TabsTrigger value="requests" className="gap-2" data-testid="tab-requests">
-              <Inbox className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('dashboard.student.requests')}</span>
+            <TabsTrigger value="requests" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap min-w-0" data-testid="tab-requests">
+              <Inbox className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="truncate hidden xs:inline">{t('dashboard.student.requests')}</span>
             </TabsTrigger>
-            <TabsTrigger value="messages" className="gap-2" data-testid="tab-messages">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('dashboard.student.messages')}</span>
+            <TabsTrigger value="messages" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap min-w-0" data-testid="tab-messages">
+              <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="truncate hidden xs:inline">{t('dashboard.student.messages')}</span>
             </TabsTrigger>
-            <TabsTrigger value="contracts" className="gap-2" data-testid="tab-contracts">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('dashboard.student.contracts')}</span>
+            <TabsTrigger value="contracts" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap min-w-0" data-testid="tab-contracts">
+              <FileText className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="truncate hidden xs:inline">{t('dashboard.student.contracts')}</span>
             </TabsTrigger>
-            <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
-              <User className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('dashboard.profile.title')}</span>
+            <TabsTrigger value="profile" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap min-w-0" data-testid="tab-profile">
+              <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="truncate hidden xs:inline">{t('dashboard.profile.title')}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -573,11 +573,11 @@ export default function StudentDashboard() {
 
                           <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                              <p className="text-sm text-muted-foreground">Monthly Rent</p>
+                              <p className="text-sm text-muted-foreground">{t('dashboard.contract.rent')}</p>
                               <p className="font-semibold">CHF {contract.monthly_rent.toLocaleString()}</p>
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">Duration</p>
+                              <p className="text-sm text-muted-foreground">{t('dashboard.contract.duration')}</p>
                               <p className="font-semibold">
                                 {new Date(contract.start_date).toLocaleDateString()} - {new Date(contract.end_date).toLocaleDateString()}
                               </p>
@@ -615,10 +615,10 @@ export default function StudentDashboard() {
                   </Avatar>
                   <div className="flex-1">
                     <Label htmlFor="profile-picture-upload-student" className="cursor-pointer">
-                      <Button variant="outline" asChild disabled={uploadingPhoto}>
-                        <span>
-                          <Camera className="h-4 w-4 mr-2" />
-                          {uploadingPhoto ? 'Upload en cours...' : 'Changer la photo de profil'}
+                      <Button variant="outline" asChild disabled={uploadingPhoto} className="w-full sm:w-auto whitespace-normal break-words">
+                        <span className="flex items-center justify-center">
+                          <Camera className="h-4 w-4 mr-2 flex-shrink-0" />
+                          <span className="break-words text-center">{uploadingPhoto ? 'Upload en cours...' : 'Changer la photo de profil'}</span>
                         </span>
                       </Button>
                     </Label>
@@ -649,20 +649,20 @@ export default function StudentDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.first_name')}</p>
-                    <p className="font-medium">{user?.first_name}</p>
+                    <p className="font-medium break-words">{user?.first_name}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.last_name')}</p>
-                    <p className="font-medium">{user?.last_name}</p>
+                    <p className="font-medium break-words">{user?.last_name}</p>
                   </div>
-                  <div>
+                  <div className="sm:col-span-2">
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.email')}</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{user?.email}</p>
-                      <Badge variant={user?.email_verified ? 'default' : 'secondary'} className="gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium break-all min-w-0 flex-1">{user?.email}</p>
+                      <Badge variant={user?.email_verified ? 'default' : 'secondary'} className="gap-1 flex-shrink-0 whitespace-nowrap">
                         {user?.email_verified ? (
                           <>
                             <CheckCircle2 className="h-3 w-3" />
@@ -680,20 +680,20 @@ export default function StudentDashboard() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="mt-2"
+                        className="mt-2 w-full sm:w-auto whitespace-normal break-words"
                         onClick={() => setEmailVerificationOpen(true)}
                       >
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Vérifier mon email
+                        <CheckCircle2 className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span className="break-words">Vérifier mon email</span>
                       </Button>
                     )}
                   </div>
-                  <div>
+                  <div className="sm:col-span-2">
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.phone')}</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{user?.phone || t('dashboard.phone.not_provided')}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium break-words min-w-0 flex-1">{user?.phone || t('dashboard.phone.not_provided')}</p>
                       {user?.phone && (
-                        <Badge variant={user?.phone_verified ? 'default' : 'secondary'} className="gap-1">
+                        <Badge variant={user?.phone_verified ? 'default' : 'secondary'} className="gap-1 flex-shrink-0 whitespace-nowrap">
                           {user?.phone_verified ? (
                             <>
                               <CheckCircle2 className="h-3 w-3" />
@@ -712,17 +712,17 @@ export default function StudentDashboard() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="mt-2"
+                        className="mt-2 w-full sm:w-auto whitespace-normal break-words"
                         onClick={() => setPhoneVerificationOpen(true)}
                       >
-                        <Phone className="h-4 w-4 mr-2" />
-                        {user?.phone ? 'Vérifier mon numéro' : 'Ajouter un numéro'}
+                        <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span className="break-words">{user?.phone ? 'Vérifier mon numéro' : 'Ajouter un numéro'}</span>
                       </Button>
                     )}
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{t('dashboard.profile.account_type')}</p>
-                    <Badge>{user?.role}</Badge>
+                    <Badge className="whitespace-nowrap">{user?.role}</Badge>
                   </div>
                 </div>
               </CardContent>
@@ -829,19 +829,25 @@ function ProfileEditForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Paramètres du compte</CardTitle>
-        <CardDescription>Modifiez vos informations personnelles</CardDescription>
+        <CardTitle>{t('dashboard.profile.settings')}</CardTitle>
+        <CardDescription>{t('dashboard.profile.edit.desc')}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">Modifier le profil</Button>
+              <Button variant="outline" className="w-full sm:w-auto whitespace-normal break-words">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user h-4 w-4 mr-2 flex-shrink-0">
+                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span className="break-words">{t('dashboard.profile.edit')}</span>
+              </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Modifier le profil</DialogTitle>
-                <DialogDescription>Mettez à jour vos informations personnelles</DialogDescription>
+                <DialogTitle>{t('dashboard.profile.edit')}</DialogTitle>
+                <DialogDescription>{t('dashboard.profile.edit.desc')}</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div>
@@ -924,9 +930,9 @@ function ProfileEditForm({
 
           <Dialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
-                <Lock className="h-4 w-4 mr-2" />
-                {t('dashboard.profile.change_password')}
+              <Button variant="outline" className="w-full sm:w-auto whitespace-normal break-words">
+                <Lock className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="break-words">{t('dashboard.profile.change_password')}</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
