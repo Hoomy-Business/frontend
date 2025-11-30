@@ -64,7 +64,7 @@ export default function CreateProperty() {
       postal_code: '',
       canton_code: '',
       price: 0,
-      charges: undefined,
+      charges: 0,
       rooms: undefined,
       bathrooms: undefined,
       surface_area: undefined,
@@ -141,12 +141,9 @@ export default function CreateProperty() {
           payload.surface_area = surfaceValue;
         }
       }
-      if (data.charges !== undefined && data.charges !== null) {
-        const chargesValue = typeof data.charges === 'number' ? data.charges : Number(data.charges);
-        if (!isNaN(chargesValue) && chargesValue >= 0) {
-          payload.charges = chargesValue;
-        }
-      }
+      // Les charges sont obligatoires, toujours les inclure
+      const chargesValue = typeof data.charges === 'number' ? data.charges : Number(data.charges) || 0;
+      payload.charges = chargesValue;
       
       // Valider et nettoyer la date available_from - ne l'envoyer que si elle est valide
       if (data.available_from && typeof data.available_from === 'string' && data.available_from.trim() !== '') {
@@ -263,7 +260,6 @@ export default function CreateProperty() {
         console.error('⚠️  Cette erreur indique que le serveur essaie d\'insérer un booléen dans la colonne property_id (bigint)');
         console.error('📋 La propriété a probablement été créée malgré l\'erreur - vérifiez le dashboard');
         console.error('🔧 Cette erreur nécessite une correction côté backend dans la logique d\'insertion des photos');
-        console.error('📦 Payload envoyé:', JSON.stringify(payload, null, 2));
       } 
       // Cas 2: Erreur lors de l'insertion des photos mais propriété créée
       else if (errorLower.includes('photo') || errorLower.includes('image') || errorLower.includes('picture')) {
@@ -681,22 +677,23 @@ export default function CreateProperty() {
                       name="charges"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Charges mensuelles (CHF)</FormLabel>
+                          <FormLabel>Charges mensuelles (CHF) *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               type="number" 
                               placeholder="200"
-                              value={field.value || ''}
+                              value={field.value || 0}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                field.onChange(val === '' ? undefined : parseFloat(val) || undefined);
+                                field.onChange(val === '' ? 0 : parseFloat(val) || 0);
                               }}
                               data-testid="input-charges"
+                              required
                             />
                           </FormControl>
                           <FormDescription className="text-xs">
-                            Électricité, eau, chauffage, etc.
+                            Électricité, eau, chauffage, etc. (obligatoire)
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

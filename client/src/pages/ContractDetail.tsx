@@ -23,7 +23,7 @@ import { getAPIBaseURL } from '@/lib/apiConfig';
 export default function ContractDetail() {
   const params = useParams();
   const contractId = params.id ? parseInt(params.id) : null;
-  const { user, isStudent, isOwner } = useAuth();
+  const { isStudent, isOwner } = useAuth();
   const { toast } = useToast();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editData, setEditData] = useState({
@@ -47,13 +47,15 @@ export default function ContractDetail() {
 
   // Initialiser les données d'édition quand le contrat est chargé
   useEffect(() => {
-    if (contract) {
+    if (contract && contract.start_date && contract.end_date) {
+      const startDate = contract.start_date.split('T')[0] || '';
+      const endDate = contract.end_date.split('T')[0] || '';
       setEditData({
         monthly_rent: contract.monthly_rent,
-        charges: contract.charges || 0,
+        charges: contract.charges ?? 0,
         deposit_amount: contract.deposit_amount,
-        start_date: contract.start_date.split('T')[0],
-        end_date: contract.end_date.split('T')[0],
+        start_date: startDate,
+        end_date: endDate,
       });
     }
   }, [contract]);
@@ -282,13 +284,15 @@ export default function ContractDetail() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        if (contract) {
+                        if (contract && contract.start_date && contract.end_date) {
+                          const startDate = contract.start_date.split('T')[0] || '';
+                          const endDate = contract.end_date.split('T')[0] || '';
                           setEditData({
                             monthly_rent: contract.monthly_rent,
-                            charges: contract.charges || 0,
+                            charges: contract.charges ?? 0,
                             deposit_amount: contract.deposit_amount,
-                            start_date: contract.start_date.split('T')[0],
-                            end_date: contract.end_date.split('T')[0],
+                            start_date: startDate,
+                            end_date: endDate,
                           });
                           setEditDialogOpen(true);
                         }
@@ -304,12 +308,10 @@ export default function ContractDetail() {
                     <p className="text-sm text-muted-foreground">Monthly Rent</p>
                     <p className="font-semibold text-lg">CHF {contract.monthly_rent.toLocaleString()}</p>
                   </div>
-                  {contract.charges !== null && contract.charges !== undefined && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Charges</p>
-                      <p className="font-semibold text-lg">CHF {contract.charges.toLocaleString()}</p>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-sm text-muted-foreground">Charges</p>
+                    <p className="font-semibold text-lg">CHF {(contract.charges ?? 0).toLocaleString()}</p>
+                  </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Deposit</p>
                     <p className="font-semibold text-lg">CHF {contract.deposit_amount.toLocaleString()}</p>
@@ -321,13 +323,11 @@ export default function ContractDetail() {
                       <p className="text-xs text-muted-foreground mt-1">After platform fee</p>
                     </div>
                   )}
-                  {contract.charges !== null && contract.charges !== undefined && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total mensuel</p>
-                      <p className="font-semibold text-lg">CHF {(contract.monthly_rent + contract.charges).toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Loyer + Charges</p>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total mensuel</p>
+                    <p className="font-semibold text-lg">CHF {(contract.monthly_rent + (contract.charges ?? 0)).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Loyer + Charges</p>
+                  </div>
                 </div>
               </div>
 

@@ -520,6 +520,7 @@ export const createPropertySchema = z.object({
     .regex(/^\d{4}$/, 'Le code postal doit contenir uniquement des chiffres'),
   canton_code: z.string().length(2),
   price: z.number().positive(),
+  charges: z.number().nonnegative(),
   rooms: z.number().positive().optional(),
   bathrooms: z.number().int().positive().optional(),
   surface_area: z.number().positive().optional(),
