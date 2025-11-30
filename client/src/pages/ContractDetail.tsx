@@ -358,7 +358,7 @@ export default function ContractDetail() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold">Financial Details</h3>
-                  {(contract.status === 'pending' || contract.is_editable) && (
+                  {isOwner && (contract.status === 'pending' || contract.is_editable) && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -385,26 +385,26 @@ export default function ContractDetail() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Monthly Rent</p>
-                    <p className="font-semibold text-lg">CHF {contract.monthly_rent.toLocaleString()}</p>
+                    <p className="font-semibold text-lg">CHF {Number(contract.monthly_rent || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Charges</p>
-                    <p className="font-semibold text-lg">CHF {(contract.charges ?? 0).toLocaleString()}</p>
+                    <p className="font-semibold text-lg">CHF {Number(contract.charges || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Deposit</p>
-                    <p className="font-semibold text-lg">CHF {contract.deposit_amount.toLocaleString()}</p>
+                    <p className="font-semibold text-lg">CHF {Number(contract.deposit_amount || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   {isOwner && (
                     <div>
                       <p className="text-sm text-muted-foreground">Your Monthly Payout</p>
-                      <p className="font-semibold text-lg">CHF {contract.owner_payout.toLocaleString()}</p>
+                      <p className="font-semibold text-lg">CHF {Number(contract.owner_payout || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                       <p className="text-xs text-muted-foreground mt-1">After platform fee</p>
                     </div>
                   )}
                   <div>
                     <p className="text-sm text-muted-foreground">Total mensuel</p>
-                    <p className="font-semibold text-lg">CHF {(contract.monthly_rent + (contract.charges ?? 0)).toLocaleString()}</p>
+                    <p className="font-semibold text-lg">CHF {Number(contract.monthly_rent || 0) + Number(contract.charges || 0)).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     <p className="text-xs text-muted-foreground mt-1">Loyer + Charges</p>
                   </div>
                 </div>

@@ -105,17 +105,31 @@ export default function StudentDashboard() {
     },
   });
 
-  const { data: contractsData, isLoading: contractsLoading } = useQuery<any>({
+  const { data: contractsData, isLoading: contractsLoading, error: contractsError } = useQuery<any>({
     queryKey: ['/contracts/my-contracts'],
     queryFn: async () => {
       const response = await apiRequest<any>('GET', '/contracts/my-contracts');
+      console.log('📋 Contracts response:', response);
       // Gérer les deux formats: { contracts: [...] } ou tableau direct
-      if (Array.isArray(response)) return response;
-      if (response?.contracts && Array.isArray(response.contracts)) return response.contracts;
+      if (Array.isArray(response)) {
+        console.log('✅ Contracts array:', response.length, 'contracts');
+        return response;
+      }
+      if (response?.contracts && Array.isArray(response.contracts)) {
+        console.log('✅ Contracts from object:', response.contracts.length, 'contracts');
+        return response.contracts;
+      }
+      if (response?.success && response?.contracts && Array.isArray(response.contracts)) {
+        console.log('✅ Contracts from success object:', response.contracts.length, 'contracts');
+        return response.contracts;
+      }
+      console.warn('⚠️ Unexpected contracts response format:', response);
       return [];
     },
     staleTime: 1000 * 60 * 5, // 5 minutes - contracts don't change often
     gcTime: 1000 * 60 * 15, // 15 minutes
+    refetchOnMount: true, // Toujours refetch pour avoir les données à jour
+    retry: 2,
   });
 
   // S'assurer que contracts est toujours un tableau
@@ -598,6 +612,13 @@ export default function StudentDashboard() {
                 <CardDescription>{t('dashboard.student.contracts.desc')}</CardDescription>
               </CardHeader>
               <CardContent>
+                {contractsError && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>
+                      Erreur lors du chargement des contrats: {contractsError instanceof Error ? contractsError.message : 'Erreur inconnue'}
+                    </AlertDescription>
+                  </Alert>
+                )}
                 {contractsLoading ? (
                   <div className="space-y-4">
                     {[1, 2].map((i) => (
@@ -613,6 +634,11 @@ export default function StudentDashboard() {
                     <p className="text-muted-foreground max-w-md mx-auto">
                       {t('dashboard.student.contracts.empty.desc')}
                     </p>
+                    {import.meta.env.DEV && (
+                      <p className="text-xs text-muted-foreground mt-4">
+                        Debug: contractsData = {JSON.stringify(contractsData)}, contracts.length = {contracts?.length || 0}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -636,12 +662,12 @@ export default function StudentDashboard() {
                           <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
                               <p className="text-sm text-muted-foreground">{t('dashboard.contract.rent')}</p>
-                              <p className="font-semibold">CHF {contract.monthly_rent.toLocaleString()}</p>
+                              <p className="font-semibold">CHF {Number(contract.monthly_rent || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             </div>
                             {contract.charges !== undefined && contract.charges !== null && contract.charges > 0 && (
                               <div>
                                 <p className="text-sm text-muted-foreground">Charges mensuelles</p>
-                                <p className="font-semibold">CHF {(contract.charges || 0).toLocaleString()}</p>
+                                <p className="font-semibold">CHF {Number(contract.charges || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                               </div>
                             )}
                             <div>
@@ -652,7 +678,7 @@ export default function StudentDashboard() {
                             </div>
                             <div>
                               <p className="text-sm text-muted-foreground">Caution</p>
-                              <p className="font-semibold">CHF {contract.deposit_amount?.toLocaleString() || '0'}</p>
+                              <p className="font-semibold">CHF {Number(contract.deposit_amount || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             </div>
                           </div>
                           {contract.status === 'pending' && (

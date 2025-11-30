@@ -559,11 +559,11 @@ export default function OwnerDashboard() {
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                             <div>
                               <p className="text-sm text-muted-foreground">{t('dashboard.contract.rent')}</p>
-                              <p className="font-semibold">CHF {contract.monthly_rent.toLocaleString()}</p>
+                              <p className="font-semibold">CHF {Number(contract.monthly_rent || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             </div>
                             <div>
                               <p className="text-sm text-muted-foreground">{t('dashboard.contract.payout')}</p>
-                              <p className="font-semibold">CHF {contract.owner_payout.toLocaleString()}</p>
+                              <p className="font-semibold">CHF {Number(contract.owner_payout || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             </div>
                             <div>
                               <p className="text-sm text-muted-foreground">{t('dashboard.contract.duration')}</p>
