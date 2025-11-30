@@ -204,6 +204,7 @@ export async function apiRequest<T = any>(
       };
       
       const errorMessage = translateError(errorData.error || errorData.message || '');
+      const errorDetails = errorData.details || null;
       
       // Handle specific error codes
       switch (response.status) {
@@ -217,20 +218,35 @@ export async function apiRequest<T = any>(
           const authError = new Error(authErrorMsg);
           (authError as any).status = 401;
           (authError as any).code = errorData.code;
+          if (errorDetails) {
+            (authError as any).details = errorDetails;
+          }
           throw authError;
         case 403:
           // 403 peut être email non vérifié ou compte supprimé
           const forbiddenError = new Error(errorMessage || 'Accès non autorisé.');
           (forbiddenError as any).status = 403;
           (forbiddenError as any).code = errorData.code;
+          if (errorDetails) {
+            (forbiddenError as any).details = errorDetails;
+          }
           throw forbiddenError;
         case 429:
           const retryAfter = errorData.retryAfter || response.headers.get('Retry-After') || 60;
           throw new Error(`Trop de tentatives. Veuillez patienter ${retryAfter} secondes avant de réessayer.`);
         case 400:
-          throw new Error(errorMessage || 'Les informations saisies sont invalides. Veuillez vérifier et réessayer.');
+          const badRequestError = new Error(errorMessage || 'Les informations saisies sont invalides. Veuillez vérifier et réessayer.');
+          if (errorDetails) {
+            (badRequestError as any).details = errorDetails;
+          }
+          throw badRequestError;
         case 404:
-          throw new Error(errorMessage || 'La ressource demandée n\'existe pas.');
+          const notFoundError = new Error(errorMessage || 'La ressource demandée n\'existe pas.');
+          if (errorDetails) {
+            (notFoundError as any).details = errorDetails;
+          }
+          throw notFoundError;
+        case 500:
         case 502:
         case 503:
         case 504:
@@ -239,9 +255,16 @@ export async function apiRequest<T = any>(
           (serverError as any).status = response.status;
           (serverError as any).code = errorData.code;
           (serverError as any).debug_code = errorData.debug_code;
+          if (errorDetails) {
+            (serverError as any).details = errorDetails;
+          }
           throw serverError;
         default:
-          throw new Error(errorMessage || 'Une erreur inattendue est survenue. Veuillez réessayer.');
+          const defaultError = new Error(errorMessage || 'Une erreur inattendue est survenue. Veuillez réessayer.');
+          if (errorDetails) {
+            (defaultError as any).details = errorDetails;
+          }
+          throw defaultError;
       }
     }
 

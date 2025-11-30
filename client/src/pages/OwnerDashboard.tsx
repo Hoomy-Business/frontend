@@ -183,24 +183,66 @@ export default function OwnerDashboard() {
   });
 
   const createAccountMutation = useMutation({
-    mutationFn: () => apiRequest('POST', '/contracts/connect/create-account'),
+    mutationFn: () => apiRequest<{ success: boolean; account_id?: string; requires_account_creation?: boolean }>('POST', '/contracts/connect/create-account'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/contracts/connect/account-status'] });
+      toast({
+        title: 'Account Created',
+        description: 'Stripe account created successfully. Please complete the onboarding process.',
+      });
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.details || error?.message || 'Failed to create Stripe account. Please try again.';
+      toast({
+        title: 'Stripe Account Creation Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     },
   });
 
   const createOnboardingLinkMutation = useMutation({
-    mutationFn: () => apiRequest('POST', '/contracts/connect/create-onboarding-link'),
+    mutationFn: () => apiRequest<{ success: boolean; url: string; requires_account_creation?: boolean }>('POST', '/contracts/connect/create-onboarding-link'),
     onSuccess: (data: { url: string }) => {
-      window.location.href = data.url;
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: 'Error',
+          description: 'No onboarding URL received',
+          variant: 'destructive',
+        });
+      }
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.details || error?.message || 'Failed to create onboarding link. Please try again.';
+      
+      if (error?.requires_account_creation) {
+        toast({
+          title: 'Account Required',
+          description: 'Please create a Stripe account first.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Onboarding Link Failed',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
     },
   });
 
   const handleStripeSetup = async () => {
-    if (!stripeStatus?.has_account) {
-      await createAccountMutation.mutateAsync();
+    try {
+      if (!stripeStatus?.has_account) {
+        await createAccountMutation.mutateAsync();
+      }
+      createOnboardingLinkMutation.mutate();
+    } catch (error) {
+      // Error is already handled in onError callbacks
+      console.error('Stripe setup error:', error);
     }
-    createOnboardingLinkMutation.mutate();
   };
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
