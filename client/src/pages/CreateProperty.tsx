@@ -677,7 +677,7 @@ export default function CreateProperty() {
                       name="charges"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Charges mensuelles (CHF) *</FormLabel>
+                          <FormLabel>Charges mensuelles (CHF)</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 

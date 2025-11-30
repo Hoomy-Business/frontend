@@ -72,16 +72,19 @@ export default function PropertyDetail() {
       apiRequest('POST', '/requests', data),
     onSuccess: () => {
       toast({
-        title: 'Request sent',
-        description: 'Your request has been sent to the owner.',
+        title: 'Demande envoyée',
+        description: 'Votre demande a été envoyée au propriétaire.',
       });
       setIsRequestDialogOpen(false);
       setRequestMessage('');
+      // Invalider la requête pour recharger l'état
+      queryClient.invalidateQueries({ queryKey: ['/requests/check', numericPropertyId] });
+      queryClient.invalidateQueries({ queryKey: ['/requests/sent'] });
     },
     onError: (error: Error) => {
       toast({
-        title: 'Error',
-        description: error.message,
+        title: 'Erreur',
+        description: error.message || 'Impossible d\'envoyer la demande. Veuillez réessayer.',
         variant: 'destructive',
       });
     },
@@ -246,10 +249,48 @@ export default function PropertyDetail() {
     return getUserInitials(property);
   }, [property]);
 
+  // Vérifier si l'étudiant a déjà envoyé une demande pour cette propriété
+  const { data: existingRequest } = useQuery<any>({
+    queryKey: ['/requests/check', numericPropertyId],
+    enabled: !!numericPropertyId && isAuthenticated && isStudent,
+    queryFn: async () => {
+      if (!numericPropertyId) return null;
+      try {
+        const response = await apiRequest<any>('GET', `/requests/check?property_id=${numericPropertyId}`);
+        return response;
+      } catch {
+        // Si l'endpoint n'existe pas ou retourne une erreur, on considère qu'il n'y a pas de demande
+        return null;
+      }
+    },
+    retry: false,
+  });
+
   const canContact = useMemo(() => {
     if (!property) return false;
-    return isAuthenticated && isStudent && user?.id !== property.owner_id;
-  }, [isAuthenticated, isStudent, user?.id, property?.owner_id]);
+    // L'étudiant peut contacter s'il est authentifié, est étudiant, et n'est pas le propriétaire
+    // Vérifier aussi que user est chargé et que le rôle est bien 'student'
+    // Utiliser user?.role comme source de vérité principale, avec isStudent comme fallback
+    const isUserStudent = user?.role === 'student' || (isStudent && !user?.role);
+    const isNotOwner = user?.id && property.owner_id && user.id !== property.owner_id;
+    const canSend = isAuthenticated && isUserStudent && isNotOwner;
+    
+    // Debug en développement
+    if (process.env.NODE_ENV === 'development' && isAuthenticated) {
+      console.log('🔍 Debug canContact:', {
+        isAuthenticated,
+        isStudent,
+        userRole: user?.role,
+        isUserStudent,
+        userId: user?.id,
+        ownerId: property.owner_id,
+        isNotOwner,
+        canSend
+      });
+    }
+    
+    return canSend;
+  }, [isAuthenticated, isStudent, user?.id, user?.role, property?.owner_id]);
 
   if (isLoading) {
     return (
@@ -570,10 +611,10 @@ export default function PropertyDetail() {
 
                 <Separator />
 
-                {canContact ? (
+                {(canContact || (isAuthenticated && (isStudent || user?.role === 'student') && user?.id && user.id !== property.owner_id)) ? (
                   <TooltipProvider>
                     <div className="space-y-3">
-                      {isAuthenticated && isStudent && (
+                      {isAuthenticated && (isStudent || user?.role === 'student') && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -593,57 +634,77 @@ export default function PropertyDetail() {
                           </TooltipContent>
                         </Tooltip>
                       )}
-                    <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="w-full" size="lg" data-testid="button-send-request">
-                          <Send className="h-4 w-4 mr-2" />
-                          {t('property.request')}
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center gap-2">
-                            <Send className="h-5 w-5 text-primary" />
+                    {existingRequest && existingRequest.status ? (
+                      <Alert>
+                        <AlertDescription>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium mb-1">Demande déjà envoyée</p>
+                              <p className="text-sm text-muted-foreground">
+                                Statut: <Badge variant={existingRequest.status === 'accepted' ? 'default' : existingRequest.status === 'pending' ? 'secondary' : 'destructive'}>{existingRequest.status}</Badge>
+                              </p>
+                            </div>
+                            <Link href="/dashboard/student?tab=requests">
+                              <Button variant="outline" size="sm">
+                                Voir mes demandes
+                              </Button>
+                            </Link>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button className="w-full" size="lg" data-testid="button-send-request">
+                            <Send className="h-4 w-4 mr-2" />
                             {t('property.request')}
-                          </DialogTitle>
-                          <DialogDescription>
-                            {t('property.request.message')}
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="py-4">
-                          <Textarea
-                            placeholder={t('property.request.placeholder')}
-                            value={requestMessage}
-                            onChange={(e) => setRequestMessage(e.target.value)}
-                            className="min-h-[100px]"
-                          />
-                          <p className="text-xs text-muted-foreground mt-2">
-                            💡 Soyez poli et mentionnez votre situation d'étudiant
-                          </p>
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setIsRequestDialogOpen(false)}>
-                            {t('common.cancel')}
                           </Button>
-                          <Button
-                            onClick={handleSendRequest}
-                            disabled={sendRequestMutation.isPending || !requestMessage.trim()}
-                          >
-                            {sendRequestMutation.isPending ? (
-                              <>
-                                <Clock className="h-4 w-4 mr-2 animate-spin" />
-                                {t('property.request.sending')}
-                              </>
-                            ) : (
-                              <>
-                                <Send className="h-4 w-4 mr-2" />
-                                {t('property.request.send')}
-                              </>
-                            )}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                              <Send className="h-5 w-5 text-primary" />
+                              {t('property.request')}
+                            </DialogTitle>
+                            <DialogDescription>
+                              {t('property.request.message')}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="py-4">
+                            <Textarea
+                              placeholder={t('property.request.placeholder')}
+                              value={requestMessage}
+                              onChange={(e) => setRequestMessage(e.target.value)}
+                              className="min-h-[100px]"
+                            />
+                            <p className="text-xs text-muted-foreground mt-2">
+                              💡 Soyez poli et mentionnez votre situation d'étudiant
+                            </p>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsRequestDialogOpen(false)}>
+                              {t('common.cancel')}
+                            </Button>
+                            <Button
+                              onClick={handleSendRequest}
+                              disabled={sendRequestMutation.isPending || !requestMessage.trim()}
+                            >
+                              {sendRequestMutation.isPending ? (
+                                <>
+                                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                  {t('property.request.sending')}
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="h-4 w-4 mr-2" />
+                                  {t('property.request.send')}
+                                </>
+                              )}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    )}
 
                     <Button
                       className="w-full"
@@ -673,8 +734,21 @@ export default function PropertyDetail() {
                   <Alert>
                     <AlertDescription className="text-center">
                       <p className="text-sm text-muted-foreground">
-                        {user?.id === property.owner_id ? t('property.owner.own') : t('property.owner.student')}
+                        {user?.id === property.owner_id ? (
+                          t('property.owner.own')
+                        ) : !isStudent ? (
+                          'Seuls les étudiants peuvent envoyer des demandes. Si vous êtes étudiant, veuillez vous déconnecter et vous reconnecter.'
+                        ) : !isAuthenticated ? (
+                          'Vous devez être connecté pour envoyer une demande.'
+                        ) : (
+                          t('property.owner.student')
+                        )}
                       </p>
+                      {process.env.NODE_ENV === 'development' && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Debug: isAuthenticated={String(isAuthenticated)}, isStudent={String(isStudent)}, user?.id={user?.id}, owner_id={property?.owner_id}
+                        </p>
+                      )}
                     </AlertDescription>
                   </Alert>
                 )}
