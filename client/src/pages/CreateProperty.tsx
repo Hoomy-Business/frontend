@@ -24,6 +24,7 @@ export default function CreateProperty() {
   const { isOwner } = useAuth();
   const { getCantonName, getCityName } = useLanguage();
   const [error, setError] = useState<string>('');
+  const [propertyCreatedWithoutPhotos, setPropertyCreatedWithoutPhotos] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedCanton, setSelectedCanton] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -147,13 +148,19 @@ export default function CreateProperty() {
     onError: (err: Error) => {
       // Améliorer le message d'erreur pour les erreurs de base de données
       let errorMessage = err.message || 'Failed to create property';
+      let propertyCreated = false;
       
       // Détecter l'erreur spécifique de property_id
       if (errorMessage.includes('property_id') && errorMessage.includes('boolean')) {
-        errorMessage = 'Erreur serveur lors de la création des photos de propriété. Le problème vient du backend - contactez le support technique.';
+        // Cette erreur se produit après la création de la propriété mais avant l'insertion des photos
+        // La propriété existe probablement déjà dans la base de données
+        propertyCreated = true;
+        errorMessage = '⚠️ Problème avec les photos\n\nLa propriété a probablement été créée mais les photos n\'ont pas pu être ajoutées. Vérifiez votre tableau de bord - votre annonce est peut-être déjà visible. Si c\'est le cas, vous pourrez ajouter les photos depuis la page d\'édition.';
+        setPropertyCreatedWithoutPhotos(true);
         console.error('❌ ERREUR BACKEND property_id:', err.message);
         console.error('⚠️  Cette erreur indique que le serveur essaie d\'insérer un booléen dans la colonne property_id (bigint)');
-        console.error('📋 Vérifiez les logs serveur pour voir le payload exact lors de l\'insertion des photos');
+        console.error('📋 La propriété a probablement été créée malgré l\'erreur - vérifiez le dashboard');
+        console.error('🔧 Correction nécessaire côté serveur : voir PROBLEME_PROPERTY_ID.md');
       } else if (errorMessage.includes('out of range')) {
         errorMessage = 'Une valeur numérique est hors limite. Veuillez vérifier vos données.';
       } else if (errorMessage.includes('Erreur création annonce')) {
@@ -162,12 +169,22 @@ export default function CreateProperty() {
         if (detailedError && detailedError[1]) {
           console.error('❌ Erreur détaillée:', detailedError[1]);
           if (detailedError[1].includes('property_id') && detailedError[1].includes('boolean')) {
-            errorMessage = 'Erreur serveur : problème lors de la création des photos. Contactez le support.';
+            propertyCreated = true;
+            errorMessage = '⚠️ Problème avec les photos\n\nLa propriété a probablement été créée mais les photos n\'ont pas pu être ajoutées. Vérifiez votre tableau de bord.';
+            setPropertyCreatedWithoutPhotos(true);
           }
         }
       }
       
       setError(errorMessage);
+      
+      // Si la propriété a probablement été créée, rediriger vers le dashboard après un délai
+      if (propertyCreated) {
+        setTimeout(() => {
+          // Ne pas forcer la redirection automatiquement - laisser l'utilisateur décider
+          console.log('💡 Astuce : Vérifiez votre dashboard pour voir si la propriété a été créée');
+        }, 3000);
+      }
     },
   });
 
@@ -301,6 +318,7 @@ export default function CreateProperty() {
 
   const onSubmit = async (data: CreatePropertyInput) => {
     setError('');
+    setPropertyCreatedWithoutPhotos(false);
     
     // Vérifier que les champs d'adresse sont remplis
     if (!data.address || !data.city_name || !data.postal_code || !data.canton_code) {
@@ -387,8 +405,27 @@ export default function CreateProperty() {
             </CardHeader>
             <CardContent>
               {error && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertDescription>{error}</AlertDescription>
+                <Alert 
+                  variant={propertyCreatedWithoutPhotos ? "default" : "destructive"} 
+                  className={`mb-4 ${propertyCreatedWithoutPhotos ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : ''}`}
+                >
+                  <AlertDescription className={propertyCreatedWithoutPhotos ? 'text-yellow-800 dark:text-yellow-200' : ''}>
+                    <div className="space-y-2">
+                      <p className="font-semibold">{error.split('\n\n')[0]}</p>
+                      {error.includes('\n\n') && (
+                        <div className="mt-2 space-y-2">
+                          <p>{error.split('\n\n')[1]}</p>
+                          {propertyCreatedWithoutPhotos && (
+                            <Link href="/dashboard/owner">
+                              <Button variant="outline" size="sm" className="mt-2">
+                                Vérifier mon tableau de bord
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </AlertDescription>
                 </Alert>
               )}
 
