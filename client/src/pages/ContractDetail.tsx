@@ -86,8 +86,12 @@ export default function ContractDetail() {
 
   const signContractMutation = useMutation({
     mutationFn: () => {
-      // Update contract status to active when signed
-      return apiRequest('PUT', `/contracts/${contractId}/status`, { status: 'active' });
+      // Les étudiants utilisent /accept, les propriétaires peuvent utiliser /status
+      if (isStudent) {
+        return apiRequest('PUT', `/contracts/${contractId}/accept`, {});
+      } else {
+        return apiRequest('PUT', `/contracts/${contractId}/status`, { status: 'active' });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/contracts', contractId] });
