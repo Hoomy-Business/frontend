@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useParams } from 'wouter';
+import { Link, useParams, useLocation } from 'wouter';
 import { ArrowLeft, FileText, Download, CheckCircle2, XCircle, Clock, CreditCard, History, Edit } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,8 @@ import { getAPIBaseURL } from '@/lib/apiConfig';
 export default function ContractDetail() {
   const params = useParams();
   const contractId = params.id ? parseInt(params.id) : null;
-  const { isStudent, isOwner } = useAuth();
+  const { isStudent, isOwner, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editData, setEditData] = useState({
@@ -34,9 +35,17 @@ export default function ContractDetail() {
     end_date: '',
   });
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLocation('/login');
+      return;
+    }
+  }, [isAuthenticated, setLocation]);
+
   const { data: contractData, isLoading } = useQuery<{ success: boolean; contract: Contract }>({
     queryKey: ['/contracts', contractId],
-    enabled: !!contractId,
+    enabled: !!contractId && isAuthenticated,
     queryFn: async () => {
       if (!contractId) throw new Error('Contract ID required');
       return apiRequest<{ success: boolean; contract: Contract }>('GET', `/contracts/${contractId}`);
