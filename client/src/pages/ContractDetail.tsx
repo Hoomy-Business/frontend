@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/lib/auth';
+import { useAuth, getAuthToken } from '@/lib/auth';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import type { Contract } from '@shared/schema';
@@ -122,13 +122,79 @@ export default function ContractDetail() {
     },
   });
 
-  const handleDownloadPDF = () => {
-    if (contractId) {
-      // Note: PDF generation route needs to be implemented in backend
-      // For now, we'll show a message or redirect to contract details
+  const handleDownloadPDF = async () => {
+    if (!contractId) {
+      toast({
+        title: 'Erreur',
+        description: 'ID de contrat manquant',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+      toast({
+        title: 'Erreur',
+        description: 'Vous devez être connecté pour télécharger le PDF',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
       const apiBase = getAPIBaseURL();
       const baseClean = apiBase.replace(/\/+$/, '');
-      window.open(`${baseClean}/contracts/${contractId}`, '_blank');
+      const url = `${baseClean}/api/contracts/${contractId}/pdf`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erreur lors du téléchargement' }));
+        throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      // Get the response (could be PDF or HTML)
+      const contentType = response.headers.get('content-type') || '';
+      const blob = await response.blob();
+      
+      // Create a download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      
+      // Set appropriate file extension based on content type
+      if (contentType.includes('application/pdf')) {
+        link.download = `contract-${contractId}.pdf`;
+      } else if (contentType.includes('text/html')) {
+        link.download = `contract-${contractId}.html`;
+        // For HTML, also open in new window for printing
+        window.open(downloadUrl, '_blank');
+      } else {
+        link.download = `contract-${contractId}.pdf`;
+      }
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast({
+        title: 'Succès',
+        description: 'PDF téléchargé avec succès',
+      });
+    } catch (error) {
+      console.error('Erreur téléchargement PDF:', error);
+      toast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Impossible de télécharger le PDF',
+        variant: 'destructive',
+      });
     }
   };
 
