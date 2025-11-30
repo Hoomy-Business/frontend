@@ -167,6 +167,12 @@ export async function apiRequest<T = any>(
       
       // Traduire les messages d'erreur techniques en messages compréhensibles
       const translateError = (error: string): string => {
+        // Ne pas traduire si le message contient des détails techniques importants
+        // (comme les erreurs de base de données qui ont besoin du message original)
+        if (error.includes('property_id') || error.includes('column') || error.includes('is of type') || error.includes('Erreur création annonce')) {
+          return error; // Garder le message original pour les erreurs techniques détaillées
+        }
+        
         const translations: Record<string, string> = {
           // Authentification
           'Identifiants incorrects': 'L\'email ou le mot de passe est incorrect. Vérifiez vos informations et réessayez.',
