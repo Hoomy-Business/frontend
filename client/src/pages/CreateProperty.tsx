@@ -626,83 +626,83 @@ export default function CreateProperty() {
                     )}
                   />
 
+                  <FormField
+                    control={form.control}
+                    name="property_type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Property Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-type">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="apartment">Apartment</SelectItem>
+                            <SelectItem value="house">House</SelectItem>
+                            <SelectItem value="studio">Studio</SelectItem>
+                            <SelectItem value="room">Room</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="property_type"
+                      name="price"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Property Type</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-type">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="apartment">Apartment</SelectItem>
-                              <SelectItem value="house">House</SelectItem>
-                              <SelectItem value="studio">Studio</SelectItem>
-                              <SelectItem value="room">Room</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Monthly Rent (CHF)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              placeholder="1500"
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? undefined : parseFloat(val) || undefined);
+                              }}
+                              data-testid="input-price"
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                      <FormField
-                        control={form.control}
-                        name="price"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Monthly Rent (CHF)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                type="number" 
-                                placeholder="1500"
-                                value={field.value || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  field.onChange(val === '' ? undefined : parseFloat(val) || undefined);
-                                }}
-                                data-testid="input-price"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                  <FormField
-                    control={form.control}
-                    name="charges"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Charges mensuelles (CHF) - Optionnel</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            type="number" 
-                            placeholder="200"
-                            value={field.value || ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              field.onChange(val === '' ? undefined : parseFloat(val) || undefined);
-                            }}
-                            data-testid="input-charges"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Charges mensuelles (électricité, eau, chauffage, etc.)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="charges"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Charges mensuelles (CHF)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              placeholder="200"
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? undefined : parseFloat(val) || undefined);
+                              }}
+                              data-testid="input-charges"
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            Électricité, eau, chauffage, etc.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <FormField
                     control={form.control}
