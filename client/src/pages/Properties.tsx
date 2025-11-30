@@ -25,7 +25,7 @@ export default function Properties() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const [, setLocation] = useLocation();
-  const { isAuthenticated, isStudent } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { t, getCantonName, getCityName } = useLanguage();
   
   const [selectedCanton, setSelectedCanton] = useState(params.get('canton') || '___all___');
@@ -55,10 +55,21 @@ export default function Properties() {
 
   // Update URL when filters change (debounced to avoid too many updates)
   const isInitialMount = useRef(true);
+  const lastFiltersRef = useRef<string>('');
+  
   useEffect(() => {
     // Skip on initial mount to avoid overriding URL params
     if (isInitialMount.current) {
       isInitialMount.current = false;
+      // Store initial filters
+      const filters: Record<string, string> = {};
+      if (selectedCanton && selectedCanton !== '___all___') filters.canton = selectedCanton;
+      if (selectedCity && selectedCity !== '___all___') filters.city_id = selectedCity;
+      if (propertyType && propertyType !== '___all___') filters.property_type = propertyType;
+      if (maxPrice?.[0] !== undefined && maxPrice[0] < 5000) filters.max_price = maxPrice[0].toString();
+      if (minRooms && minRooms !== '___all___') filters.min_rooms = minRooms;
+      if (debouncedSearchQuery.trim()) filters.search = debouncedSearchQuery.trim();
+      lastFiltersRef.current = new URLSearchParams(filters).toString();
       return;
     }
     
@@ -67,23 +78,22 @@ export default function Properties() {
       if (selectedCanton && selectedCanton !== '___all___') filters.canton = selectedCanton;
       if (selectedCity && selectedCity !== '___all___') filters.city_id = selectedCity;
       if (propertyType && propertyType !== '___all___') filters.property_type = propertyType;
-      if (maxPrice[0] < 5000) filters.max_price = maxPrice[0].toString();
+      if (maxPrice?.[0] !== undefined && maxPrice[0] < 5000) filters.max_price = maxPrice[0].toString();
       if (minRooms && minRooms !== '___all___') filters.min_rooms = minRooms;
       if (debouncedSearchQuery.trim()) filters.search = debouncedSearchQuery.trim();
       
       const queryString = new URLSearchParams(filters).toString();
-      const newPath = queryString ? `/properties?${queryString}` : '/properties';
-      const newSearch = queryString ? `?${queryString}` : '';
       
-      // Only update if different from current location
-      const currentSearch = search || '';
-      if (currentSearch !== newSearch) {
+      // Only update if different from last filters to avoid infinite loop
+      if (lastFiltersRef.current !== queryString) {
+        lastFiltersRef.current = queryString;
+        const newPath = queryString ? `/properties?${queryString}` : '/properties';
         setLocation(newPath);
       }
     }, 300); // Debounce URL updates
     
     return () => clearTimeout(timeoutId);
-  }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, debouncedSearchQuery, setLocation, search]);
+  }, [selectedCanton, selectedCity, propertyType, maxPrice, minRooms, debouncedSearchQuery, setLocation]);
 
   const { data: cantonsData } = useQuery<any>({
     queryKey: ['/locations/cantons'],
@@ -122,7 +132,7 @@ export default function Properties() {
     if (selectedCanton && selectedCanton !== '___all___') filters.canton = selectedCanton;
     if (selectedCity && selectedCity !== '___all___') filters.city_id = selectedCity;
     if (propertyType && propertyType !== '___all___') filters.property_type = propertyType;
-    if (maxPrice[0] < 5000) filters.max_price = maxPrice[0].toString();
+    if (maxPrice?.[0] !== undefined && maxPrice[0] < 5000) filters.max_price = maxPrice[0].toString();
     if (minRooms && minRooms !== '___all___') filters.min_rooms = minRooms;
     if (debouncedSearchQuery.trim()) filters.search = debouncedSearchQuery.trim();
     const queryString = new URLSearchParams(filters).toString();
@@ -171,7 +181,7 @@ export default function Properties() {
 
   // Fetch favorites for all authenticated users
   // Always call useQuery but enable it conditionally
-  const { data: favorites, error: favoritesError } = useQuery<Property[]>({
+  const { data: favorites } = useQuery<Property[]>({
     queryKey: ['/favorites'],
     enabled: isAuthenticated,
     retry: false,
@@ -267,7 +277,7 @@ export default function Properties() {
       
       return { previousFavorites };
     },
-    onError: (err, propertyId, context) => {
+    onError: (_err, _propertyId, context) => {
       // Rollback on error
       if (context?.previousFavorites) {
         queryClient.setQueryData(['/favorites'], context.previousFavorites);
@@ -300,7 +310,7 @@ export default function Properties() {
       
       return { previousFavorites };
     },
-    onError: (err, propertyId, context) => {
+    onError: (_err, _propertyId, context) => {
       // Rollback on error
       if (context?.previousFavorites) {
         queryClient.setQueryData(['/favorites'], context.previousFavorites);
@@ -427,7 +437,7 @@ export default function Properties() {
 
       <div>
         <label className="text-sm font-medium mb-2 block">
-          {maxPrice[0] >= 5000 ? '5000+/mois' : `CHF ${maxPrice[0].toLocaleString()}/mois`}
+          {maxPrice && maxPrice[0] !== undefined && maxPrice[0] >= 5000 ? '5000+/mois' : `CHF ${(maxPrice?.[0] ?? 5000).toLocaleString()}/mois`}
         </label>
         <Slider
           value={maxPrice}
@@ -473,7 +483,7 @@ export default function Properties() {
     if (selectedCanton && selectedCanton !== '___all___') count++;
     if (selectedCity && selectedCity !== '___all___') count++;
     if (propertyType && propertyType !== '___all___') count++;
-    if (maxPrice[0] < 5000) count++;
+    if (maxPrice && maxPrice[0] !== undefined && maxPrice[0] < 5000) count++;
     if (minRooms && minRooms !== '___all___') count++;
     if (debouncedSearchQuery.trim()) count++;
     return count;
@@ -561,9 +571,9 @@ export default function Properties() {
                   </button>
                 </Badge>
               )}
-              {maxPrice[0] < 5000 && (
+              {maxPrice && maxPrice[0] !== undefined && maxPrice[0] < 5000 && (
                 <Badge variant="outline" className="gap-1">
-                  {maxPrice[0].toLocaleString()}/mois
+                  {(maxPrice[0] ?? 5000).toLocaleString()}/mois
                   <button
                     onClick={() => setMaxPrice([5000])}
                     className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
@@ -572,7 +582,7 @@ export default function Properties() {
                   </button>
                 </Badge>
               )}
-              {maxPrice[0] >= 5000 && (
+              {maxPrice && maxPrice[0] !== undefined && maxPrice[0] >= 5000 && (
                 <Badge variant="outline">
                   5000+/mois
                 </Badge>
