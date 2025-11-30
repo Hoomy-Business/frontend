@@ -25,7 +25,6 @@ export default function CreateProperty() {
   const { getCantonName, getCityName } = useLanguage();
   const [error, setError] = useState<string>('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [selectedCanton, setSelectedCanton] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -69,6 +68,9 @@ export default function CreateProperty() {
       surface_area: undefined,
       available_from: '',
     },
+    // Préserver les valeurs même en cas d'erreur de validation
+    shouldUnregister: false,
+    shouldFocusError: true,
   });
 
   const createPropertyMutation = useMutation({
@@ -267,14 +269,28 @@ export default function CreateProperty() {
       return;
     }
 
+    // Nettoyer et valider les données avant envoi
     const submitData = {
-      ...data,
-      rooms: data.rooms ?? undefined,
-      bathrooms: data.bathrooms ?? undefined,
-      surface_area: data.surface_area ?? undefined,
+      title: data.title,
+      description: data.description,
+      property_type: data.property_type,
+      address: data.address,
+      city_name: data.city_name,
+      postal_code: data.postal_code, // Assurer que c'est une string de 4 chiffres
+      canton_code: data.canton_code,
+      price: typeof data.price === 'number' ? data.price : Number(data.price) || 0,
+      rooms: data.rooms ? Number(data.rooms) : undefined,
+      bathrooms: data.bathrooms ? Number(data.bathrooms) : undefined,
+      surface_area: data.surface_area ? Number(data.surface_area) : undefined,
       available_from: data.available_from || null,
       image_urls: imageUrls
     };
+
+    // Validation supplémentaire du code postal
+    if (submitData.postal_code && (!/^\d{4}$/.test(submitData.postal_code))) {
+      setError('Le code postal doit contenir exactement 4 chiffres');
+      return;
+    }
 
     createPropertyMutation.mutate(submitData as any);
   };
@@ -448,9 +464,10 @@ export default function CreateProperty() {
                             onValueChange={(value) => {
                               field.onChange(value);
                               setSelectedCanton(value);
+                              // Réinitialiser seulement la ville car elle dépend du canton
                               form.setValue('city_name', '');
-                              // Réinitialiser l'adresse si le canton change
-                              form.setValue('address', '');
+                              // Ne pas réinitialiser l'adresse - l'utilisateur peut avoir déjà saisi une adresse valide
+                              // form.setValue('address', '');
                             }}
                             value={field.value}
                           >
@@ -504,8 +521,19 @@ export default function CreateProperty() {
                         <FormItem>
                           <FormLabel>Postal Code</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="8001" maxLength={4} data-testid="input-postal" />
+                            <Input 
+                              {...field} 
+                              placeholder="8001" 
+                              maxLength={4} 
+                              data-testid="input-postal"
+                              onChange={(e) => {
+                                // N'accepter que les chiffres
+                                const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                field.onChange(value);
+                              }}
+                            />
                           </FormControl>
+                          <FormDescription>Code postal suisse (4 chiffres)</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -623,7 +651,7 @@ export default function CreateProperty() {
                       </label>
                     </div>
 
-                    {selectedFiles.length > 0 && (
+                    {selectedFiles.length > 0 && selectedFiles[currentImageIndex] && (
                       <div className="mt-4">
                         <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border-2 border-border group">
                           <img
