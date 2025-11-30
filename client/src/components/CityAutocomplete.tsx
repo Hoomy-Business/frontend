@@ -89,7 +89,7 @@ export function CityAutocomplete({
 
   // Vérifier si la valeur actuelle correspond à une suggestion valide
   const isValidCity = selectedCity !== null || 
-    (inputValue && suggestions.some(s => getCityName(s.name) === inputValue || s.name === inputValue)) ||
+    (inputValue && Array.isArray(suggestions) && suggestions.some(s => s && s.name && (getCityName(s.name) === inputValue || s.name === inputValue))) ||
     !inputValue || inputValue.trim().length === 0;
 
   return (

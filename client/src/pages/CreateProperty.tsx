@@ -108,30 +108,41 @@ export default function CreateProperty() {
       }
       
       // Créer un payload propre avec uniquement les champs attendus
+      // IMPORTANT: Ne pas inclure de valeurs null ou undefined pour éviter les problèmes de sérialisation
       const payload: Record<string, any> = {
-        title: data.title,
-        description: data.description,
-        property_type: data.property_type,
-        address: data.address,
-        city_name: data.city_name,
-        postal_code: data.postal_code,
-        canton_code: data.canton_code,
+        title: String(data.title || '').trim(),
+        description: String(data.description || '').trim(),
+        property_type: String(data.property_type || 'apartment'),
+        address: String(data.address || '').trim(),
+        city_name: String(data.city_name || '').trim(),
+        postal_code: String(data.postal_code || '').trim(),
+        canton_code: String(data.canton_code || '').trim(),
         price: typeof data.price === 'number' ? data.price : Number(data.price) || 0,
-        image_urls: validImageUrls
+        image_urls: validImageUrls // Tableau de strings valides
       };
       
-      // Ajouter les champs optionnels seulement s'ils sont définis
+      // Ajouter les champs optionnels seulement s'ils sont définis et valides
       if (data.rooms !== undefined && data.rooms !== null) {
-        payload.rooms = typeof data.rooms === 'number' ? data.rooms : Number(data.rooms);
+        const roomsValue = typeof data.rooms === 'number' ? data.rooms : Number(data.rooms);
+        if (!isNaN(roomsValue) && roomsValue > 0) {
+          payload.rooms = roomsValue;
+        }
       }
       if (data.bathrooms !== undefined && data.bathrooms !== null) {
-        payload.bathrooms = typeof data.bathrooms === 'number' ? data.bathrooms : Number(data.bathrooms);
+        const bathroomsValue = typeof data.bathrooms === 'number' ? data.bathrooms : Number(data.bathrooms);
+        if (!isNaN(bathroomsValue) && bathroomsValue > 0) {
+          payload.bathrooms = bathroomsValue;
+        }
       }
       if (data.surface_area !== undefined && data.surface_area !== null) {
-        payload.surface_area = typeof data.surface_area === 'number' ? data.surface_area : Number(data.surface_area);
+        const surfaceValue = typeof data.surface_area === 'number' ? data.surface_area : Number(data.surface_area);
+        if (!isNaN(surfaceValue) && surfaceValue > 0) {
+          payload.surface_area = surfaceValue;
+        }
       }
-      // Valider et nettoyer la date available_from
-      if (data.available_from && data.available_from.trim() !== '') {
+      
+      // Valider et nettoyer la date available_from - ne l'envoyer que si elle est valide
+      if (data.available_from && typeof data.available_from === 'string' && data.available_from.trim() !== '') {
         const date = new Date(data.available_from);
         // Vérifier que la date est valide et pas une date invalide comme "01-01-0001"
         const minValidDate = new Date('1900-01-01');
@@ -141,17 +152,48 @@ export default function CreateProperty() {
           const month = String(date.getMonth() + 1).padStart(2, '0');
           const day = String(date.getDate()).padStart(2, '0');
           payload.available_from = `${year}-${month}-${day}`;
-        } else {
-          // Date invalide, ne pas l'envoyer
-          payload.available_from = null;
         }
-      } else {
-        payload.available_from = null;
+        // Si la date est invalide, ne pas l'ajouter au payload (ne pas envoyer null)
       }
       
-      // Log du payload pour débogage (seulement en développement)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Payload envoyé au serveur:', JSON.stringify(payload, null, 2));
+      // S'assurer qu'il n'y a pas de valeurs null ou undefined dans le payload
+      // qui pourraient causer des problèmes de sérialisation JSON
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === null || payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
+      
+      // Log du payload pour débogage
+      console.log('📦 Payload préparé pour la création de propriété:');
+      console.log('- Titre:', payload.title);
+      console.log('- Type:', payload.property_type);
+      console.log('- Adresse:', payload.address);
+      console.log('- Prix:', payload.price);
+      console.log('- Nombre d\'images:', payload.image_urls?.length || 0);
+      console.log('- URLs d\'images:', payload.image_urls);
+      console.log('- Champs optionnels:', {
+        rooms: payload.rooms,
+        bathrooms: payload.bathrooms,
+        surface_area: payload.surface_area,
+        available_from: payload.available_from
+      });
+      
+      // Valider qu'il n'y a pas de valeurs booléennes inattendues
+      const hasBooleanValues = Object.values(payload).some(value => typeof value === 'boolean');
+      if (hasBooleanValues) {
+        console.warn('⚠️ ATTENTION: Le payload contient des valeurs booléennes:', 
+          Object.entries(payload).filter(([_, v]) => typeof v === 'boolean')
+        );
+      }
+      
+      // Valider que image_urls est bien un tableau de strings
+      if (!Array.isArray(payload.image_urls)) {
+        throw new Error('image_urls doit être un tableau de strings');
+      }
+      
+      if (payload.image_urls.some((url: any) => typeof url !== 'string')) {
+        throw new Error('Toutes les URLs d\'images doivent être des strings');
       }
       
       // Sending property creation request
@@ -208,11 +250,13 @@ export default function CreateProperty() {
       // Cas 1: Erreur property_id boolean (erreur connue)
       if (errorLower.includes('property_id') && (errorLower.includes('boolean') || errorLower.includes('bool'))) {
         propertyCreated = true;
-        errorMessage = '⚠️ Problème avec les photos\n\nLa propriété a probablement été créée mais les photos n\'ont pas pu être ajoutées. Vérifiez votre tableau de bord - votre annonce est peut-être déjà visible. Si c\'est le cas, vous pourrez ajouter les photos depuis la page d\'édition.\n\nSi la propriété n\'apparaît pas dans votre tableau de bord, veuillez réessayer de créer l\'annonce.';
+        errorMessage = '⚠️ Erreur lors de l\'ajout des photos\n\nLa propriété a probablement été créée mais les photos n\'ont pas pu être ajoutées en raison d\'une erreur côté serveur.\n\nCette erreur indique un problème dans le backend lors de l\'insertion des photos dans la base de données. La propriété existe probablement mais sans photos.\n\nVérifiez votre tableau de bord - votre annonce est peut-être déjà visible. Si c\'est le cas, vous pourrez ajouter les photos depuis la page d\'édition.\n\nSi la propriété n\'apparaît pas, veuillez réessayer de créer l\'annonce.';
         setPropertyCreatedWithoutPhotos(true);
         console.error('❌ ERREUR BACKEND property_id:', err.message);
         console.error('⚠️  Cette erreur indique que le serveur essaie d\'insérer un booléen dans la colonne property_id (bigint)');
         console.error('📋 La propriété a probablement été créée malgré l\'erreur - vérifiez le dashboard');
+        console.error('🔧 Cette erreur nécessite une correction côté backend dans la logique d\'insertion des photos');
+        console.error('📦 Payload envoyé:', JSON.stringify(payload, null, 2));
       } 
       // Cas 2: Erreur lors de l'insertion des photos mais propriété créée
       else if (errorLower.includes('photo') || errorLower.includes('image') || errorLower.includes('picture')) {

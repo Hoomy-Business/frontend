@@ -100,17 +100,23 @@ export default function PropertyDetail() {
     queryKey: ['/favorites'],
     enabled: !!numericPropertyId && isAuthenticated,
     queryFn: async () => {
-      return apiRequest<Property[]>('GET', '/favorites');
+      const result = await apiRequest<Property[]>('GET', '/favorites');
+      // S'assurer que le résultat est toujours un tableau
+      return Array.isArray(result) ? result : [];
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 15, // 15 minutes
     refetchOnMount: true, // Toujours refetch pour avoir l'état à jour
+    // S'assurer que les données retournées sont toujours valides
+    select: (data) => Array.isArray(data) ? data : [],
   });
 
   const isFavorited = useMemo(() => {
     if (!favorites || !numericPropertyId) return false;
+    // S'assurer que favorites est un tableau
+    if (!Array.isArray(favorites)) return false;
     // Comparaison robuste en convertissant les deux en nombres
-    return favorites.some(fav => Number(fav.id) === Number(numericPropertyId));
+    return favorites.some(fav => fav && fav.id && Number(fav.id) === Number(numericPropertyId));
   }, [favorites, numericPropertyId]);
 
   const addFavoriteMutation = useMutation({
@@ -119,9 +125,9 @@ export default function PropertyDetail() {
       await queryClient.cancelQueries({ queryKey: ['/favorites'] });
       const previousFavorites = queryClient.getQueryData<Property[]>(['/favorites']);
       
-      if (previousFavorites && property) {
+      if (previousFavorites && Array.isArray(previousFavorites) && property) {
         // Vérifier que la propriété n'est pas déjà dans les favoris
-        const isAlreadyFavorite = previousFavorites.some(fav => Number(fav.id) === Number(propertyId));
+        const isAlreadyFavorite = previousFavorites.some(fav => fav && fav.id && Number(fav.id) === Number(propertyId));
         if (!isAlreadyFavorite) {
           queryClient.setQueryData<Property[]>(['/favorites'], [...previousFavorites, property]);
         }

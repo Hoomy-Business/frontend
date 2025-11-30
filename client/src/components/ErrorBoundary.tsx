@@ -57,6 +57,12 @@ export class ErrorBoundary extends Component<Props, State> {
         },
         timestamp: new Date().toISOString(),
       };
+      
+      // Log error to console for debugging
+      console.error('❌ ErrorBoundary caught an error:', error.message);
+      if (error.message.includes('is not a function')) {
+        console.error('💡 This error suggests that a value is not of the expected type (e.g., array, object). Check that data is properly validated before use.');
+      }
     }
     
     this.setState({

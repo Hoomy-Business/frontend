@@ -249,9 +249,9 @@ export function AddressAutocomplete({
   // Permettre la saisie manuelle si aucune suggestion valide n'est disponible
   // L'adresse sera considérée comme valide si elle est saisie manuellement
   const isValidAddress = selectedSuggestion !== null || 
-    (inputValue && suggestions.some(s => s.full_address === inputValue)) ||
+    (inputValue && Array.isArray(suggestions) && suggestions.some(s => s && s.full_address === inputValue)) ||
     !inputValue || inputValue.trim().length === 0 ||
-    (inputValue.trim().length > 0 && suggestions.length === 0 && !queryError && !isLoading);
+    (inputValue.trim().length > 0 && Array.isArray(suggestions) && suggestions.length === 0 && !queryError && !isLoading);
 
   return (
     <div className={cn("relative", className)}>
