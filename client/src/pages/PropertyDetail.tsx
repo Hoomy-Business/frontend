@@ -100,15 +100,31 @@ export default function PropertyDetail() {
     queryKey: ['/favorites'],
     enabled: !!numericPropertyId && isAuthenticated,
     queryFn: async () => {
-      const result = await apiRequest<Property[]>('GET', '/favorites');
-      // S'assurer que le résultat est toujours un tableau
-      return Array.isArray(result) ? result : [];
+      const result = await apiRequest<any>('GET', '/favorites');
+      // Le backend retourne { favorites: [...], pagination: {...} }
+      // Extraire le tableau favorites
+      if (result && Array.isArray(result.favorites)) {
+        return result.favorites;
+      }
+      // Fallback si le résultat est directement un tableau (pour compatibilité)
+      if (Array.isArray(result)) {
+        return result;
+      }
+      // Sinon retourner un tableau vide
+      return [];
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 15, // 15 minutes
     refetchOnMount: true, // Toujours refetch pour avoir l'état à jour
     // S'assurer que les données retournées sont toujours valides
-    select: (data) => Array.isArray(data) ? data : [],
+    select: (data: any): Property[] => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      if (data && typeof data === 'object' && data.favorites && Array.isArray(data.favorites)) {
+        return data.favorites;
+      }
+      return [];
+    },
   });
 
   const isFavorited = useMemo(() => {
@@ -135,24 +151,25 @@ export default function PropertyDetail() {
       
       return { previousFavorites };
     },
-    onError: (err, propertyId, context) => {
+    onError: (err: Error, propertyId: number, context: any) => {
+      console.error('❌ Erreur lors de l\'ajout aux favoris:', err);
       if (context?.previousFavorites) {
         queryClient.setQueryData(['/favorites'], context.previousFavorites);
       }
       toast({
-        title: 'Error',
-        description: 'Failed to add to favorites',
+        title: 'Erreur',
+        description: err.message || 'Échec de l\'ajout aux favoris',
         variant: 'destructive',
       });
     },
     onSuccess: () => {
+      console.log('✅ Propriété ajoutée aux favoris avec succès');
       toast({
-        title: 'Success',
-        description: 'Property added to favorites',
+        title: 'Succès',
+        description: 'Propriété ajoutée aux favoris',
       });
       // Invalider et refetch immédiatement pour avoir l'état à jour
       queryClient.invalidateQueries({ queryKey: ['/favorites'] });
-      queryClient.refetchQueries({ queryKey: ['/favorites'] });
     },
   });
 
@@ -172,24 +189,25 @@ export default function PropertyDetail() {
       
       return { previousFavorites };
     },
-    onError: (err, propertyId, context) => {
+    onError: (err: Error, propertyId: number, context: any) => {
+      console.error('❌ Erreur lors de la suppression des favoris:', err);
       if (context?.previousFavorites) {
         queryClient.setQueryData(['/favorites'], context.previousFavorites);
       }
       toast({
-        title: 'Error',
-        description: 'Failed to remove from favorites',
+        title: 'Erreur',
+        description: err.message || 'Échec de la suppression des favoris',
         variant: 'destructive',
       });
     },
     onSuccess: () => {
+      console.log('✅ Propriété retirée des favoris avec succès');
       toast({
-        title: 'Success',
-        description: 'Property removed from favorites',
+        title: 'Succès',
+        description: 'Propriété retirée des favoris',
       });
       // Invalider et refetch immédiatement pour avoir l'état à jour
       queryClient.invalidateQueries({ queryKey: ['/favorites'] });
-      queryClient.refetchQueries({ queryKey: ['/favorites'] });
     },
   });
 

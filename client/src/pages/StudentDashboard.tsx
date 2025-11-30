@@ -80,10 +80,29 @@ export default function StudentDashboard() {
       }
       
       const data = await res.json();
-      return Array.isArray(data) ? data : [];
+      // Le backend retourne { favorites: [...], pagination: {...} }
+      // Extraire le tableau favorites
+      if (data && Array.isArray(data.favorites)) {
+        return data.favorites;
+      }
+      // Fallback si le résultat est directement un tableau (pour compatibilité)
+      if (Array.isArray(data)) {
+        return data;
+      }
+      // Sinon retourner un tableau vide
+      return [];
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 15, // 15 minutes
+    // S'assurer que les données retournées sont toujours valides
+    select: (data: any): Property[] => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      if (data && typeof data === 'object' && data.favorites && Array.isArray(data.favorites)) {
+        return data.favorites;
+      }
+      return [];
+    },
   });
 
   const { data: contractsData, isLoading: contractsLoading } = useQuery<any>({
