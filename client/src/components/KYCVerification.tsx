@@ -227,7 +227,9 @@ export function KYCVerification() {
   };
 
   const getStatusBadge = () => {
-    if (!kycStatus) return null;
+    if (!kycStatus) {
+      return <Badge variant="outline"><AlertCircle className="h-3 w-3 mr-1" />Non soumis</Badge>;
+    }
 
     switch (kycStatus.status) {
       case 'approved':
@@ -236,6 +238,7 @@ export function KYCVerification() {
         return <Badge variant="secondary"><Loader2 className="h-3 w-3 mr-1 animate-spin" />En attente</Badge>;
       case 'rejected':
         return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejeté</Badge>;
+      case 'not_submitted':
       default:
         return <Badge variant="outline"><AlertCircle className="h-3 w-3 mr-1" />Non soumis</Badge>;
     }
@@ -274,9 +277,11 @@ export function KYCVerification() {
   }
 
   // Vérifier explicitement que le statut est 'approved' pour être considéré comme vérifié
+  // Si kycStatus est null/undefined ou si le statut n'est pas 'approved', ce n'est pas vérifié
   const isVerified = kycStatus?.status === 'approved';
   const isPending = kycStatus?.status === 'pending';
   const isRejected = kycStatus?.status === 'rejected';
+  const isNotSubmitted = !kycStatus || kycStatus.status === 'not_submitted' || (kycStatus.status !== 'approved' && kycStatus.status !== 'pending' && kycStatus.status !== 'rejected');
 
   return (
     <Card>
