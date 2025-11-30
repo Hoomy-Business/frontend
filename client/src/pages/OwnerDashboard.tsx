@@ -192,11 +192,15 @@ export default function OwnerDashboard() {
       });
     },
     onError: (error: any) => {
-      const errorMessage = error?.details || error?.message || 'Failed to create Stripe account. Please try again.';
+      // Afficher les détails si disponibles, sinon le message d'erreur
+      const errorTitle = error?.message || 'Stripe Account Creation Failed';
+      const errorDescription = error?.details || error?.message || 'Failed to create Stripe account. Please try again.';
+      
       toast({
-        title: 'Stripe Account Creation Failed',
-        description: errorMessage,
+        title: errorTitle,
+        description: errorDescription,
         variant: 'destructive',
+        duration: 10000, // Afficher plus longtemps pour les erreurs importantes
       });
     },
   });
