@@ -404,7 +404,7 @@ export default function ContractDetail() {
                   )}
                   <div>
                     <p className="text-sm text-muted-foreground">Total mensuel</p>
-                    <p className="font-semibold text-lg">CHF {Number(contract.monthly_rent || 0) + Number(contract.charges || 0)).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="font-semibold text-lg">CHF {(Number(contract.monthly_rent || 0) + Number(contract.charges || 0)).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     <p className="text-xs text-muted-foreground mt-1">Loyer + Charges</p>
                   </div>
                 </div>
