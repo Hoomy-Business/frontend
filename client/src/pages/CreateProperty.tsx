@@ -114,8 +114,23 @@ export default function CreateProperty() {
       if (data.surface_area !== undefined && data.surface_area !== null) {
         payload.surface_area = typeof data.surface_area === 'number' ? data.surface_area : Number(data.surface_area);
       }
-      if (data.available_from) {
-        payload.available_from = data.available_from;
+      // Valider et nettoyer la date available_from
+      if (data.available_from && data.available_from.trim() !== '') {
+        const date = new Date(data.available_from);
+        // Vérifier que la date est valide et pas une date invalide comme "01-01-0001"
+        const minValidDate = new Date('1900-01-01');
+        if (!isNaN(date.getTime()) && date >= minValidDate) {
+          // Formater la date en YYYY-MM-DD pour être sûr
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          payload.available_from = `${year}-${month}-${day}`;
+        } else {
+          // Date invalide, ne pas l'envoyer
+          payload.available_from = null;
+        }
+      } else {
+        payload.available_from = null;
       }
       
       // Log du payload pour débogage (seulement en développement)
@@ -135,10 +150,21 @@ export default function CreateProperty() {
       
       // Détecter l'erreur spécifique de property_id
       if (errorMessage.includes('property_id') && errorMessage.includes('boolean')) {
-        errorMessage = 'Erreur serveur lors de la création des photos. Veuillez contacter le support technique si le problème persiste.';
-        console.error('Erreur backend property_id:', err.message);
+        errorMessage = 'Erreur serveur lors de la création des photos de propriété. Le problème vient du backend - contactez le support technique.';
+        console.error('❌ ERREUR BACKEND property_id:', err.message);
+        console.error('⚠️  Cette erreur indique que le serveur essaie d\'insérer un booléen dans la colonne property_id (bigint)');
+        console.error('📋 Vérifiez les logs serveur pour voir le payload exact lors de l\'insertion des photos');
       } else if (errorMessage.includes('out of range')) {
         errorMessage = 'Une valeur numérique est hors limite. Veuillez vérifier vos données.';
+      } else if (errorMessage.includes('Erreur création annonce')) {
+        // Extraire le message d'erreur plus détaillé si disponible
+        const detailedError = errorMessage.match(/Erreur création annonce: (.+)/);
+        if (detailedError && detailedError[1]) {
+          console.error('❌ Erreur détaillée:', detailedError[1]);
+          if (detailedError[1].includes('property_id') && detailedError[1].includes('boolean')) {
+            errorMessage = 'Erreur serveur : problème lors de la création des photos. Contactez le support.';
+          }
+        }
       }
       
       setError(errorMessage);
@@ -656,7 +682,26 @@ export default function CreateProperty() {
                       <FormItem>
                         <FormLabel>Available From (Optional)</FormLabel>
                         <FormControl>
-                          <Input {...field} type="date" data-testid="input-available" />
+                          <Input 
+                            {...field} 
+                            type="date" 
+                            data-testid="input-available"
+                            min={new Date().toISOString().split('T')[0]}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Valider que la date n'est pas invalide
+                              if (value && value !== '') {
+                                const date = new Date(value);
+                                const minValidDate = new Date('1900-01-01');
+                                if (isNaN(date.getTime()) || date < minValidDate) {
+                                  // Réinitialiser si date invalide
+                                  field.onChange('');
+                                  return;
+                                }
+                              }
+                              field.onChange(value);
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
