@@ -154,7 +154,7 @@ export default function ContractDetail() {
     try {
       const apiBase = getAPIBaseURL();
       const baseClean = apiBase.replace(/\/+$/, '');
-      const url = `${baseClean}/api/contracts/${contractId}/pdf`;
+      const url = `${baseClean}/contracts/${contractId}/pdf`;
 
       const response = await fetch(url, {
         method: 'GET',
