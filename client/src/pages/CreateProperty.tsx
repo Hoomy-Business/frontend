@@ -146,18 +146,28 @@ export default function CreateProperty() {
       setLocation('/dashboard/owner');
     },
     onError: (err: Error) => {
+      // Log complet de l'erreur pour débogage
+      console.error('🔴 ERREUR CreateProperty - err complet:', err);
+      console.error('🔴 ERREUR CreateProperty - err.message:', err.message);
+      console.error('🔴 ERREUR CreateProperty - err.name:', err.name);
+      if ((err as any).status) console.error('🔴 ERREUR CreateProperty - err.status:', (err as any).status);
+      if ((err as any).code) console.error('🔴 ERREUR CreateProperty - err.code:', (err as any).code);
+      
       // Améliorer le message d'erreur pour les erreurs de base de données
       let errorMessage = err.message || 'Failed to create property';
       let propertyCreated = false;
       
-      // Détecter l'erreur spécifique de property_id
-      if (errorMessage.includes('property_id') && errorMessage.includes('boolean')) {
+      // Détecter l'erreur spécifique de property_id - chercher dans le message complet
+      const fullErrorMessage = String(err.message || err.toString() || '');
+      if (fullErrorMessage.includes('property_id') && (fullErrorMessage.includes('boolean') || fullErrorMessage.includes('bigint'))) {
         // Cette erreur se produit après la création de la propriété mais avant l'insertion des photos
         // La propriété existe probablement déjà dans la base de données
         propertyCreated = true;
         errorMessage = '⚠️ Problème avec les photos\n\nLa propriété a probablement été créée mais les photos n\'ont pas pu être ajoutées. Vérifiez votre tableau de bord - votre annonce est peut-être déjà visible. Si c\'est le cas, vous pourrez ajouter les photos depuis la page d\'édition.';
         setPropertyCreatedWithoutPhotos(true);
-        console.error('❌ ERREUR BACKEND property_id:', err.message);
+        console.error('❌ ERREUR BACKEND property_id détectée!');
+        console.error('❌ Message original:', err.message);
+        console.error('❌ Message complet:', fullErrorMessage);
         console.error('⚠️  Cette erreur indique que le serveur essaie d\'insérer un booléen dans la colonne property_id (bigint)');
         console.error('📋 La propriété a probablement été créée malgré l\'erreur - vérifiez le dashboard');
         console.error('🔧 Correction nécessaire côté serveur : voir PROBLEME_PROPERTY_ID.md');

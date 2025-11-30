@@ -165,6 +165,14 @@ export async function apiRequest<T = any>(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
       
+      // Log pour débogage - voir exactement ce que le serveur renvoie
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔴 ERREUR SERVEUR - Status:', response.status);
+        console.log('🔴 ERREUR SERVEUR - errorData complet:', JSON.stringify(errorData, null, 2));
+        console.log('🔴 ERREUR SERVEUR - errorData.error:', errorData.error);
+        console.log('🔴 ERREUR SERVEUR - errorData.message:', errorData.message);
+      }
+      
       // Traduire les messages d'erreur techniques en messages compréhensibles
       const translateError = (error: string): string => {
         // Ne pas traduire si le message contient des détails techniques importants
@@ -203,7 +211,81 @@ export async function apiRequest<T = any>(
         return translations[error] || error;
       };
       
-      const errorMessage = translateError(errorData.error || errorData.message || '');
+      // Extraire le message d'erreur en vérifiant TOUS les champs possibles
+      // Le message détaillé peut être dans error, message, details, ou autres champs
+      // Convertir TOUT errorData en string pour rechercher dedans
+      const errorDataString = JSON.stringify(errorData);
+      
+      const rawError = String(errorData.error || '');
+      const rawMessage = String(errorData.message || '');
+      const rawDetails = String(errorData.details || errorData.detail || '');
+      
+      // Vérifier si un des messages contient des détails techniques importants
+      const hasTechnicalDetails = (text: string) => {
+        if (!text || text.trim() === '') return false;
+        const textLower = text.toLowerCase();
+        return text.includes('property_id') || 
+               text.includes('column') || 
+               text.includes('is of type') || 
+               text.includes('Erreur création annonce') ||
+               text.includes('out of range') ||
+               textLower.includes('bigint') ||
+               textLower.includes('boolean');
+      };
+      
+      // Vérifier si le message détaillé est dans errorDataString (tout le JSON)
+      const hasDetailsInFullData = hasTechnicalDetails(errorDataString);
+      
+      // Priorité : prendre le message qui contient des détails techniques
+      // Vérifier dans l'ordre : details > error > message > tout errorData
+      let errorMessage: string;
+      if (hasTechnicalDetails(rawDetails)) {
+        errorMessage = rawDetails;
+      } else if (hasTechnicalDetails(rawError)) {
+        errorMessage = rawError;
+      } else if (hasTechnicalDetails(rawMessage)) {
+        errorMessage = rawMessage;
+      } else if (hasDetailsInFullData) {
+        // Si les détails sont quelque part dans errorData, essayer de les extraire
+        // Chercher "Erreur création annonce: ..." dans tout le JSON
+        const matchFull = errorDataString.match(/Erreur création annonce[^"}]*?([^"}]*property_id[^"}]*?)/i);
+        if (matchFull) {
+          errorMessage = matchFull[0].replace(/^["']+|["']+$/g, '').trim();
+        } else {
+          // Chercher juste le message avec property_id
+          const matchPropertyId = errorDataString.match(/[^"]*property_id[^"]*is of type[^"]*/i);
+          if (matchPropertyId) {
+            errorMessage = matchPropertyId[0].replace(/^["']+|["']+$/g, '').trim();
+          } else {
+            // Prendre le premier champ non vide qui contient des détails
+            errorMessage = rawError || rawMessage || rawDetails || errorDataString.substring(0, 200);
+          }
+        }
+      } else if (rawError && rawError.trim() !== '' && rawError !== 'Erreur serveur') {
+        // Si error existe et n'est pas juste "Erreur serveur", le traduire
+        errorMessage = translateError(rawError);
+      } else if (rawMessage && rawMessage.trim() !== '') {
+        // Si message existe, le traduire
+        errorMessage = translateError(rawMessage);
+      } else if (rawError === 'Erreur serveur') {
+        // Si c'est juste "Erreur serveur", utiliser le message générique
+        errorMessage = 'Un problème technique est survenu. Veuillez réessayer dans quelques instants.';
+      } else {
+        // Fallback : message vide ou non défini
+        errorMessage = '';
+      }
+      
+      // Log pour débogage - TOUJOURS logger pour voir ce qui arrive du serveur
+      console.log('🔍 DEBUG ERREUR COMPLET:');
+      console.log('  Status:', response.status);
+      console.log('  URL:', url);
+      console.log('  errorData complet:', errorData);
+      console.log('  errorData JSON:', JSON.stringify(errorData, null, 2));
+      console.log('  rawError:', rawError);
+      console.log('  rawMessage:', rawMessage);
+      console.log('  rawDetails:', rawDetails);
+      console.log('  errorDataString contient détails:', hasDetailsInFullData);
+      console.log('  Message final extrait:', errorMessage);
       
       // Handle specific error codes
       switch (response.status) {
@@ -231,16 +313,18 @@ export async function apiRequest<T = any>(
           throw new Error(errorMessage || 'Les informations saisies sont invalides. Veuillez vérifier et réessayer.');
         case 404:
           throw new Error(errorMessage || 'La ressource demandée n\'existe pas.');
+        case 500:
         case 502:
         case 503:
         case 504:
-          // Server errors - don't treat as auth errors
+          // Server errors - preserve detailed error messages
           const serverError = new Error(errorMessage || 'Le serveur est temporairement indisponible. Veuillez réessayer dans quelques instants.');
           (serverError as any).status = response.status;
           (serverError as any).code = errorData.code;
           (serverError as any).debug_code = errorData.debug_code;
           throw serverError;
         default:
+          // Pour les autres erreurs, préserver le message détaillé s'il existe
           throw new Error(errorMessage || 'Une erreur inattendue est survenue. Veuillez réessayer.');
       }
     }
