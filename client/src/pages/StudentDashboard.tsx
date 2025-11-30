@@ -121,6 +121,49 @@ export default function StudentDashboard() {
   // S'assurer que contracts est toujours un tableau
   const contracts: Contract[] = Array.isArray(contractsData) ? contractsData : [];
 
+  // Mutations pour accepter/refuser un contrat
+  const acceptContractMutation = useMutation({
+    mutationFn: async (contractId: number) => {
+      return apiRequest<any>('PUT', `/contracts/${contractId}/accept`, {});
+    },
+    onSuccess: (_data, contractId) => {
+      toast({
+        title: 'Contrat accepté',
+        description: 'Le contrat a été accepté et est maintenant actif.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/contracts/my-contracts'] });
+      // Rediriger vers le détail du contrat
+      setLocation(`/contracts/${contractId}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message || 'Impossible d\'accepter le contrat',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const rejectContractMutation = useMutation({
+    mutationFn: async (contractId: number) => {
+      return apiRequest<any>('PUT', `/contracts/${contractId}/reject`, {});
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Contrat refusé',
+        description: 'Le contrat a été refusé.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/contracts/my-contracts'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message || 'Impossible de refuser le contrat',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const { data: conversationsData, isLoading: conversationsLoading } = useQuery<any>({
     queryKey: ['/conversations'],
     queryFn: async () => {
@@ -595,17 +638,59 @@ export default function StudentDashboard() {
                               <p className="text-sm text-muted-foreground">{t('dashboard.contract.rent')}</p>
                               <p className="font-semibold">CHF {contract.monthly_rent.toLocaleString()}</p>
                             </div>
+                            {contract.charges !== undefined && contract.charges !== null && contract.charges > 0 && (
+                              <div>
+                                <p className="text-sm text-muted-foreground">Charges mensuelles</p>
+                                <p className="font-semibold">CHF {(contract.charges || 0).toLocaleString()}</p>
+                              </div>
+                            )}
                             <div>
                               <p className="text-sm text-muted-foreground">{t('dashboard.contract.duration')}</p>
                               <p className="font-semibold">
                                 {new Date(contract.start_date).toLocaleDateString()} - {new Date(contract.end_date).toLocaleDateString()}
                               </p>
                             </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Caution</p>
+                              <p className="font-semibold">CHF {contract.deposit_amount?.toLocaleString() || '0'}</p>
+                            </div>
                           </div>
+                          {contract.status === 'pending' && (
+                            <Alert className="mb-4">
+                              <AlertTriangle className="h-4 w-4" />
+                              <AlertDescription>
+                                Un contrat vous a été proposé. Vous pouvez l'accepter ou le refuser.
+                              </AlertDescription>
+                            </Alert>
+                          )}
 
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
+                            {contract.status === 'pending' && (
+                              <>
+                                <Button 
+                                  variant="default" 
+                                  size="sm"
+                                  onClick={() => acceptContractMutation.mutate(contract.id)}
+                                  disabled={acceptContractMutation.isPending || rejectContractMutation.isPending}
+                                  className="flex items-center gap-2"
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  {acceptContractMutation.isPending ? 'Acceptation...' : 'Accepter'}
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={() => rejectContractMutation.mutate(contract.id)}
+                                  disabled={acceptContractMutation.isPending || rejectContractMutation.isPending}
+                                  className="flex items-center gap-2"
+                                >
+                                  <X className="h-4 w-4" />
+                                  {rejectContractMutation.isPending ? 'Refus...' : 'Refuser'}
+                                </Button>
+                              </>
+                            )}
                             <Link href={`/contracts/${contract.id}`}>
-                              <Button variant="outline" size="sm">View Details</Button>
+                              <Button variant="outline" size="sm">Voir les détails</Button>
                             </Link>
                           </div>
                         </CardContent>
