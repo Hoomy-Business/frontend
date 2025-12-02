@@ -286,6 +286,9 @@ export default function ContractDetail() {
       // Set appropriate file extension based on content type
       if (contentType.includes('application/pdf')) {
         link.download = `contract-${contractId}.pdf`;
+      } else if (contentType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document') || 
+                 contentType.includes('application/msword')) {
+        link.download = `contract-${contractId}.docx`;
       } else if (contentType.includes('text/html')) {
         link.download = `contract-${contractId}.html`;
         // For HTML, also open in new window for printing
