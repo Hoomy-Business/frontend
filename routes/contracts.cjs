@@ -688,8 +688,8 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
         // Vérifier si le propriétaire a déjà signé
         const hasOwnerSignature = contract.owner_signature ? true : false;
 
-        // Si les deux parties ont signé (ou si le propriétaire a signé et l'étudiant signe maintenant), activer le contrat
-        if (signature && (hasOwnerSignature || contract.owner_signature)) {
+        // Si les deux parties ont signé, activer le contrat
+        if (signature && hasOwnerSignature) {
             updateQuery += `, status = 'active', contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)`;
         } else if (signature) {
             // L'étudiant signe mais le propriétaire n'a pas encore signé, le statut reste 'pending'
