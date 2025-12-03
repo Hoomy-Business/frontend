@@ -713,39 +713,104 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Ce contrat ne peut pas être accepté (statut: ' + contract.status + ')' });
         }
 
-        // Construire la requête de mise à jour avec la signature
-        let updateQuery = `UPDATE rental_contracts 
-             SET student_signature = $1,
-                 student_signed_at = CURRENT_TIMESTAMP,
-                 updated_at = CURRENT_TIMESTAMP`;
-        const updateValues = [signature || null];
-
-        // Vérifier si le propriétaire a déjà signé
-        const hasOwnerSignature = contract.owner_signature ? true : false;
-
-        // Si les deux parties ont signé, activer le contrat
-        if (signature && hasOwnerSignature) {
-            updateQuery += `, status = 'active', contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)`;
-        } else if (signature) {
-            // L'étudiant signe mais le propriétaire n'a pas encore signé, le statut reste 'pending'
-            // Mais on enregistre la signature de l'étudiant
-        } else {
-            // Pas de signature fournie, comportement legacy : activer directement
-            updateQuery += `, status = 'active', contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)`;
+        // Vérifier si les colonnes de signature existent
+        let hasSignatureColumns = false;
+        try {
+            const columnCheck = await client.query(`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'rental_contracts' 
+                AND column_name IN ('student_signature', 'student_signed_at', 'owner_signature', 'owner_signed_at')
+            `);
+            hasSignatureColumns = columnCheck.rows.length >= 2; // Au moins 2 colonnes trouvées
+        } catch (e) {
+            console.error('Error checking signature columns:', e);
         }
 
-        updateQuery += ` WHERE id = $${updateValues.length + 1} RETURNING *`;
+        // Construire la requête de mise à jour avec la signature
+        let updateQuery = '';
+        const updateValues = [];
+        let paramIndex = 1;
+
+        if (hasSignatureColumns && signature) {
+            // Utiliser les colonnes de signature si elles existent
+            updateQuery = `UPDATE rental_contracts 
+                 SET student_signature = $${paramIndex++},
+                     student_signed_at = CURRENT_TIMESTAMP,
+                     updated_at = CURRENT_TIMESTAMP`;
+            updateValues.push(signature);
+
+            // Vérifier si le propriétaire a déjà signé
+            const hasOwnerSignature = contract.owner_signature ? true : false;
+
+            // Si les deux parties ont signé, activer le contrat
+            if (hasOwnerSignature) {
+                updateQuery += `, status = 'active', contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)`;
+            }
+            // Sinon, le statut reste 'pending' mais la signature est enregistrée
+        } else if (signature) {
+            // Les colonnes n'existent pas encore, mais on a une signature
+            // Enregistrer la signature dans un champ temporaire ou ignorer pour l'instant
+            console.warn('Signature columns do not exist yet. Signature will not be saved. Please run migration.');
+            // Comportement legacy : activer le contrat sans sauvegarder la signature
+            updateQuery = `UPDATE rental_contracts 
+                 SET status = 'active', 
+                     contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP),
+                     updated_at = CURRENT_TIMESTAMP`;
+        } else {
+            // Pas de signature fournie, comportement legacy : activer directement
+            updateQuery = `UPDATE rental_contracts 
+                 SET status = 'active', 
+                     contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP),
+                     updated_at = CURRENT_TIMESTAMP`;
+        }
+
+        updateQuery += ` WHERE id = $${paramIndex} RETURNING *`;
         updateValues.push(contractId);
 
-        const result = await client.query(updateQuery, updateValues);
+        console.log('Executing update query:', updateQuery);
+        console.log('Update values count:', updateValues.length);
+
+        let result;
+        try {
+            result = await client.query(updateQuery, updateValues);
+        } catch (dbError) {
+            console.error('Database error:', dbError);
+            // Si l'erreur est due à des colonnes manquantes, essayer sans les colonnes de signature
+            if (dbError.message && dbError.message.includes('column') && dbError.message.includes('does not exist')) {
+                console.warn('Signature columns do not exist, falling back to legacy update');
+                // Fallback : mise à jour sans les colonnes de signature
+                const fallbackQuery = `UPDATE rental_contracts 
+                     SET status = 'active', 
+                         contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP),
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $1 RETURNING *`;
+                result = await client.query(fallbackQuery, [contractId]);
+            } else {
+                throw dbError;
+            }
+        }
+
         const updatedContract = result.rows[0];
 
         // Si les deux parties ont maintenant signé, mettre à jour le statut de la propriété
-        if (updatedContract.status === 'active' && updatedContract.student_signature && updatedContract.owner_signature) {
-            await client.query(
-                'UPDATE properties SET status = $1 WHERE id = $2',
-                ['rented', contract.property_id]
-            );
+        if (updatedContract.status === 'active') {
+            // Vérifier si les deux parties ont signé (si les colonnes existent)
+            if (hasSignatureColumns) {
+                const bothSigned = updatedContract.student_signature && updatedContract.owner_signature;
+                if (bothSigned) {
+                    await client.query(
+                        'UPDATE properties SET status = $1 WHERE id = $2',
+                        ['rented', contract.property_id]
+                    );
+                }
+            } else {
+                // Comportement legacy : activer la propriété
+                await client.query(
+                    'UPDATE properties SET status = $1 WHERE id = $2',
+                    ['rented', contract.property_id]
+                );
+            }
         }
 
         res.json({
@@ -756,7 +821,11 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
 
     } catch (error) {
         console.error('Erreur acceptation contrat:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Erreur serveur',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     } finally {
         client.release();
     }
@@ -1714,36 +1783,86 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Seul le propriétaire peut modifier le statut' });
         }
 
+        // Vérifier si les colonnes de signature existent
+        let hasSignatureColumns = false;
+        try {
+            const columnCheck = await client.query(`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'rental_contracts' 
+                AND column_name IN ('student_signature', 'student_signed_at', 'owner_signature', 'owner_signed_at')
+            `);
+            hasSignatureColumns = columnCheck.rows.length >= 2;
+        } catch (e) {
+            console.error('Error checking signature columns:', e);
+        }
+
         // Construire la requête de mise à jour
         let updateQuery = 'UPDATE rental_contracts SET updated_at = CURRENT_TIMESTAMP';
         const updateValues = [];
+        let paramIndex = 1;
 
-        // Ajouter la signature du propriétaire si fournie
-        if (signature) {
-            updateQuery += ', owner_signature = $' + (updateValues.length + 1) + ', owner_signed_at = CURRENT_TIMESTAMP';
+        // Ajouter la signature du propriétaire si fournie et si les colonnes existent
+        if (signature && hasSignatureColumns) {
+            updateQuery += `, owner_signature = $${paramIndex++}, owner_signed_at = CURRENT_TIMESTAMP`;
             updateValues.push(signature);
+        } else if (signature && !hasSignatureColumns) {
+            console.warn('Signature provided but columns do not exist. Signature will not be saved. Please run migration.');
         }
 
         // Gérer le statut
         if (status) {
-            updateQuery += ', status = $' + (updateValues.length + 1);
+            updateQuery += `, status = $${paramIndex++}`;
             updateValues.push(status);
 
             // Si on passe à 'active' et que les deux parties ont signé
-            if (status === 'active') {
+            if (status === 'active' && hasSignatureColumns) {
                 const hasStudentSignature = contract.student_signature ? true : false;
                 const hasOwnerSignature = signature ? true : (contract.owner_signature ? true : false);
 
                 if (hasStudentSignature && hasOwnerSignature) {
                     updateQuery += ', contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)';
                 }
+            } else if (status === 'active') {
+                // Si les colonnes n'existent pas, activer directement
+                updateQuery += ', contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)';
             }
         }
 
-        updateQuery += ' WHERE id = $' + (updateValues.length + 1) + ' RETURNING *';
+        updateQuery += ` WHERE id = $${paramIndex} RETURNING *`;
         updateValues.push(contractId);
 
-        const result = await client.query(updateQuery, updateValues);
+        let result;
+        try {
+            result = await client.query(updateQuery, updateValues);
+        } catch (dbError) {
+            console.error('Database error:', dbError);
+            // Si l'erreur est due à des colonnes manquantes, essayer sans les colonnes de signature
+            if (dbError.message && dbError.message.includes('column') && dbError.message.includes('does not exist')) {
+                console.warn('Signature columns do not exist, falling back to legacy update');
+                // Fallback : mise à jour sans les colonnes de signature
+                const fallbackUpdates = ['updated_at = CURRENT_TIMESTAMP'];
+                const fallbackValues = [];
+                let fallbackIndex = 1;
+                
+                if (status) {
+                    fallbackUpdates.push(`status = $${fallbackIndex++}`);
+                    fallbackValues.push(status);
+                    if (status === 'active') {
+                        fallbackUpdates.push('contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)');
+                    }
+                }
+                
+                fallbackUpdates.push(`WHERE id = $${fallbackIndex} RETURNING *`);
+                fallbackValues.push(contractId);
+                
+                const fallbackQuery = `UPDATE rental_contracts SET ${fallbackUpdates.join(', ')}`;
+                result = await client.query(fallbackQuery, fallbackValues);
+            } else {
+                throw dbError;
+            }
+        }
+
         const updatedContract = result.rows[0];
 
         // Mettre à jour le statut de la propriété
