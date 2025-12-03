@@ -36,6 +36,11 @@ export function sanitizeString(input: unknown): string {
   if (input === null || input === undefined) return '';
   if (typeof input !== 'string') return String(input);
   
+  // Si c'est une signature base64 (data:image/...), ne pas la sanitizer
+  if (input.startsWith('data:image/') && input.includes('base64,')) {
+    return input;
+  }
+  
   return input
     // Remove null bytes
     .replace(/\0/g, '')
@@ -43,9 +48,10 @@ export function sanitizeString(input: unknown): string {
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     // Remove event handlers
     .replace(/\bon\w+\s*=/gi, '')
-    // Remove javascript: and data: URIs
+    // Remove javascript: URIs (mais garder data:image pour les signatures)
     .replace(/javascript:/gi, '')
-    .replace(/data:/gi, '')
+    // Remove data: URIs sauf pour les images base64 (signatures)
+    .replace(/data:(?!image\/[^;]+;base64,)/gi, '')
     // Remove vbscript: URIs
     .replace(/vbscript:/gi, '')
     // Trim whitespace
@@ -61,7 +67,10 @@ export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
   const sanitized: Record<string, unknown> = {};
   
   for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string') {
+    // Ne pas sanitizer les champs de signature
+    if (key === 'signature' || key === 'owner_signature' || key === 'student_signature') {
+      sanitized[key] = value;
+    } else if (typeof value === 'string') {
       sanitized[key] = sanitizeString(value);
     } else if (Array.isArray(value)) {
       sanitized[key] = value.map(item => 

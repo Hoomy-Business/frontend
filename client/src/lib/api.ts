@@ -130,6 +130,17 @@ export async function apiRequest<T = any>(
     headers['X-CSRF-Token'] = getCSRFToken();
   }
 
+  // Log pour déboguer les signatures
+  if (data && typeof data === 'object' && 'signature' in data) {
+    const sig = (data as any).signature;
+    console.log('apiRequest (api.ts) - Sending signature:');
+    console.log('  - Type:', typeof sig);
+    console.log('  - Length:', sig?.length);
+    console.log('  - First 50 chars:', sig?.substring(0, 50));
+    console.log('  - Is string:', typeof sig === 'string');
+    console.log('  - Starts with data:image:', sig?.startsWith('data:image/'));
+  }
+
   // Build request config
   const config: RequestInit = {
     method: method.toUpperCase(),
