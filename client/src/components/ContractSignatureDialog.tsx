@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { SignaturePad } from '@/components/SignaturePad';
@@ -22,6 +22,7 @@ export function ContractSignatureDialog({
   contractTitle,
   isLoading = false,
 }: ContractSignatureDialogProps) {
+  const signaturePadRef = useRef<{ getSignature: () => string | null }>(null);
   const [signatureData, setSignatureData] = useState<string>('');
   const [isSigning, setIsSigning] = useState(false);
 
@@ -30,11 +31,34 @@ export function ContractSignatureDialog({
   };
 
   const handleConfirm = async () => {
-    if (!signatureData) return;
+    // Récupérer la signature directement du canvas au moment de la confirmation
+    let finalSignature = signatureData;
+    
+    // Si on a une signature sauvegardée, l'utiliser, sinon essayer de la récupérer du canvas
+    if (!finalSignature && signaturePadRef.current) {
+      finalSignature = signaturePadRef.current.getSignature() || '';
+    }
+    
+    if (!finalSignature) {
+      console.error('No signature to send');
+      return;
+    }
+    
+    // Vérifier que la signature est au bon format
+    if (!finalSignature.startsWith('data:image/')) {
+      console.error('Invalid signature format:', finalSignature.substring(0, 50));
+      return;
+    }
+    
+    // Vérifier que la signature n'est pas vide (juste le header)
+    if (finalSignature.length < 100) {
+      console.error('Signature seems empty, length:', finalSignature.length);
+      return;
+    }
     
     setIsSigning(true);
     try {
-      await onSign(signatureData);
+      await onSign(finalSignature);
       setSignatureData('');
       onOpenChange(false);
     } catch (error) {
@@ -92,6 +116,7 @@ export function ContractSignatureDialog({
           <SignaturePad
             onSave={handleSignatureSave}
             onCancel={handleCancel}
+            onRef={(ref) => { signaturePadRef.current = ref; }}
             title="Votre signature"
             description="Veuillez signer dans la zone ci-dessous en utilisant votre souris ou votre doigt"
           />

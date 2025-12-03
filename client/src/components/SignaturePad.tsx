@@ -7,12 +7,27 @@ interface SignaturePadProps {
   onCancel: () => void;
   title?: string;
   description?: string;
+  onRef?: (ref: { getSignature: () => string | null }) => void;
 }
 
-export function SignaturePad({ onSave, onCancel, title, description }: SignaturePadProps) {
+export function SignaturePad({ onSave, onCancel, title, description, onRef }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
   const [hasSignature, setHasSignature] = useState(false);
+
+  // Exposer une méthode pour récupérer la signature
+  const getSignature = (): string | null => {
+    const canvas = canvasRef.current;
+    if (!canvas || !hasSignature) return null;
+    return canvas.toDataURL('image/png');
+  };
+
+  // Exposer la méthode via ref si fournie
+  useEffect(() => {
+    if (onRef) {
+      onRef({ getSignature });
+    }
+  }, [onRef]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
