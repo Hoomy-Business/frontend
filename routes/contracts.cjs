@@ -657,10 +657,18 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
 
         // Valider la signature si fournie
         if (signature) {
-            const base64Pattern = /^data:image\/(png|jpeg|jpg);base64,[A-Za-z0-9+/=]+$/;
-            if (!base64Pattern.test(signature)) {
+            // Nettoyer la signature (retirer les espaces, retours à la ligne, etc.)
+            const cleanedSignature = signature.trim().replace(/\s/g, '');
+            
+            // Pattern plus flexible pour accepter différents formats
+            const base64Pattern = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=\s]+$/;
+            if (!base64Pattern.test(cleanedSignature)) {
+                console.error('Invalid signature format. Received:', cleanedSignature.substring(0, 50));
                 return res.status(400).json({ error: 'Format de signature invalide. Format attendu: data:image/png;base64,...' });
             }
+            
+            // Utiliser la signature nettoyée
+            signature = cleanedSignature;
         }
 
         const contractCheck = await client.query(
@@ -1622,10 +1630,18 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
 
         // Valider la signature si fournie
         if (signature) {
-            const base64Pattern = /^data:image\/(png|jpeg|jpg);base64,[A-Za-z0-9+/=]+$/;
-            if (!base64Pattern.test(signature)) {
+            // Nettoyer la signature (retirer les espaces, retours à la ligne, etc.)
+            const cleanedSignature = signature.trim().replace(/\s/g, '');
+            
+            // Pattern plus flexible pour accepter différents formats
+            const base64Pattern = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=\s]+$/;
+            if (!base64Pattern.test(cleanedSignature)) {
+                console.error('Invalid signature format. Received:', cleanedSignature.substring(0, 50));
                 return res.status(400).json({ error: 'Format de signature invalide. Format attendu: data:image/png;base64,...' });
             }
+            
+            // Utiliser la signature nettoyée
+            signature = cleanedSignature;
         }
 
         const contractCheck = await client.query(
