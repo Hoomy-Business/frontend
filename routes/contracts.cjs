@@ -647,6 +647,11 @@ router.get('/by-conversation/:conversation_id', authenticateToken, async (req, r
 router.put('/:id/accept', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
+        console.log('=== /contracts/:id/accept - START ===');
+        console.log('Request body signature length:', req.body?.signature?.length || 0);
+        console.log('Contract ID:', req.params.id);
+        console.log('User ID:', req.user?.id);
+        
         const contractId = req.params.id;
         const userId = req.user.id;
         const { signature } = req.body;
