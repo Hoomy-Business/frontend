@@ -11,7 +11,7 @@ interface SignaturePadProps {
 
 export function SignaturePad({ onSave, onCancel, title, description }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
+  const isDrawingRef = useRef(false);
   const [hasSignature, setHasSignature] = useState(false);
 
   useEffect(() => {
@@ -21,18 +21,26 @@ export function SignaturePad({ onSave, onCancel, title, description }: Signature
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Configuration du canvas
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    
-    ctx.scale(dpr, dpr);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    // Configuration du canvas (une seule fois au montage)
+    const setupCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      // Ne réinitialiser que si les dimensions ont changé
+      if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        
+        ctx.scale(dpr, dpr);
+      }
+      
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    };
+
+    setupCanvas();
 
     // Fonction pour obtenir les coordonnées de la souris/touch
     const getCoordinates = (e: MouseEvent | TouchEvent) => {
@@ -57,7 +65,7 @@ export function SignaturePad({ onSave, onCancel, title, description }: Signature
     // Démarrer le dessin
     const startDrawing = (e: MouseEvent | TouchEvent) => {
       e.preventDefault();
-      setIsDrawing(true);
+      isDrawingRef.current = true;
       const coords = getCoordinates(e);
       ctx.beginPath();
       ctx.moveTo(coords.x, coords.y);
@@ -65,7 +73,7 @@ export function SignaturePad({ onSave, onCancel, title, description }: Signature
 
     // Dessiner
     const draw = (e: MouseEvent | TouchEvent) => {
-      if (!isDrawing) return;
+      if (!isDrawingRef.current) return;
       e.preventDefault();
       const coords = getCoordinates(e);
       ctx.lineTo(coords.x, coords.y);
@@ -75,7 +83,9 @@ export function SignaturePad({ onSave, onCancel, title, description }: Signature
 
     // Arrêter le dessin
     const stopDrawing = () => {
-      setIsDrawing(false);
+      if (isDrawingRef.current) {
+        isDrawingRef.current = false;
+      }
     };
 
     // Événements souris
@@ -89,6 +99,12 @@ export function SignaturePad({ onSave, onCancel, title, description }: Signature
     canvas.addEventListener('touchmove', draw);
     canvas.addEventListener('touchend', stopDrawing);
 
+    // Gérer le redimensionnement de la fenêtre
+    const handleResize = () => {
+      setupCanvas();
+    };
+    window.addEventListener('resize', handleResize);
+
     return () => {
       canvas.removeEventListener('mousedown', startDrawing);
       canvas.removeEventListener('mousemove', draw);
@@ -97,8 +113,9 @@ export function SignaturePad({ onSave, onCancel, title, description }: Signature
       canvas.removeEventListener('touchstart', startDrawing);
       canvas.removeEventListener('touchmove', draw);
       canvas.removeEventListener('touchend', stopDrawing);
+      window.removeEventListener('resize', handleResize);
     };
-  }, [isDrawing]);
+  }, []); // Pas de dépendances - ne s'exécute qu'une fois
 
   const clearSignature = () => {
     const canvas = canvasRef.current;
