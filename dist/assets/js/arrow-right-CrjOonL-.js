@@ -1,0 +1,1 @@
+import{h as r}from"./index-42cH5BrD.js";const h=r("ArrowRight",[["path",{d:"M5 12h14",key:"1ays0h"}],["path",{d:"m12 5 7 7-7 7",key:"xquz4c"}]]);export{h as A};

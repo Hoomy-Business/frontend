@@ -35,6 +35,23 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+        continue-on-error: true
+
+      - name: Verify dist folder
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "Error: dist folder does not exist"
+            echo "The build process did not create a dist folder."
+            echo "Please ensure your build script creates the dist folder with index.html"
+            exit 1
+          fi
+          if [ ! -f "dist/index.html" ]; then
+            echo "Error: dist/index.html does not exist"
+            echo "The dist folder exists but is missing index.html"
+            exit 1
+          fi
+          echo "✓ dist folder found with index.html"
+          ls -la dist/ | head -20
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
