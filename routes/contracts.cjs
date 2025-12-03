@@ -793,10 +793,13 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Erreur acceptation contrat:', error);
+        console.error('=== /contracts/:id/accept - ERROR ===');
+        console.error('Error type:', error.constructor.name);
+        console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
+        console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)).substring(0, 500));
         res.status(500).json({ 
-            error: 'Erreur serveur',
+            error: 'Un problème technique est survenu. Veuillez réessayer dans quelques instants.',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     } finally {
