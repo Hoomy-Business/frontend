@@ -662,25 +662,36 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
             console.log('Received signature - First 100 chars:', signature?.substring(0, 100));
             
             // Nettoyer la signature (retirer les espaces, retours à la ligne, etc.)
-            const cleanedSignature = String(signature).trim().replace(/\s/g, '');
+            let cleanedSignature = String(signature).trim();
+            
+            // Retirer les espaces mais garder la structure
+            cleanedSignature = cleanedSignature.replace(/\s+/g, '');
             
             console.log('Cleaned signature - Length:', cleanedSignature.length);
             console.log('Cleaned signature - First 50 chars:', cleanedSignature.substring(0, 50));
             
+            // Validation très permissive : accepter si ça commence par data:image/ et contient base64
+            if (!cleanedSignature.startsWith('data:image/')) {
+                console.error('Signature does not start with data:image/');
+                return res.status(400).json({ 
+                    error: 'Format de signature invalide. Format attendu: data:image/png;base64,...',
+                    received: cleanedSignature.substring(0, 50)
+                });
+            }
+            
+            if (!cleanedSignature.includes('base64,')) {
+                console.error('Signature does not contain base64,');
+                return res.status(400).json({ 
+                    error: 'Format de signature invalide. Format attendu: data:image/png;base64,...',
+                    received: cleanedSignature.substring(0, 50)
+                });
+            }
+            
             // Pattern plus flexible pour accepter différents formats
             const base64Pattern = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/;
             if (!base64Pattern.test(cleanedSignature)) {
-                console.error('Invalid signature format. Pattern test failed.');
-                console.error('Cleaned signature sample:', cleanedSignature.substring(0, 100));
-                // Pour le débogage, accepter temporairement si ça commence par data:image
-                if (!cleanedSignature.startsWith('data:image/')) {
-                    return res.status(400).json({ 
-                        error: 'Format de signature invalide. Format attendu: data:image/png;base64,...',
-                        received: cleanedSignature.substring(0, 50)
-                    });
-                }
-                // Si ça commence par data:image, on accepte quand même pour le moment
-                console.warn('Signature format not perfect but starts with data:image/, accepting anyway');
+                console.warn('Signature format does not match perfect pattern, but basic checks passed. Accepting anyway.');
+                console.warn('Pattern test failed, but signature starts with data:image/ and contains base64,');
             }
             
             // Utiliser la signature nettoyée
@@ -1651,25 +1662,36 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             console.log('Received signature - First 100 chars:', signature?.substring(0, 100));
             
             // Nettoyer la signature (retirer les espaces, retours à la ligne, etc.)
-            const cleanedSignature = String(signature).trim().replace(/\s/g, '');
+            let cleanedSignature = String(signature).trim();
+            
+            // Retirer les espaces mais garder la structure
+            cleanedSignature = cleanedSignature.replace(/\s+/g, '');
             
             console.log('Cleaned signature - Length:', cleanedSignature.length);
             console.log('Cleaned signature - First 50 chars:', cleanedSignature.substring(0, 50));
             
+            // Validation très permissive : accepter si ça commence par data:image/ et contient base64
+            if (!cleanedSignature.startsWith('data:image/')) {
+                console.error('Signature does not start with data:image/');
+                return res.status(400).json({ 
+                    error: 'Format de signature invalide. Format attendu: data:image/png;base64,...',
+                    received: cleanedSignature.substring(0, 50)
+                });
+            }
+            
+            if (!cleanedSignature.includes('base64,')) {
+                console.error('Signature does not contain base64,');
+                return res.status(400).json({ 
+                    error: 'Format de signature invalide. Format attendu: data:image/png;base64,...',
+                    received: cleanedSignature.substring(0, 50)
+                });
+            }
+            
             // Pattern plus flexible pour accepter différents formats
             const base64Pattern = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/;
             if (!base64Pattern.test(cleanedSignature)) {
-                console.error('Invalid signature format. Pattern test failed.');
-                console.error('Cleaned signature sample:', cleanedSignature.substring(0, 100));
-                // Pour le débogage, accepter temporairement si ça commence par data:image
-                if (!cleanedSignature.startsWith('data:image/')) {
-                    return res.status(400).json({ 
-                        error: 'Format de signature invalide. Format attendu: data:image/png;base64,...',
-                        received: cleanedSignature.substring(0, 50)
-                    });
-                }
-                // Si ça commence par data:image, on accepte quand même pour le moment
-                console.warn('Signature format not perfect but starts with data:image/, accepting anyway');
+                console.warn('Signature format does not match perfect pattern, but basic checks passed. Accepting anyway.');
+                console.warn('Pattern test failed, but signature starts with data:image/ and contains base64,');
             }
             
             // Utiliser la signature nettoyée
