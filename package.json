@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.cjs",
     "dev": "node server.cjs",
-    "build": "echo 'No build step required for Node.js backend'"
+    "build": "node -e \"const fs = require('fs'); if (!fs.existsSync('dist')) fs.mkdirSync('dist', { recursive: true }); fs.writeFileSync('dist/.gitkeep', 'Backend build complete');\""
   },
   "keywords": [
     "housing",
