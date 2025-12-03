@@ -661,7 +661,7 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
             const cleanedSignature = signature.trim().replace(/\s/g, '');
             
             // Pattern plus flexible pour accepter différents formats
-            const base64Pattern = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=\s]+$/;
+            const base64Pattern = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/;
             if (!base64Pattern.test(cleanedSignature)) {
                 console.error('Invalid signature format. Received:', cleanedSignature.substring(0, 50));
                 return res.status(400).json({ error: 'Format de signature invalide. Format attendu: data:image/png;base64,...' });
@@ -1634,7 +1634,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             const cleanedSignature = signature.trim().replace(/\s/g, '');
             
             // Pattern plus flexible pour accepter différents formats
-            const base64Pattern = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=\s]+$/;
+            const base64Pattern = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/;
             if (!base64Pattern.test(cleanedSignature)) {
                 console.error('Invalid signature format. Received:', cleanedSignature.substring(0, 50));
                 return res.status(400).json({ error: 'Format de signature invalide. Format attendu: data:image/png;base64,...' });
