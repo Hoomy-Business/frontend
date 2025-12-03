@@ -274,28 +274,14 @@ export default function ContractDetail() {
         throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
       }
 
-      // Get the response (could be PDF or HTML)
-      const contentType = response.headers.get('content-type') || '';
+      // Get the PDF response
       const blob = await response.blob();
       
       // Create a download link
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      
-      // Set appropriate file extension based on content type
-      if (contentType.includes('application/pdf')) {
-        link.download = `contract-${contractId}.pdf`;
-      } else if (contentType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document') || 
-                 contentType.includes('application/msword')) {
-        link.download = `contract-${contractId}.docx`;
-      } else if (contentType.includes('text/html')) {
-        link.download = `contract-${contractId}.html`;
-        // For HTML, also open in new window for printing
-        window.open(downloadUrl, '_blank');
-      } else {
-        link.download = `contract-${contractId}.pdf`;
-      }
+      link.download = `contract-${contractId}.pdf`;
       
       document.body.appendChild(link);
       link.click();
