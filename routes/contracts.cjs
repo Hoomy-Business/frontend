@@ -654,13 +654,13 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
         
         const contractId = req.params.id;
         const userId = req.user.id;
-        const { signature } = req.body;
+        let { signature } = req.body;
 
         if (req.user.role !== 'student') {
             return res.status(403).json({ error: 'Seuls les étudiants peuvent accepter un contrat' });
         }
 
-        // Valider la signature si fournie
+        // Valider et nettoyer la signature si fournie
         if (signature) {
             console.log('Received signature - Type:', typeof signature);
             console.log('Received signature - Length:', signature?.length);
@@ -801,8 +801,13 @@ router.put('/:id/accept', authenticateToken, async (req, res) => {
         console.error('=== /contracts/:id/accept - ERROR ===');
         console.error('Error type:', error.constructor.name);
         console.error('Error message:', error.message);
+        console.error('Error code:', error.code);
+        console.error('Error detail:', error.detail);
+        console.error('Error hint:', error.hint);
         console.error('Error stack:', error.stack);
-        console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)).substring(0, 500));
+        if (error.stack) {
+            console.error('Error stack (first 500 chars):', error.stack.substring(0, 500));
+        }
         res.status(500).json({ 
             error: 'Un problème technique est survenu. Veuillez réessayer dans quelques instants.',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -1436,7 +1441,20 @@ router.get('/:id/pdf', authenticateToken, async (req, res) => {
         
         doc.moveDown(3);
         
-        // Signatures - version ultra simple avec flux normal uniquement
+        // Signatures avec images si disponibles
+        // Fonction helper pour convertir Base64 en Buffer
+        const base64ToBuffer = (base64String) => {
+            if (!base64String) return null;
+            try {
+                // Enlever le préfixe data:image/...;base64,
+                const base64Data = base64String.replace(/^data:image\/[a-z]+;base64,/, '');
+                return Buffer.from(base64Data, 'base64');
+            } catch (e) {
+                console.error('Error converting base64 to buffer:', e);
+                return null;
+            }
+        };
+        
         // Colonne gauche - Bailleur
         doc.fillColor(primaryColor)
            .fontSize(12)
@@ -1450,14 +1468,55 @@ router.get('/:id/pdf', authenticateToken, async (req, res) => {
            .text('(Signature précédée de la mention « Lu et approuvé »)');
         
         doc.moveDown(1);
-        // Ligne de signature
-        doc.strokeColor(borderColor)
-           .lineWidth(1)
-           .moveTo(50, doc.y)
-           .lineTo(250, doc.y)
-           .stroke();
         
-        doc.moveDown(2);
+        // Afficher la signature si elle existe
+        if (contract.owner_signature) {
+            try {
+                const signatureBuffer = base64ToBuffer(contract.owner_signature);
+                if (signatureBuffer) {
+                    // Ajouter l'image de signature (taille max 200x80)
+                    doc.image(signatureBuffer, 50, doc.y, { 
+                        width: 200, 
+                        height: 80,
+                        fit: [200, 80]
+                    });
+                    doc.moveDown(0.2);
+                    // Date de signature
+                    if (contract.owner_signed_at) {
+                        const signedDate = new Date(contract.owner_signed_at);
+                        doc.fillColor(lightGray)
+                           .fontSize(8)
+                           .text(`Signé le ${signedDate.toLocaleDateString('fr-CH')}`, { width: 200 });
+                    }
+                    doc.moveDown(1.5);
+                } else {
+                    // Ligne de signature si l'image n'a pas pu être chargée
+                    doc.strokeColor(borderColor)
+                       .lineWidth(1)
+                       .moveTo(50, doc.y)
+                       .lineTo(250, doc.y)
+                       .stroke();
+                    doc.moveDown(2);
+                }
+            } catch (imgError) {
+                console.error('Error adding owner signature image:', imgError);
+                // Ligne de signature en cas d'erreur
+                doc.strokeColor(borderColor)
+                   .lineWidth(1)
+                   .moveTo(50, doc.y)
+                   .lineTo(250, doc.y)
+                   .stroke();
+                doc.moveDown(2);
+            }
+        } else {
+            // Ligne de signature si pas de signature
+            doc.strokeColor(borderColor)
+               .lineWidth(1)
+               .moveTo(50, doc.y)
+               .lineTo(250, doc.y)
+               .stroke();
+            doc.moveDown(2);
+        }
         
         // Colonne droite - Locataire
         doc.fillColor(primaryColor)
@@ -1472,14 +1531,55 @@ router.get('/:id/pdf', authenticateToken, async (req, res) => {
            .text('(Signature précédée de la mention « Lu et approuvé »)');
         
         doc.moveDown(1);
-        // Ligne de signature
-        doc.strokeColor(borderColor)
-           .lineWidth(1)
-           .moveTo(50, doc.y)
-           .lineTo(250, doc.y)
-           .stroke();
         
-        doc.moveDown(2);
+        // Afficher la signature si elle existe
+        if (contract.student_signature) {
+            try {
+                const signatureBuffer = base64ToBuffer(contract.student_signature);
+                if (signatureBuffer) {
+                    // Ajouter l'image de signature (taille max 200x80)
+                    doc.image(signatureBuffer, 50, doc.y, { 
+                        width: 200, 
+                        height: 80,
+                        fit: [200, 80]
+                    });
+                    doc.moveDown(0.2);
+                    // Date de signature
+                    if (contract.student_signed_at) {
+                        const signedDate = new Date(contract.student_signed_at);
+                        doc.fillColor(lightGray)
+                           .fontSize(8)
+                           .text(`Signé le ${signedDate.toLocaleDateString('fr-CH')}`, { width: 200 });
+                    }
+                    doc.moveDown(1.5);
+                } else {
+                    // Ligne de signature si l'image n'a pas pu être chargée
+                    doc.strokeColor(borderColor)
+                       .lineWidth(1)
+                       .moveTo(50, doc.y)
+                       .lineTo(250, doc.y)
+                       .stroke();
+                    doc.moveDown(2);
+                }
+            } catch (imgError) {
+                console.error('Error adding student signature image:', imgError);
+                // Ligne de signature en cas d'erreur
+                doc.strokeColor(borderColor)
+                   .lineWidth(1)
+                   .moveTo(50, doc.y)
+                   .lineTo(250, doc.y)
+                   .stroke();
+                doc.moveDown(2);
+            }
+        } else {
+            // Ligne de signature si pas de signature
+            doc.strokeColor(borderColor)
+               .lineWidth(1)
+               .moveTo(50, doc.y)
+               .lineTo(250, doc.y)
+               .stroke();
+            doc.moveDown(2);
+        }
         
         // Footer
         doc.fillColor(lightGray)
@@ -1696,8 +1796,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.put('/:id/status', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
+        console.log('=== /contracts/:id/status - START ===');
+        console.log('Request body signature length:', req.body?.signature?.length || 0);
+        console.log('Contract ID:', req.params.id);
+        console.log('User ID:', req.user?.id);
+        
         const contractId = req.params.id;
-        const { status, signature } = req.body;
+        const { status } = req.body;
+        let { signature } = req.body;
         const userId = req.user.id;
 
         const validStatuses = ['pending', 'active', 'completed', 'cancelled'];
@@ -1764,84 +1870,86 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Seul le propriétaire peut modifier le statut' });
         }
 
-        // Vérifier si les colonnes de signature existent
-        let hasSignatureColumns = false;
-        try {
-            const columnCheck = await client.query(`
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'rental_contracts' 
-                AND column_name IN ('student_signature', 'student_signed_at', 'owner_signature', 'owner_signed_at')
-            `);
-            hasSignatureColumns = columnCheck.rows.length >= 2;
-        } catch (e) {
-            console.error('Error checking signature columns:', e);
-        }
-
         // Construire la requête de mise à jour
-        let updateQuery = 'UPDATE rental_contracts SET updated_at = CURRENT_TIMESTAMP';
+        // On essaie d'abord avec les colonnes de signature, puis on fait un fallback si ça échoue
+        let result;
+        let updateQuery = '';
         const updateValues = [];
         let paramIndex = 1;
 
-        // Ajouter la signature du propriétaire si fournie et si les colonnes existent
-        if (signature && hasSignatureColumns) {
-            updateQuery += `, owner_signature = $${paramIndex++}, owner_signed_at = CURRENT_TIMESTAMP`;
-            updateValues.push(signature);
-        } else if (signature && !hasSignatureColumns) {
-            console.warn('Signature provided but columns do not exist. Signature will not be saved. Please run migration.');
-        }
+        // Essayer d'abord avec les colonnes de signature si une signature est fournie
+        if (signature) {
+            try {
+                updateQuery = `UPDATE rental_contracts 
+                     SET owner_signature = $${paramIndex++},
+                         owner_signed_at = CURRENT_TIMESTAMP,
+                         updated_at = CURRENT_TIMESTAMP`;
+                updateValues.push(signature);
 
-        // Gérer le statut
-        if (status) {
-            updateQuery += `, status = $${paramIndex++}`;
-            updateValues.push(status);
-
-            // Si on passe à 'active' et que les deux parties ont signé
-            if (status === 'active' && hasSignatureColumns) {
+                // Vérifier si l'étudiant a déjà signé
                 const hasStudentSignature = contract.student_signature ? true : false;
-                const hasOwnerSignature = signature ? true : (contract.owner_signature ? true : false);
 
-                if (hasStudentSignature && hasOwnerSignature) {
-                    updateQuery += ', contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)';
+                // Si les deux parties ont signé, activer le contrat
+                if (hasStudentSignature) {
+                    updateQuery += `, status = 'active', contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)`;
+                } else if (status) {
+                    // Si un statut est fourni, l'utiliser
+                    updateQuery += `, status = $${paramIndex++}`;
+                    updateValues.push(status);
                 }
-            } else if (status === 'active') {
-                // Si les colonnes n'existent pas, activer directement
+                // Sinon, le statut reste inchangé mais la signature est enregistrée
+
+                updateQuery += ` WHERE id = $${paramIndex} RETURNING *`;
+                updateValues.push(contractId);
+
+                console.log('Trying update with signature columns...');
+                result = await client.query(updateQuery, updateValues);
+                console.log('Update with signature columns succeeded');
+            } catch (dbError) {
+                console.error('Error with signature columns:', dbError.message);
+                // Si l'erreur est due à des colonnes manquantes, utiliser le fallback
+                if (dbError.message && (dbError.message.includes('column') || dbError.message.includes('does not exist'))) {
+                    console.warn('Signature columns do not exist, using fallback (updating without saving signature)');
+                    // Fallback : mise à jour sans sauvegarder la signature
+                    const fallbackUpdates = ['updated_at = CURRENT_TIMESTAMP'];
+                    const fallbackValues = [];
+                    let fallbackIndex = 1;
+                    
+                    if (status) {
+                        fallbackUpdates.push(`status = $${fallbackIndex++}`);
+                        fallbackValues.push(status);
+                        if (status === 'active') {
+                            fallbackUpdates.push('contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)');
+                        }
+                    }
+                    
+                    fallbackUpdates.push(`WHERE id = $${fallbackIndex} RETURNING *`);
+                    fallbackValues.push(contractId);
+                    
+                    updateQuery = `UPDATE rental_contracts SET ${fallbackUpdates.join(', ')}`;
+                    result = await client.query(updateQuery, fallbackValues);
+                } else {
+                    // Autre erreur, la propager
+                    throw dbError;
+                }
+            }
+        } else if (status) {
+            // Pas de signature fournie, mais un statut est fourni
+            updateQuery = `UPDATE rental_contracts 
+                 SET status = $${paramIndex++},
+                     updated_at = CURRENT_TIMESTAMP`;
+            updateValues.push(status);
+            
+            if (status === 'active') {
                 updateQuery += ', contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)';
             }
-        }
-
-        updateQuery += ` WHERE id = $${paramIndex} RETURNING *`;
-        updateValues.push(contractId);
-
-        let result;
-        try {
+            
+            updateQuery += ` WHERE id = $${paramIndex} RETURNING *`;
+            updateValues.push(contractId);
             result = await client.query(updateQuery, updateValues);
-        } catch (dbError) {
-            console.error('Database error:', dbError);
-            // Si l'erreur est due à des colonnes manquantes, essayer sans les colonnes de signature
-            if (dbError.message && dbError.message.includes('column') && dbError.message.includes('does not exist')) {
-                console.warn('Signature columns do not exist, falling back to legacy update');
-                // Fallback : mise à jour sans les colonnes de signature
-                const fallbackUpdates = ['updated_at = CURRENT_TIMESTAMP'];
-                const fallbackValues = [];
-                let fallbackIndex = 1;
-                
-                if (status) {
-                    fallbackUpdates.push(`status = $${fallbackIndex++}`);
-                    fallbackValues.push(status);
-                    if (status === 'active') {
-                        fallbackUpdates.push('contract_signed_at = COALESCE(contract_signed_at, CURRENT_TIMESTAMP)');
-                    }
-                }
-                
-                fallbackUpdates.push(`WHERE id = $${fallbackIndex} RETURNING *`);
-                fallbackValues.push(contractId);
-                
-                const fallbackQuery = `UPDATE rental_contracts SET ${fallbackUpdates.join(', ')}`;
-                result = await client.query(fallbackQuery, fallbackValues);
-            } else {
-                throw dbError;
-            }
+        } else {
+            // Aucune mise à jour demandée
+            return res.status(400).json({ error: 'Aucune modification demandée' });
         }
 
         const updatedContract = result.rows[0];
