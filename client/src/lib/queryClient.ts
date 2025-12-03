@@ -69,10 +69,28 @@ export async function apiRequest<T>(
     throw new APIError(`Invalid API endpoint: ${url}`, 400, 'INVALID_ENDPOINT');
   }
 
+  // Log pour déboguer les signatures
+  if (data && typeof data === 'object' && 'signature' in data) {
+    const sig = (data as any).signature;
+    console.log('apiRequest - Sending signature:');
+    console.log('  - Type:', typeof sig);
+    console.log('  - Length:', sig?.length);
+    console.log('  - First 50 chars:', sig?.substring(0, 50));
+    console.log('  - Is string:', typeof sig === 'string');
+    console.log('  - Starts with data:image:', sig?.startsWith('data:image/'));
+  }
+
+  const body = data ? JSON.stringify(data) : undefined;
+  
+  // Vérifier la taille du body
+  if (body && body.length > 1000000) {
+    console.warn('Large request body:', body.length, 'bytes');
+  }
+
   const res = await fetch(fullUrl, {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    body,
   });
 
   if (!res.ok) {
