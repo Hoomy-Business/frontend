@@ -44,6 +44,9 @@ export function SignaturePad({ onSave, onCancel, title, description }: Signature
         };
       } else {
         const touch = e.touches[0] || e.changedTouches[0];
+        if (!touch) {
+          return { x: 0, y: 0 };
+        }
         return {
           x: touch.clientX - rect.left,
           y: touch.clientY - rect.top,
