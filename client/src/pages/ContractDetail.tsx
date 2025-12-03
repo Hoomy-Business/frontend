@@ -19,6 +19,7 @@ import type { Contract } from '@shared/schema';
 import { apiRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { getAPIBaseURL } from '@/lib/apiConfig';
+import { ContractSignatureDialog } from '@/components/ContractSignatureDialog';
 
 export default function ContractDetail() {
   const params = useParams();
@@ -27,6 +28,7 @@ export default function ContractDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
   const [editData, setEditData] = useState({
     monthly_rent: 0,
     charges: 0,
@@ -121,23 +123,33 @@ export default function ContractDetail() {
   });
 
   const signContractMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (signatureData: string) => {
       // Les étudiants utilisent /accept, les propriétaires peuvent utiliser /status
       if (isStudent) {
-        return apiRequest('PUT', `/contracts/${contractId}/accept`, {});
+        return apiRequest('PUT', `/contracts/${contractId}/accept`, { 
+          signature: signatureData 
+        });
       } else {
-        return apiRequest('PUT', `/contracts/${contractId}/status`, { status: 'active' });
+        return apiRequest('PUT', `/contracts/${contractId}/status`, { 
+          status: 'active',
+          signature: signatureData 
+        });
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/contracts', contractId] });
       queryClient.invalidateQueries({ queryKey: ['/contracts/my-contracts'] });
-      toast({ title: 'Success', description: 'Contract signed successfully' });
+      toast({ title: 'Succès', description: 'Contrat signé avec succès' });
+      setSignatureDialogOpen(false);
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     },
   });
+
+  const handleSignContract = async (signatureData: string) => {
+    await signContractMutation.mutateAsync(signatureData);
+  };
 
   const createSubscriptionMutation = useMutation({
     mutationFn: () => apiRequest<{ success: boolean; checkout_url: string; requires_owner_setup?: boolean }>('POST', '/contracts/create-subscription', { contract_id: contractId }),
@@ -325,7 +337,10 @@ export default function ContractDetail() {
     );
   }
 
-  const canSign = isStudent && contract.status === 'pending';
+  const canSign = (isStudent && contract.status === 'pending' && !contract.student_signature) ||
+                  (isOwner && contract.status === 'pending' && !contract.owner_signature);
+  const needsOwnerSignature = isOwner && contract.status === 'pending' && !contract.owner_signature;
+  const needsStudentSignature = isStudent && contract.status === 'pending' && !contract.student_signature;
   const statusIcon = {
     pending: <Clock className="h-5 w-5 text-yellow-600" />,
     active: <CheckCircle2 className="h-5 w-5 text-green-600" />,
@@ -372,14 +387,17 @@ export default function ContractDetail() {
             <CardContent className="space-y-6">
               {canSign && (
                 <Alert>
-                  <AlertDescription className="flex items-center justify-between">
-                    <span>Please review and sign this contract to proceed with your rental</span>
+                  <AlertDescription className="flex items-center justify-between flex-wrap gap-2">
+                    <span>
+                      {needsStudentSignature && 'Veuillez examiner et signer ce contrat pour procéder avec votre location'}
+                      {needsOwnerSignature && 'Veuillez signer ce contrat pour le finaliser'}
+                    </span>
                     <Button
-                      onClick={() => signContractMutation.mutate()}
+                      onClick={() => setSignatureDialogOpen(true)}
                       disabled={signContractMutation.isPending}
                       data-testid="button-sign-contract"
                     >
-                      {signContractMutation.isPending ? 'Signing...' : 'Sign Contract'}
+                      {signContractMutation.isPending ? 'Signature en cours...' : 'Signer le contrat'}
                     </Button>
                   </AlertDescription>
                 </Alert>
@@ -504,6 +522,68 @@ export default function ContractDetail() {
               <Separator />
 
               <div>
+                <h3 className="font-semibold mb-3">Signatures</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Propriétaire (LE BAILLEUR)</p>
+                    {contract.owner_signature ? (
+                      <div className="space-y-2">
+                        <div className="border rounded p-3 bg-muted/20">
+                          <img 
+                            src={contract.owner_signature} 
+                            alt="Signature du propriétaire" 
+                            className="max-h-20 mx-auto"
+                          />
+                        </div>
+                        {contract.owner_signed_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Signé le {new Date(contract.owner_signed_at).toLocaleDateString('fr-CH', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">En attente de signature</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Locataire (LE LOCATAIRE)</p>
+                    {contract.student_signature ? (
+                      <div className="space-y-2">
+                        <div className="border rounded p-3 bg-muted/20">
+                          <img 
+                            src={contract.student_signature} 
+                            alt="Signature du locataire" 
+                            className="max-h-20 mx-auto"
+                          />
+                        </div>
+                        {contract.student_signed_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Signé le {new Date(contract.student_signed_at).toLocaleDateString('fr-CH', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">En attente de signature</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
                 <h3 className="font-semibold mb-3">Contract Status</h3>
                 <div className="flex items-center gap-2">
                   {statusIcon}
@@ -546,12 +626,12 @@ export default function ContractDetail() {
                     </Button>
                     {canSign && (
                       <Button
-                        onClick={() => signContractMutation.mutate()}
+                        onClick={() => setSignatureDialogOpen(true)}
                         disabled={signContractMutation.isPending}
                         className="flex-1"
                         data-testid="button-sign"
                       >
-                        {signContractMutation.isPending ? 'Signing...' : 'Sign Contract'}
+                        {signContractMutation.isPending ? 'Signature en cours...' : 'Signer le contrat'}
                       </Button>
                     )}
                   </div>
@@ -890,6 +970,16 @@ export default function ContractDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de signature électronique */}
+      <ContractSignatureDialog
+        open={signatureDialogOpen}
+        onOpenChange={setSignatureDialogOpen}
+        onSign={handleSignContract}
+        role={isOwner ? 'owner' : 'student'}
+        contractTitle={contract?.property_title}
+        isLoading={signContractMutation.isPending}
+      />
     </MainLayout>
   );
 }
