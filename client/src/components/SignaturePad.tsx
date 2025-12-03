@@ -18,8 +18,37 @@ export function SignaturePad({ onSave, onCancel, title, description, onRef }: Si
   // Exposer une méthode pour récupérer la signature
   const getSignature = (): string | null => {
     const canvas = canvasRef.current;
-    if (!canvas || !hasSignature) return null;
-    return canvas.toDataURL('image/png');
+    if (!canvas) {
+      console.error('Canvas ref is null');
+      return null;
+    }
+    
+    // Vérifier si le canvas a du contenu en vérifiant les pixels
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.error('Cannot get canvas context');
+      return null;
+    }
+    
+    // Vérifier si le canvas a du contenu (pas juste blanc)
+    try {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const hasContent = imageData.data.some((pixel, index) => {
+        // Vérifier les pixels non-transparents (alpha > 0)
+        return index % 4 === 3 && pixel > 0;
+      });
+      
+      if (!hasContent) {
+        console.error('Canvas appears to be empty');
+        return null;
+      }
+    } catch (e) {
+      console.error('Error checking canvas content:', e);
+    }
+    
+    const dataUrl = canvas.toDataURL('image/png');
+    console.log('Signature retrieved from canvas - Length:', dataUrl.length, 'First 30 chars:', dataUrl.substring(0, 30));
+    return dataUrl;
   };
 
   // Exposer la méthode via ref si fournie

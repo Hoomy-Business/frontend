@@ -124,6 +124,16 @@ export default function ContractDetail() {
 
   const signContractMutation = useMutation({
     mutationFn: (signatureData: string) => {
+      // Vérifier et logger la signature avant envoi
+      console.log('Signature data length:', signatureData?.length);
+      console.log('Signature data starts with:', signatureData?.substring(0, 50));
+      console.log('Signature data type:', typeof signatureData);
+      
+      if (!signatureData || !signatureData.startsWith('data:image/')) {
+        console.error('Invalid signature format before sending:', signatureData?.substring(0, 100));
+        throw new Error('Format de signature invalide');
+      }
+      
       // Les étudiants utilisent /accept, les propriétaires peuvent utiliser /status
       if (isStudent) {
         return apiRequest('PUT', `/contracts/${contractId}/accept`, { 

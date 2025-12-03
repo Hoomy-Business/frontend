@@ -31,16 +31,21 @@ export function ContractSignatureDialog({
   };
 
   const handleConfirm = async () => {
-    // Récupérer la signature directement du canvas au moment de la confirmation
-    let finalSignature = signatureData;
+    // TOUJOURS récupérer la signature directement du canvas au moment de la confirmation
+    // pour éviter les problèmes de synchronisation
+    let finalSignature: string | null = null;
     
-    // Si on a une signature sauvegardée, l'utiliser, sinon essayer de la récupérer du canvas
-    if (!finalSignature && signaturePadRef.current) {
-      finalSignature = signaturePadRef.current.getSignature() || '';
+    if (signaturePadRef.current) {
+      finalSignature = signaturePadRef.current.getSignature();
+    }
+    
+    // Si on n'a pas pu récupérer du canvas, utiliser celle sauvegardée
+    if (!finalSignature) {
+      finalSignature = signatureData;
     }
     
     if (!finalSignature) {
-      console.error('No signature to send');
+      console.error('No signature to send - canvas and saved data are both empty');
       return;
     }
     
@@ -55,6 +60,8 @@ export function ContractSignatureDialog({
       console.error('Signature seems empty, length:', finalSignature.length);
       return;
     }
+    
+    console.log('Sending signature - Length:', finalSignature.length, 'First 50 chars:', finalSignature.substring(0, 50));
     
     setIsSigning(true);
     try {
