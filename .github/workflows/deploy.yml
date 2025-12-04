@@ -36,6 +36,17 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Verify build output
+        run: |
+          echo "Checking dist directory contents:"
+          ls -la dist/ || echo "dist directory not found"
+          echo "Checking for required files:"
+          test -f dist/logo.svg && echo "✓ logo.svg exists" || echo "✗ logo.svg missing"
+          test -f dist/favicon.png && echo "✓ favicon.png exists" || echo "✗ favicon.png missing"
+          test -f dist/manifest.json && echo "✓ manifest.json exists" || echo "✗ manifest.json missing"
+          test -f dist/video/background.webm && echo "✓ video/background.webm exists" || echo "✗ video/background.webm missing"
+          test -f dist/images/zurich.webp && echo "✓ images/zurich.webp exists" || echo "✗ images/zurich.webp missing"
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

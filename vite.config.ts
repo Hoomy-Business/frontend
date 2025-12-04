@@ -48,6 +48,7 @@ export default defineConfig({
   },
   
   root: path.resolve(__dirname, "client"),
+  publicDir: path.resolve(__dirname, "client", "public"),
   
   // ============================================
   // BUILD CONFIGURATION
@@ -84,26 +85,36 @@ export default defineConfig({
         assetFileNames: (assetInfo) => {
           if (!assetInfo.name) return `assets/[name]-[hash][extname]`;
           
-          // Keep certain public assets at root (referenced directly in HTML)
-          const rootAssets = ['logo.svg', 'favicon.png', 'manifest.json', 'sw.js', '.nojekyll', 'CNAME'];
-          if (rootAssets.some(name => assetInfo.name?.includes(name))) {
+          // Check if this is from public directory (preserve structure)
+          // Vite preserves publicDir structure, but we need to ensure specific files stay at root
+          const name = assetInfo.name || '';
+          
+          // Root-level public assets (from client/public/)
+          const rootAssets = ['logo.svg', 'favicon.png', 'manifest.json', 'sw.js'];
+          if (rootAssets.some(asset => name === asset || name.endsWith('/' + asset))) {
             return '[name][extname]';
           }
           
-          // Preserve video directory structure (referenced as /video/filename)
-          if (assetInfo.name?.includes('video/') || assetInfo.name?.includes('background.webm') || assetInfo.name?.includes('background.mp4')) {
-            // Extract filename from path
-            const fileName = assetInfo.name.split('/').pop() || assetInfo.name;
-            return `video/${fileName}`;
+          // Video files from public/video/ - preserve directory structure
+          if (name.includes('video/') || name.includes('background.webm') || name.includes('background.mp4')) {
+            // If it's already in a video path, preserve it
+            if (name.includes('/')) {
+              return name;
+            }
+            return `video/[name][extname]`;
           }
           
-          // Preserve images directory structure if in public/images
-          if (assetInfo.name?.includes('images/') && !assetInfo.name?.includes('assets/')) {
-            const fileName = assetInfo.name.split('/').pop() || assetInfo.name;
-            return `images/${fileName}`;
+          // Images from public/images/ - preserve directory structure
+          if (name.includes('images/') && !name.includes('assets/')) {
+            // Preserve the full path
+            if (name.includes('/')) {
+              return name;
+            }
+            return `images/[name][extname]`;
           }
           
-          const ext = assetInfo.name.split('.').pop()?.toLowerCase() || '';
+          // For imported assets (from src/), use hashed names
+          const ext = name.split('.').pop()?.toLowerCase() || '';
           
           if (/png|jpe?g|svg|gif|webp|avif|ico/i.test(ext)) {
             return `assets/images/[name]-[hash][extname]`;
