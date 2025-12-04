@@ -1,6 +1,5 @@
 node_modules
-# dist - Commented out to allow GitHub Pages deployment
-# dist
+dist
 .DS_Store
 vite.config.ts.*
 *.tar.gz
