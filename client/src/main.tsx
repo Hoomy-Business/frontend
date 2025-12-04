@@ -44,7 +44,27 @@ if (typeof document !== 'undefined') {
   document.body.classList.add('loaded');
 }
 
-// Écouter les mises à jour du Service Worker (avec protection contre les boucles)
+// Unregister service worker if it's causing issues (one-time check)
+if ('serviceWorker' in navigator) {
+  const swDisabled = sessionStorage.getItem('sw_disabled');
+  if (!swDisabled) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      if (registrations.length > 0) {
+        console.log('[App] Service workers detected:', registrations.length);
+        // Unregister all service workers to prevent reload loops
+        registrations.forEach((registration) => {
+          registration.unregister().then((success) => {
+            if (success) {
+              console.log('[App] Service worker unregistered to prevent reload loops');
+              sessionStorage.setItem('sw_disabled', 'true');
+            }
+          });
+        });
+      }
+    });
+  }
+}
+
 // DISABLED: Service worker auto-reload is causing infinite loops
 // We'll handle updates manually or through user interaction only
 if (false && 'serviceWorker' in navigator) {
