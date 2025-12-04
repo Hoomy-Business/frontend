@@ -37,27 +37,10 @@ self.addEventListener('activate', (event) => {
     }).then(() => {
       console.log('[SW] Taking control of all clients');
       return self.clients.claim();
-    }).then(() => {
-      // Only notify clients about update, don't force reload
-      // The client will handle reload intelligently
-      return self.clients.matchAll({ type: 'window' }).then(clients => {
-        // Only send message to visible clients, and only once per activation
-        const visibleClients = clients.filter(client => 
-          client.visibilityState === 'visible' && !client.focused
-        );
-        if (visibleClients.length > 0) {
-          visibleClients.forEach(client => {
-            client.postMessage({ 
-              type: 'SW_UPDATED', 
-              version: SW_VERSION,
-              timestamp: Date.now()
-            }).catch(() => {
-              // Ignore errors if client disconnected
-            });
-          });
-        }
-      });
     })
+    // REMOVED: Don't send SW_UPDATED messages on activation
+    // This was causing infinite reload loops
+    // Clients will get updates naturally when they make requests
   );
 });
 

@@ -4,6 +4,14 @@ import "./index.css";
 import { LanguageProvider } from "./lib/useLanguage";
 import "./lib/cacheUtils"; // Load cache utilities globally
 
+// Type declaration for window properties
+declare global {
+  interface Window {
+    __swListenerSetup?: boolean;
+    __hideLoader?: () => void;
+  }
+}
+
 // Corriger le pathname si on est sur /index.html/...
 if (window.location.pathname.startsWith('/index.html/')) {
   const cleanPath = window.location.pathname.replace('/index.html', '');
@@ -37,29 +45,40 @@ if (typeof document !== 'undefined') {
 }
 
 // Écouter les mises à jour du Service Worker (avec protection contre les boucles)
-if ('serviceWorker' in navigator) {
-  let reloadAttempted = false;
+// DISABLED: Service worker auto-reload is causing infinite loops
+// We'll handle updates manually or through user interaction only
+if (false && 'serviceWorker' in navigator) {
   const lastReloadTime = sessionStorage.getItem('sw_last_reload');
   const now = Date.now();
+  const RELOAD_COOLDOWN = 60000; // 60 seconds cooldown (increased)
   
-  // Ne pas recharger si on vient de recharger il y a moins de 10 secondes
-  if (lastReloadTime && (now - parseInt(lastReloadTime)) < 10000) {
-    console.log('[App] Skipping SW reload - recently reloaded');
+  // Ne pas recharger si on vient de recharger récemment
+  if (lastReloadTime && (now - parseInt(lastReloadTime)) < RELOAD_COOLDOWN) {
+    console.log('[App] Skipping SW reload - recently reloaded', Math.floor((RELOAD_COOLDOWN - (now - parseInt(lastReloadTime))) / 1000), 'seconds ago');
   } else {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data?.type === 'SW_UPDATED' && !reloadAttempted) {
-        console.log('[App] Service Worker updated to:', event.data.version);
-        reloadAttempted = true;
-        sessionStorage.setItem('sw_last_reload', now.toString());
-        
-        // Attendre un peu avant de recharger pour éviter les boucles
-        setTimeout(() => {
-          if (document.visibilityState === 'visible') {
-            window.location.reload();
+    // Only set up listener once per page load
+    if (!window.__swListenerSetup) {
+      window.__swListenerSetup = true;
+      
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'SW_UPDATED') {
+          const currentTime = Date.now();
+          const lastReload = sessionStorage.getItem('sw_last_reload');
+          
+          // Double check cooldown before reloading
+          if (lastReload && (currentTime - parseInt(lastReload)) < RELOAD_COOLDOWN) {
+            console.log('[App] Ignoring SW update message - still in cooldown period');
+            return;
           }
-        }, 1000);
-      }
-    }, { once: true });
+          
+          console.log('[App] Service Worker updated - user will need to manually refresh');
+          sessionStorage.setItem('sw_last_reload', currentTime.toString());
+          
+          // DON'T auto-reload - let user do it manually
+          // This prevents infinite loops
+        }
+      }, { once: false });
+    }
   }
 }
 
