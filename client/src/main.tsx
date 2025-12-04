@@ -130,52 +130,24 @@ function renderApp() {
 }
 
 // Gestion des erreurs de rendu (page blanche)
+// DISABLED: Auto-reload causes infinite loops
 function handleRenderError() {
-  const hasReloaded = sessionStorage.getItem('app_reload_attempted');
+  console.error('[App] Render error detected - NOT auto-reloading to prevent loops');
   
-  if (!hasReloaded) {
-    console.log('[App] Attempting reload to fix render error...');
-    sessionStorage.setItem('app_reload_attempted', 'true');
-    
-    // Désenregistrer le service worker et recharger
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          registration.unregister();
-        });
-      }).finally(() => {
-        // Vider les caches et recharger
-        if ('caches' in window) {
-          caches.keys().then((names) => {
-            names.forEach((name) => {
-              caches.delete(name);
-            });
-          }).finally(() => {
-            window.location.reload();
-          });
-        } else {
-          window.location.reload();
-        }
-      });
-    } else {
-      window.location.reload();
-    }
-  } else {
-    // On a déjà essayé de recharger, afficher un message d'erreur
-    sessionStorage.removeItem('app_reload_attempted');
-    const rootElement = document.getElementById("root");
-    if (rootElement) {
-      rootElement.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: system-ui, sans-serif; padding: 20px; text-align: center;">
-          <h1 style="margin-bottom: 16px; color: #1f2937;">Une erreur est survenue</h1>
-          <p style="color: #6b7280; margin-bottom: 24px;">Le site n'a pas pu se charger correctement.</p>
-          <button onclick="sessionStorage.clear(); localStorage.clear(); window.location.reload();" 
-                  style="background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
-            Recharger la page
-          </button>
-        </div>
-      `;
-    }
+  // Just show error message, don't reload
+  const rootElement = document.getElementById("root");
+  if (rootElement) {
+    rootElement.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: system-ui, sans-serif; padding: 20px; text-align: center;">
+        <h1 style="margin-bottom: 16px; color: #1f2937;">Une erreur est survenue</h1>
+        <p style="color: #6b7280; margin-bottom: 24px;">Le site n'a pas pu se charger correctement.</p>
+        <p style="color: #6b7280; margin-bottom: 24px; font-size: 14px;">Veuillez recharger manuellement la page (F5 ou Ctrl+R).</p>
+        <button onclick="window.location.reload();" 
+                style="background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
+          Recharger la page manuellement
+        </button>
+      </div>
+    `;
   }
 }
 
@@ -192,54 +164,24 @@ window.addEventListener('load', () => {
   }, 2000);
 });
 
-// Détecter les erreurs globales qui pourraient causer une page blanche (avec protection contre les boucles)
-let errorCount = 0;
-const ERROR_THRESHOLD = 3;
-const ERROR_WINDOW = 5000; // 5 seconds
-let lastErrorTime = 0;
-
+// DISABLED: Error handlers that auto-reload - they cause infinite loops
+// Only log errors, don't trigger reloads
 window.addEventListener('error', (event) => {
-  const now = Date.now();
-  
-  // Reset counter if enough time has passed
-  if (now - lastErrorTime > ERROR_WINDOW) {
-    errorCount = 0;
-  }
-  
-  lastErrorTime = now;
-  errorCount++;
-  
-  // Only handle if it's a module loading error and we haven't exceeded threshold
-  if ((event.message?.includes('Failed to fetch dynamically imported module') ||
-       event.message?.includes('Loading chunk') ||
-       event.message?.includes('Loading module')) && 
-      errorCount <= ERROR_THRESHOLD) {
-    console.error('[App] Module loading error:', event.message, `(${errorCount}/${ERROR_THRESHOLD})`);
-    handleRenderError();
-  } else if (errorCount > ERROR_THRESHOLD) {
-    console.error('[App] Too many errors detected, stopping auto-reload to prevent loop');
+  // Just log, don't reload
+  if (event.message?.includes('Failed to fetch dynamically imported module') ||
+      event.message?.includes('Loading chunk') ||
+      event.message?.includes('Loading module')) {
+    console.error('[App] Module loading error detected (auto-reload disabled):', event.message);
+    console.error('[App] Please manually refresh the page if needed');
   }
 });
 
-// Détecter les rejets de promesses non gérées (avec protection contre les boucles)
 window.addEventListener('unhandledrejection', (event) => {
-  const now = Date.now();
-  
-  // Reset counter if enough time has passed
-  if (now - lastErrorTime > ERROR_WINDOW) {
-    errorCount = 0;
-  }
-  
-  lastErrorTime = now;
-  errorCount++;
-  
-  if ((event.reason?.message?.includes('Failed to fetch dynamically imported module') ||
-       event.reason?.message?.includes('Loading chunk')) && 
-      errorCount <= ERROR_THRESHOLD) {
-    console.error('[App] Unhandled module loading error:', event.reason, `(${errorCount}/${ERROR_THRESHOLD})`);
-    handleRenderError();
-  } else if (errorCount > ERROR_THRESHOLD) {
-    console.error('[App] Too many errors detected, stopping auto-reload to prevent loop');
+  // Just log, don't reload
+  if (event.reason?.message?.includes('Failed to fetch dynamically imported module') ||
+      event.reason?.message?.includes('Loading chunk')) {
+    console.error('[App] Unhandled module loading error (auto-reload disabled):', event.reason);
+    console.error('[App] Please manually refresh the page if needed');
   }
 });
 
