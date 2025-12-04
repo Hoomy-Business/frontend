@@ -83,6 +83,13 @@ export default defineConfig({
         
         assetFileNames: (assetInfo) => {
           if (!assetInfo.name) return `assets/[name]-[hash][extname]`;
+          
+          // Keep certain public assets at root (referenced directly in HTML)
+          const rootAssets = ['logo.svg', 'favicon.png', 'manifest.json', 'sw.js', '.nojekyll', 'CNAME'];
+          if (rootAssets.some(name => assetInfo.name?.includes(name))) {
+            return '[name][extname]';
+          }
+          
           const ext = assetInfo.name.split('.').pop()?.toLowerCase() || '';
           
           if (/png|jpe?g|svg|gif|webp|avif|ico/i.test(ext)) {
