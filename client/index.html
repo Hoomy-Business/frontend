@@ -232,52 +232,45 @@
           return Promise.all(promises);
         }
         
-        // Handle module load errors - clear cache and reload
+        // DISABLED: Auto-reload on errors causes infinite loops
+        // Just log errors, don't reload
         function handleLoadError(error) {
-          if (hasError) return; // Prevent multiple reloads
-          hasError = true;
-          
           var errorMsg = error && error.message ? error.message : String(error);
-          console.error('[Hoomy] Load error:', errorMsg);
+          console.error('[Hoomy] Load error detected (auto-reload disabled):', errorMsg);
+          console.log('[Hoomy] Please manually refresh if needed');
           
-          // Check if we already tried to fix this
-          var fixAttempted = sessionStorage.getItem('hoomy_cache_fix_' + window.APP_VERSION);
-          
-          if (!fixAttempted) {
-            sessionStorage.setItem('hoomy_cache_fix_' + window.APP_VERSION, 'true');
-            console.log('[Hoomy] Clearing cache and reloading...');
-            
-            clearAllCaches().finally(function() {
-              // Force reload from server
-              window.location.reload(true);
-            });
-          } else {
-            // Show error UI if already tried
-            hideLoader();
-            document.getElementById('root').innerHTML = 
+          // Just hide loader and show error message, don't reload
+          hideLoader();
+          var root = document.getElementById('root');
+          if (root && !root.innerHTML.trim()) {
+            root.innerHTML = 
               '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center;font-family:Inter,system-ui,sans-serif">' +
               '<h1 style="margin-bottom:16px;color:#1f2937">Erreur de chargement</h1>' +
               '<p style="color:#6b7280;margin-bottom:24px">Le site n\'a pas pu charger correctement.</p>' +
-              '<button onclick="sessionStorage.clear();localStorage.clear();location.reload(true)" ' +
+              '<p style="color:#6b7280;margin-bottom:24px;font-size:14px">Veuillez recharger manuellement la page (F5).</p>' +
+              '<button onclick="window.location.reload()" ' +
               'style="background:#2563eb;color:white;padding:12px 24px;border:none;border-radius:8px;cursor:pointer;font-size:16px">' +
-              'Recharger la page</button></div>';
+              'Recharger la page manuellement</button></div>';
           }
         }
         
-        // Listen for script loading errors
+        // Listen for script loading errors - just log, don't reload
         window.addEventListener('error', function(event) {
           if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
-            handleLoadError(new Error('Failed to load: ' + (event.target.src || event.target.href)));
+            console.error('[Hoomy] Resource load error:', event.target.src || event.target.href);
+            // Don't call handleLoadError - it would show error but won't reload
           }
         }, true);
         
-        // Listen for unhandled promise rejections (module loading errors)
+        // Listen for unhandled promise rejections - just log, don't reload
         window.addEventListener('unhandledrejection', function(event) {
           if (event.reason && event.reason.message && 
               (event.reason.message.includes('Failed to fetch dynamically imported module') ||
                event.reason.message.includes('Loading chunk') ||
                event.reason.message.includes('Loading module'))) {
-            handleLoadError(event.reason);
+            console.error('[Hoomy] Module loading error (auto-reload disabled):', event.reason.message);
+            console.log('[Hoomy] Please manually refresh if needed');
+            // Don't call handleLoadError - it would show error but won't reload
           }
         });
         
