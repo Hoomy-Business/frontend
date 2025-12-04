@@ -10,11 +10,20 @@ if (window.location.pathname.startsWith('/index.html/')) {
   window.history.replaceState(null, '', cleanPath + window.location.search + window.location.hash);
 }
 
-// Gérer la redirection depuis 404.html
+// Gérer la redirection depuis 404.html (une seule fois)
 if (typeof window !== 'undefined') {
   const redirectPath = sessionStorage.getItem('redirectPath');
-  if (redirectPath && window.location.pathname === '/') {
+  const redirectHandled = sessionStorage.getItem('redirectHandled');
+  
+  if (redirectPath && window.location.pathname === '/' && !redirectHandled) {
+    sessionStorage.setItem('redirectHandled', 'true');
     sessionStorage.removeItem('redirectPath');
+    
+    // Clear the flag after 5 seconds to allow future redirects if needed
+    setTimeout(() => {
+      sessionStorage.removeItem('redirectHandled');
+    }, 5000);
+    
     setTimeout(() => {
       window.history.replaceState(null, '', redirectPath);
       window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
@@ -27,15 +36,31 @@ if (typeof document !== 'undefined') {
   document.body.classList.add('loaded');
 }
 
-// Écouter les mises à jour du Service Worker
+// Écouter les mises à jour du Service Worker (avec protection contre les boucles)
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data?.type === 'SW_UPDATED') {
-      console.log('[App] Service Worker updated to:', event.data.version);
-      // Recharger la page pour obtenir les nouveaux fichiers
-      window.location.reload();
-    }
-  });
+  let reloadAttempted = false;
+  const lastReloadTime = sessionStorage.getItem('sw_last_reload');
+  const now = Date.now();
+  
+  // Ne pas recharger si on vient de recharger il y a moins de 10 secondes
+  if (lastReloadTime && (now - parseInt(lastReloadTime)) < 10000) {
+    console.log('[App] Skipping SW reload - recently reloaded');
+  } else {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'SW_UPDATED' && !reloadAttempted) {
+        console.log('[App] Service Worker updated to:', event.data.version);
+        reloadAttempted = true;
+        sessionStorage.setItem('sw_last_reload', now.toString());
+        
+        // Attendre un peu avant de recharger pour éviter les boucles
+        setTimeout(() => {
+          if (document.visibilityState === 'visible') {
+            window.location.reload();
+          }
+        }, 1000);
+      }
+    }, { once: true });
+  }
 }
 
 // Fonction pour rendre l'app avec gestion d'erreur
@@ -120,26 +145,62 @@ window.addEventListener('load', () => {
   // Si on arrive ici, le chargement a réussi
   setTimeout(() => {
     sessionStorage.removeItem('app_reload_attempted');
+    // Clear SW reload flag after 30 seconds
+    const swReloadTime = sessionStorage.getItem('sw_last_reload');
+    if (swReloadTime && (Date.now() - parseInt(swReloadTime)) > 30000) {
+      sessionStorage.removeItem('sw_last_reload');
+    }
   }, 2000);
 });
 
-// Détecter les erreurs globales qui pourraient causer une page blanche
+// Détecter les erreurs globales qui pourraient causer une page blanche (avec protection contre les boucles)
+let errorCount = 0;
+const ERROR_THRESHOLD = 3;
+const ERROR_WINDOW = 5000; // 5 seconds
+let lastErrorTime = 0;
+
 window.addEventListener('error', (event) => {
-  // Si c'est une erreur de chargement de module, gérer
-  if (event.message?.includes('Failed to fetch dynamically imported module') ||
-      event.message?.includes('Loading chunk') ||
-      event.message?.includes('Loading module')) {
-    console.error('[App] Module loading error:', event.message);
+  const now = Date.now();
+  
+  // Reset counter if enough time has passed
+  if (now - lastErrorTime > ERROR_WINDOW) {
+    errorCount = 0;
+  }
+  
+  lastErrorTime = now;
+  errorCount++;
+  
+  // Only handle if it's a module loading error and we haven't exceeded threshold
+  if ((event.message?.includes('Failed to fetch dynamically imported module') ||
+       event.message?.includes('Loading chunk') ||
+       event.message?.includes('Loading module')) && 
+      errorCount <= ERROR_THRESHOLD) {
+    console.error('[App] Module loading error:', event.message, `(${errorCount}/${ERROR_THRESHOLD})`);
     handleRenderError();
+  } else if (errorCount > ERROR_THRESHOLD) {
+    console.error('[App] Too many errors detected, stopping auto-reload to prevent loop');
   }
 });
 
-// Détecter les rejets de promesses non gérées
+// Détecter les rejets de promesses non gérées (avec protection contre les boucles)
 window.addEventListener('unhandledrejection', (event) => {
-  if (event.reason?.message?.includes('Failed to fetch dynamically imported module') ||
-      event.reason?.message?.includes('Loading chunk')) {
-    console.error('[App] Unhandled module loading error:', event.reason);
+  const now = Date.now();
+  
+  // Reset counter if enough time has passed
+  if (now - lastErrorTime > ERROR_WINDOW) {
+    errorCount = 0;
+  }
+  
+  lastErrorTime = now;
+  errorCount++;
+  
+  if ((event.reason?.message?.includes('Failed to fetch dynamically imported module') ||
+       event.reason?.message?.includes('Loading chunk')) && 
+      errorCount <= ERROR_THRESHOLD) {
+    console.error('[App] Unhandled module loading error:', event.reason, `(${errorCount}/${ERROR_THRESHOLD})`);
     handleRenderError();
+  } else if (errorCount > ERROR_THRESHOLD) {
+    console.error('[App] Too many errors detected, stopping auto-reload to prevent loop');
   }
 });
 
