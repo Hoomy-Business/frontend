@@ -90,6 +90,19 @@ export default defineConfig({
             return '[name][extname]';
           }
           
+          // Preserve video directory structure (referenced as /video/filename)
+          if (assetInfo.name?.includes('video/') || assetInfo.name?.includes('background.webm') || assetInfo.name?.includes('background.mp4')) {
+            // Extract filename from path
+            const fileName = assetInfo.name.split('/').pop() || assetInfo.name;
+            return `video/${fileName}`;
+          }
+          
+          // Preserve images directory structure if in public/images
+          if (assetInfo.name?.includes('images/') && !assetInfo.name?.includes('assets/')) {
+            const fileName = assetInfo.name.split('/').pop() || assetInfo.name;
+            return `images/${fileName}`;
+          }
+          
           const ext = assetInfo.name.split('.').pop()?.toLowerCase() || '';
           
           if (/png|jpe?g|svg|gif|webp|avif|ico/i.test(ext)) {
