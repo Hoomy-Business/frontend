@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <title>Hoomy - Find Your Perfect Student Home in Switzerland</title>
+    <script>
+      (function() {
+        // GitHub Pages redirige les routes non trouvées vers 404.html
+        // On doit rediriger vers index.html pour que le router SPA prenne le relais
+        var path = window.location.pathname;
+        var search = window.location.search;
+        var hash = window.location.hash;
+        
+        // Ignorer les fichiers statiques
+        if (!path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|json)$/i)) {
+          // Éviter les boucles : ne pas rediriger si on est déjà sur index.html ou /
+          if (path === '/' || path === '/index.html') {
+            return;
+          }
+          
+          // Si le chemin commence par /index.html/, extraire le chemin réel
+          if (path.startsWith('/index.html/')) {
+            var cleanPath = path.replace('/index.html', '');
+            window.location.replace(cleanPath + search + hash);
+            return;
+          }
+          
+          // Stocker le chemin original dans sessionStorage pour le router SPA
+          sessionStorage.setItem('redirectPath', path + search + hash);
+          
+          // Rediriger vers / pour charger index.html
+          window.location.replace('/');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root">
+      <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: system-ui;">
+        <p>Redirection...</p>
+      </div>
+    </div>
+  </body>
+</html>
