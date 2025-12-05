@@ -578,7 +578,7 @@ export default function CreateProperty() {
                     <br />
                     Vous devez compléter la vérification KYC avant de pouvoir publier des annonces.
                     <br />
-                    <Link href="/dashboard/owner?tab=profile" className="underline font-medium mt-2 inline-block">
+                    <Link href="/profile" className="underline font-medium mt-2 inline-block">
                       Compléter la vérification dans votre profil
                     </Link>
                   </AlertDescription>

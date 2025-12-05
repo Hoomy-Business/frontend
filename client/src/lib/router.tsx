@@ -128,6 +128,42 @@ export const routes: RouteConfig[] = [
     preloadOn: 'idle',
     prefetchData: ['/properties/my-properties', '/requests/received'],
   },
+  {
+    path: '/favorites',
+    priority: RoutePriority.HIGH,
+    component: createLazyComponent(() => import('@/pages/Favorites'), 'Favorites'),
+    preloadOn: 'idle',
+  },
+  {
+    path: '/requests',
+    priority: RoutePriority.HIGH,
+    component: createLazyComponent(() => import('@/pages/Requests'), 'Requests'),
+    preloadOn: 'idle',
+  },
+  {
+    path: '/contracts',
+    priority: RoutePriority.HIGH,
+    component: createLazyComponent(() => import('@/pages/Contracts'), 'Contracts'),
+    preloadOn: 'idle',
+  },
+  {
+    path: '/profile',
+    priority: RoutePriority.HIGH,
+    component: createLazyComponent(() => import('@/pages/Profile'), 'Profile'),
+    preloadOn: 'idle',
+  },
+  {
+    path: '/my-properties',
+    priority: RoutePriority.HIGH,
+    component: createLazyComponent(() => import('@/pages/MyProperties'), 'MyProperties'),
+    preloadOn: 'idle',
+  },
+  {
+    path: '/my-properties',
+    priority: RoutePriority.HIGH,
+    component: createLazyComponent(() => import('@/pages/MyProperties'), 'MyProperties'),
+    preloadOn: 'idle',
+  },
   
   // === MEDIUM PRIORITY (Tier 2) - Lazy loaded ===
   {

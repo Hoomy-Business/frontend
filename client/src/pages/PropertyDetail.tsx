@@ -644,7 +644,7 @@ export default function PropertyDetail() {
                                 Statut: <Badge variant={existingRequest.status === 'accepted' ? 'default' : existingRequest.status === 'pending' ? 'secondary' : 'destructive'}>{existingRequest.status}</Badge>
                               </p>
                             </div>
-                            <Link href="/dashboard/student?tab=requests">
+                            <Link href="/requests">
                               <Button variant="outline" size="sm">
                                 Voir mes demandes
                               </Button>
