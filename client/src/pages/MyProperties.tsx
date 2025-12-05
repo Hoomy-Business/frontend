@@ -27,7 +27,7 @@ export default function MyProperties() {
       return;
     }
     if (!isOwner) {
-      setLocation('/dashboard/student');
+      setLocation('/profile');
     }
   }, [isAuthenticated, isOwner, setLocation]);
 

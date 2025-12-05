@@ -26,7 +26,7 @@ export default function Login() {
       if (user.role === 'admin') {
         redirectPath = '/admin/dashboard';
       } else if (user.role === 'student') {
-        redirectPath = '/dashboard/student';
+        redirectPath = '/profile';
       }
       // Utiliser window.location pour forcer la redirection
       window.location.href = redirectPath;
@@ -53,7 +53,7 @@ export default function Login() {
       if (role === 'admin') {
         redirectPath = '/admin/dashboard';
       } else if (role === 'student') {
-        redirectPath = '/dashboard/student';
+        redirectPath = '/profile';
       }
       
       // Utiliser window.location pour une redirection immédiate et fiable

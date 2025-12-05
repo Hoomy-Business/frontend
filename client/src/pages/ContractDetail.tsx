@@ -339,7 +339,7 @@ export default function ContractDetail() {
       <MainLayout>
         <div className="container mx-auto px-4 py-16 text-center">
           <h1 className="text-2xl font-bold mb-4">Contract Not Found</h1>
-          <Link href={isOwner ? '/dashboard/owner' : '/dashboard/student'}>
+          <Link href={isOwner ? '/dashboard/owner' : '/profile'}>
             <Button data-testid="button-dashboard">Back to Dashboard</Button>
           </Link>
         </div>
@@ -361,7 +361,7 @@ export default function ContractDetail() {
   return (
     <MainLayout>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href={isOwner ? '/dashboard/owner' : '/dashboard/student'}>
+        <Link href={isOwner ? '/dashboard/owner' : '/profile'}>
           <Button variant="ghost" className="mb-4" data-testid="button-back">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard

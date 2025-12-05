@@ -27,7 +27,7 @@ export default function OwnerDashboard() {
       if (user?.role === 'admin') {
         setLocation('/admin/dashboard');
       } else {
-        setLocation('/dashboard/student');
+        setLocation('/profile');
       }
     }
   }, [isAuthenticated, isOwner, user?.role, setLocation]);

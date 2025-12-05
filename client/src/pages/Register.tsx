@@ -42,7 +42,7 @@ export default function Register() {
       if (user.role === 'admin') {
         setLocation('/admin/dashboard');
       } else if (user.role === 'student') {
-        setLocation('/dashboard/student');
+        setLocation('/profile');
       } else {
         setLocation('/dashboard/owner');
       }

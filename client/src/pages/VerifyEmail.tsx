@@ -44,7 +44,7 @@ export default function VerifyEmail() {
       if (role === 'admin') {
         setLocation('/admin/dashboard');
       } else if (role === 'student') {
-        setLocation('/dashboard/student');
+        setLocation('/profile');
       } else {
         setLocation('/dashboard/owner');
       }

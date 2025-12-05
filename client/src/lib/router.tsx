@@ -115,13 +115,6 @@ export const routes: RouteConfig[] = [
     preloadOn: 'hover',
   },
   {
-    path: '/dashboard/student',
-    priority: RoutePriority.HIGH,
-    component: createLazyComponent(() => import('@/pages/StudentDashboard'), 'StudentDashboard'),
-    preloadOn: 'idle',
-    prefetchData: ['/requests/sent', '/contracts/my-contracts'],
-  },
-  {
     path: '/dashboard/owner',
     priority: RoutePriority.HIGH,
     component: createLazyComponent(() => import('@/pages/OwnerDashboard'), 'OwnerDashboard'),
