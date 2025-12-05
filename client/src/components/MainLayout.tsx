@@ -98,7 +98,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-200">
+      <header className="sticky top-0 z-50 w-full border-b border-primary/10 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 transition-all duration-200 shadow-warm">
         <div className="container mx-auto px-2 sm:px-4 md:px-6 lg:px-8">
           <div className="flex h-14 sm:h-16 items-center justify-between gap-1 sm:gap-2">
             <div className="flex items-center gap-2 sm:gap-4 md:gap-6 lg:gap-8 min-w-0 flex-1">
