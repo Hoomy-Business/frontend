@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { User, Camera, Phone, CheckCircle2, AlertTriangle, Mail, Lock } from 'lucide-react';
+import { User, Camera, Phone, CheckCircle2, AlertTriangle, Mail, Lock, CreditCard, AlertCircle } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/lib/auth';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { apiRequest, uploadImage } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -23,9 +24,10 @@ import { EmailVerificationDialog } from '@/components/EmailVerificationDialog';
 import { EmailChangeDialog } from '@/components/EmailChangeDialog';
 import { PhoneChangeDialog } from '@/components/PhoneChangeDialog';
 import { KYCVerification } from '@/components/KYCVerification';
+import type { StripeAccountStatus } from '@shared/schema';
 
 export default function Profile() {
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { user, isAuthenticated, refreshUser, isOwner } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -37,6 +39,77 @@ export default function Profile() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
+
+  // Query Stripe status for owners
+  const { data: stripeStatus } = useQuery<StripeAccountStatus>({
+    queryKey: ['/contracts/connect/account-status'],
+    queryFn: async () => {
+      return apiRequest<StripeAccountStatus>('GET', '/contracts/connect/account-status');
+    },
+    enabled: isAuthenticated && isOwner,
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+  });
+
+  // Stripe setup mutations
+  const createAccountMutation = useMutation({
+    mutationFn: () => apiRequest<{ success: boolean; account_id?: string; requires_account_creation?: boolean }>('POST', '/contracts/connect/create-account'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/contracts/connect/account-status'] });
+      toast({
+        title: 'Compte créé',
+        description: 'Compte Stripe créé avec succès. Veuillez compléter le processus d\'onboarding.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: error?.message || 'Échec de la création du compte Stripe',
+        description: error?.details || error?.message || 'Échec de la création du compte Stripe. Veuillez réessayer.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const createOnboardingLinkMutation = useMutation({
+    mutationFn: () => apiRequest<{ success: boolean; url: string; requires_account_creation?: boolean }>('POST', '/contracts/connect/create-onboarding-link'),
+    onSuccess: (data: { url: string }) => {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: 'Erreur',
+          description: 'Aucune URL d\'onboarding reçue',
+          variant: 'destructive',
+        });
+      }
+    },
+    onError: (error: any) => {
+      if (error?.requires_account_creation) {
+        toast({
+          title: 'Compte requis',
+          description: 'Veuillez d\'abord créer un compte Stripe.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Échec du lien d\'onboarding',
+          description: error?.details || error?.message || 'Échec de la création du lien d\'onboarding. Veuillez réessayer.',
+          variant: 'destructive',
+        });
+      }
+    },
+  });
+
+  const handleStripeSetup = async () => {
+    try {
+      if (!stripeStatus?.has_account) {
+        await createAccountMutation.mutateAsync();
+      }
+      createOnboardingLinkMutation.mutate();
+    } catch (error) {
+      console.error('Stripe setup error:', error);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -278,8 +351,48 @@ export default function Profile() {
 
             {/* KYC Verification Section */}
             <KYCVerification />
+
+            {/* Stripe Configuration Section - Only for owners */}
+            {isOwner && (
+              <>
+                <Separator />
+                <StripeConfiguration 
+                  stripeStatus={stripeStatus}
+                  onSetup={handleStripeSetup}
+                  isLoading={createAccountMutation.isPending || createOnboardingLinkMutation.isPending}
+                />
+              </>
+            )}
           </CardContent>
         </Card>
+
+        {/* Yellow Warning Alert for Stripe Configuration */}
+        {isOwner && stripeStatus && !stripeStatus.onboarding_complete && (
+          <Alert className="mt-6 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+            <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex-1">
+                  <strong className="font-semibold">Configuration Stripe requise</strong>
+                  <p className="text-sm mt-1">
+                    Vous devez configurer votre compte Stripe pour recevoir les paiements de location.
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleStripeSetup}
+                  disabled={createAccountMutation.isPending || createOnboardingLinkMutation.isPending}
+                  className="border-yellow-600 text-yellow-800 hover:bg-yellow-100 dark:border-yellow-400 dark:text-yellow-200 dark:hover:bg-yellow-900/30 whitespace-nowrap"
+                >
+                  {createAccountMutation.isPending || createOnboardingLinkMutation.isPending 
+                    ? 'Configuration...'
+                    : 'Configurer Stripe'}
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Image Crop Dialog */}
         {selectedImageSrc && (
@@ -529,6 +642,83 @@ function ProfileEditForm({
         </div>
       </div>
     </div>
+  );
+}
+
+function StripeConfiguration({ 
+  stripeStatus, 
+  onSetup, 
+  isLoading 
+}: { 
+  stripeStatus: StripeAccountStatus | undefined; 
+  onSetup: () => void; 
+  isLoading: boolean;
+}) {
+  const { t } = useLanguage();
+  const isConfigured = stripeStatus?.onboarding_complete;
+  const hasAccount = stripeStatus?.has_account;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Configuration Stripe</CardTitle>
+            <CardDescription>
+              Configurez votre compte Stripe pour recevoir les paiements de location
+            </CardDescription>
+          </div>
+          {isConfigured ? (
+            <Badge variant="default" className="gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Configuré
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Non configuré
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isConfigured ? (
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>
+              Votre compte Stripe est configuré et prêt à recevoir les paiements.
+              {stripeStatus?.payouts_enabled && stripeStatus?.charges_enabled && (
+                <span className="block mt-1 text-sm">
+                  Les paiements et les virements sont activés.
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <>
+            <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                <strong>Configuration requise</strong>
+                <p className="text-sm mt-1">
+                  Vous devez configurer votre compte Stripe pour recevoir les paiements de location.
+                </p>
+              </AlertDescription>
+            </Alert>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={onSetup}
+                disabled={isLoading}
+                className="w-full sm:w-auto"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                {isLoading ? 'Configuration...' : hasAccount ? 'Compléter la configuration' : 'Configurer Stripe'}
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
