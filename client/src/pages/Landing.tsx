@@ -108,7 +108,7 @@ export default function Landing() {
           className="absolute inset-0 z-[1] bg-gradient-to-b from-black/30 via-black/40 to-black/60"
         />
         <div 
-          className="absolute inset-0 z-[1] bg-gradient-to-r from-orange-500/5 via-transparent to-amber-500/5"
+          className="absolute inset-0 z-[1] bg-gradient-to-r from-blue-500/5 via-transparent to-cyan-500/5"
         />
         
         <div className="relative z-10 container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-12 sm:py-16 md:py-24 lg:py-32">
