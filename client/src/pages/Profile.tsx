@@ -44,11 +44,20 @@ export default function Profile() {
   const { data: stripeStatus } = useQuery<StripeAccountStatus>({
     queryKey: ['/contracts/connect/account-status'],
     queryFn: async () => {
-      return apiRequest<StripeAccountStatus>('GET', '/contracts/connect/account-status');
+      try {
+        return await apiRequest<StripeAccountStatus>('GET', '/contracts/connect/account-status');
+      } catch (error: any) {
+        // If user is not owner, API will return error - return null instead of throwing
+        if (error?.status === 403 || error?.status === 404) {
+          return null;
+        }
+        throw error;
+      }
     },
-    enabled: isAuthenticated && isOwner,
+    enabled: isAuthenticated,
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 30,
+    retry: false, // Don't retry if user is not owner (will get 403/404)
   });
 
   // Stripe setup mutations
@@ -101,6 +110,14 @@ export default function Profile() {
   });
 
   const handleStripeSetup = async () => {
+    if (!isOwner) {
+      toast({
+        title: 'Action non autorisée',
+        description: 'La configuration Stripe est uniquement disponible pour les propriétaires.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       if (!stripeStatus?.has_account) {
         await createAccountMutation.mutateAsync();
@@ -352,17 +369,14 @@ export default function Profile() {
             {/* KYC Verification Section */}
             <KYCVerification />
 
-            {/* Stripe Configuration Section - Only for owners */}
-            {isOwner && (
-              <>
-                <Separator />
-                <StripeConfiguration 
-                  stripeStatus={stripeStatus}
-                  onSetup={handleStripeSetup}
-                  isLoading={createAccountMutation.isPending || createOnboardingLinkMutation.isPending}
-                />
-              </>
-            )}
+            {/* Stripe Configuration Section */}
+            <Separator />
+            <StripeConfiguration 
+              stripeStatus={stripeStatus}
+              onSetup={handleStripeSetup}
+              isLoading={createAccountMutation.isPending || createOnboardingLinkMutation.isPending}
+              isOwner={isOwner}
+            />
           </CardContent>
         </Card>
 
@@ -648,15 +662,47 @@ function ProfileEditForm({
 function StripeConfiguration({ 
   stripeStatus, 
   onSetup, 
-  isLoading 
+  isLoading,
+  isOwner
 }: { 
   stripeStatus: StripeAccountStatus | undefined; 
   onSetup: () => void; 
   isLoading: boolean;
+  isOwner: boolean;
 }) {
   const { t } = useLanguage();
   const isConfigured = stripeStatus?.onboarding_complete;
   const hasAccount = stripeStatus?.has_account;
+
+  // If not owner, show info message
+  if (!isOwner) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Configuration Stripe</CardTitle>
+              <CardDescription>
+                Configuration Stripe disponible uniquement pour les propriétaires
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="gap-1">
+              Non applicable
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              La configuration Stripe est uniquement disponible pour les comptes propriétaires. 
+              Si vous souhaitez devenir propriétaire, veuillez créer un compte propriétaire.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

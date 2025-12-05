@@ -37,7 +37,41 @@ if (isAnalyze) {
 
 export default defineConfig({
   base: '/',
-  plugins,
+  plugins: [
+    ...plugins,
+    // SPA fallback plugin - serves index.html for all routes that don't match static files
+    {
+      name: 'spa-fallback',
+      configureServer(server) {
+        return () => {
+          server.middlewares.use((req, res, next) => {
+            // Skip if it's a static file request (has file extension)
+            if (req.url && req.url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|json|mp4|webm|map)$/i)) {
+              return next();
+            }
+            
+            // Skip if it's an API request or Vite internal requests
+            if (req.url && (
+              req.url.startsWith('/api/') ||
+              req.url.startsWith('/@') ||
+              req.url.startsWith('/node_modules') ||
+              req.url.startsWith('/src/') ||
+              req.url.startsWith('/client/')
+            )) {
+              return next();
+            }
+            
+            // For all other routes (SPA routes), serve index.html
+            if (req.url && req.url !== '/index.html') {
+              req.url = '/index.html';
+            }
+            
+            next();
+          });
+        };
+      },
+    } as PluginOption,
+  ],
   
   resolve: {
     alias: {
