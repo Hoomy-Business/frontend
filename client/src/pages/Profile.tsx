@@ -239,7 +239,7 @@ export default function Profile() {
           </p>
         </div>
 
-        <Card>
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle>{t('dashboard.profile.title')}</CardTitle>
             <CardDescription>{t('dashboard.profile.desc')}</CardDescription>
@@ -705,7 +705,7 @@ function StripeConfiguration({
   }
 
   return (
-    <Card>
+    <Card className="glass-card">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>

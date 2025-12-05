@@ -120,7 +120,7 @@ export default function Landing() {
               {t('landing.hero.subtitle')}
             </p>
 
-            <Card className="glass-effect border-2 border-white/20 shadow-warm-lg mx-2 sm:mx-0 animate-fade-in">
+            <Card className="liquid-glass border-2 border-white/30 shadow-glass-lg mx-2 sm:mx-0 animate-fade-in">
               <CardContent className="p-4 sm:p-5 md:p-6">
                 <div className="mb-3 sm:mb-4 text-center">
                   <Badge variant="secondary" className="mb-2 text-xs sm:text-sm whitespace-normal break-words">
@@ -134,7 +134,7 @@ export default function Landing() {
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-3 items-stretch">
                   <div className="flex-1 min-w-0">
                     <Select value={selectedCanton} onValueChange={setSelectedCanton}>
-                      <SelectTrigger data-testid="select-canton" className="h-14 text-[15px] bg-white border-2 border-border/50 hover:border-primary/30 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-warm hover:shadow-warm-lg rounded-lg">
+                      <SelectTrigger data-testid="select-canton" className="h-14 text-[15px] glass-input border-2 border-white/40 hover:border-white/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-glass hover:shadow-glass-lg rounded-lg">
                         <SelectValue placeholder={t('landing.search.canton')} className="truncate text-muted-foreground" />
                       </SelectTrigger>
                       <SelectContent>
@@ -156,7 +156,7 @@ export default function Landing() {
                       step="100"
                       min="0"
                       data-testid="input-budget"
-                      className="h-14 text-[15px] bg-white border-2 border-border/50 hover:border-primary/30 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-warm hover:shadow-warm-lg rounded-lg placeholder:text-muted-foreground pr-12"
+                      className="h-14 text-[15px] glass-input border-2 border-white/40 hover:border-white/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-glass hover:shadow-glass-lg rounded-lg placeholder:text-muted-foreground pr-12"
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-0.5">
                       <button
@@ -213,7 +213,7 @@ export default function Landing() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
             {featuredCities.map((city) => (
               <Link key={city.code} href={`/properties?canton=${city.code}`}>
-                <Card className="overflow-hidden hover-elevate cursor-pointer border-2 border-transparent hover:border-primary/30 transition-all duration-300 shadow-warm hover:shadow-warm-lg animate-fade-in" data-testid={`card-city-${city.code}`}>
+                <Card className="overflow-hidden hover-elevate cursor-pointer glass-card border-2 border-white/30 hover:border-white/50 transition-all duration-300 shadow-glass hover:shadow-glass-lg animate-fade-in" data-testid={`card-city-${city.code}`}>
                   <div className="relative aspect-[3/2]">
                     <img 
                       src={city.image} 
@@ -253,7 +253,7 @@ export default function Landing() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
-            <Card className="text-center hover-elevate transition-all border-2 hover:border-primary/50 shadow-warm hover:shadow-warm-lg bg-warm-gradient/30 animate-scale-in">
+            <Card className="text-center hover-elevate transition-all liquid-glass border-2 border-white/40 hover:border-white/60 shadow-glass hover:shadow-glass-lg animate-scale-in">
               <CardContent className="p-4 sm:p-5 md:p-6">
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-warm-gradient-strong text-white mb-3 sm:mb-4 relative shadow-warm transition-transform hover:scale-110">
                   <Search className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8" />
@@ -268,7 +268,7 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            <Card className="text-center hover-elevate transition-all border-2 hover:border-primary/50 shadow-warm hover:shadow-warm-lg bg-warm-gradient/30 animate-scale-in">
+            <Card className="text-center hover-elevate transition-all liquid-glass border-2 border-white/40 hover:border-white/60 shadow-glass hover:shadow-glass-lg animate-scale-in">
               <CardContent className="p-4 sm:p-5 md:p-6">
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-warm-gradient-strong text-white mb-3 sm:mb-4 relative shadow-warm transition-transform hover:scale-110">
                   <Shield className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8" />
@@ -283,7 +283,7 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            <Card className="text-center hover-elevate transition-all border-2 hover:border-primary/50 shadow-warm hover:shadow-warm-lg bg-warm-gradient/30 animate-scale-in">
+            <Card className="text-center hover-elevate transition-all liquid-glass border-2 border-white/40 hover:border-white/60 shadow-glass hover:shadow-glass-lg animate-scale-in">
               <CardContent className="p-4 sm:p-5 md:p-6">
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-warm-gradient-strong text-white mb-3 sm:mb-4 relative shadow-warm transition-transform hover:scale-110">
                   <CreditCard className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8" />
@@ -308,7 +308,7 @@ export default function Landing() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 max-w-5xl mx-auto">
-            <Card className="flex flex-col items-center text-center hover-elevate transition-all border-2 border-transparent hover:border-primary/30 shadow-warm hover:shadow-warm-lg bg-warm-gradient/20 animate-scale-in">
+            <Card className="flex flex-col items-center text-center hover-elevate transition-all glass-card border-2 border-white/30 hover:border-white/50 shadow-glass hover:shadow-glass-lg animate-scale-in">
               <CardContent className="p-4 sm:p-5 md:p-6">
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-warm-gradient-strong text-white mb-3 sm:mb-4 shadow-warm transition-transform hover:scale-110">
                   <Shield className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -318,7 +318,7 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            <Card className="flex flex-col items-center text-center hover-elevate transition-all border-2 border-transparent hover:border-primary/30 shadow-warm hover:shadow-warm-lg bg-warm-gradient/20 animate-scale-in">
+            <Card className="flex flex-col items-center text-center hover-elevate transition-all glass-card border-2 border-white/30 hover:border-white/50 shadow-glass hover:shadow-glass-lg animate-scale-in">
               <CardContent className="p-4 sm:p-5 md:p-6">
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-warm-gradient-strong text-white mb-3 sm:mb-4 shadow-warm transition-transform hover:scale-110">
                   <CreditCard className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -328,7 +328,7 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            <Card className="flex flex-col items-center text-center hover-elevate transition-all border-2 border-transparent hover:border-primary/30 shadow-warm hover:shadow-warm-lg bg-warm-gradient/20 animate-scale-in">
+            <Card className="flex flex-col items-center text-center hover-elevate transition-all glass-card border-2 border-white/30 hover:border-white/50 shadow-glass hover:shadow-glass-lg animate-scale-in">
               <CardContent className="p-4 sm:p-5 md:p-6">
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-warm-gradient-strong text-white mb-3 sm:mb-4 shadow-warm transition-transform hover:scale-110">
                   <MapPin className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -338,7 +338,7 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            <Card className="flex flex-col items-center text-center hover-elevate transition-all border-2 border-transparent hover:border-primary/30 shadow-warm hover:shadow-warm-lg bg-warm-gradient/20 animate-scale-in">
+            <Card className="flex flex-col items-center text-center hover-elevate transition-all glass-card border-2 border-white/30 hover:border-white/50 shadow-glass hover:shadow-glass-lg animate-scale-in">
               <CardContent className="p-4 sm:p-5 md:p-6">
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-warm-gradient-strong text-white mb-3 sm:mb-4 shadow-warm transition-transform hover:scale-110">
                   <Users className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -354,7 +354,7 @@ export default function Landing() {
       {!isAuthenticated && (
       <section className="py-8 sm:py-12 md:py-16">
         <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-          <Card className="bg-warm-gradient-strong text-white shadow-warm-lg border-0 animate-fade-in">
+          <Card className="bg-warm-gradient-strong text-white shadow-glass-lg border-0 animate-fade-in liquid-glass">
             <CardContent className="p-6 sm:p-8 md:p-10 lg:p-12 text-center">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-2">{t('landing.cta.title')}</h2>
               <p className="text-sm sm:text-base md:text-lg mb-5 sm:mb-6 text-primary-foreground/90 px-3">
