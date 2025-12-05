@@ -3,6 +3,7 @@ import App from "./App";
 import "./index.css";
 import { LanguageProvider } from "./lib/useLanguage";
 import "./lib/cacheUtils"; // Load cache utilities globally
+import { preloadAssets, clearExpiredCache } from "./lib/assetPreloader";
 
 // Type declaration for window properties
 declare global {
@@ -43,10 +44,47 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// Marquer le body comme chargé
-if (typeof document !== 'undefined') {
-  document.body.classList.add('loaded');
+// Asset preloading and app initialization
+async function initializeApp() {
+  const loader = document.getElementById('initial-loader');
+  const progressText = loader?.querySelector('.loader-progress') as HTMLElement;
+  
+  // Clear expired cache in background
+  clearExpiredCache().catch(() => {
+    // Ignore errors
+  });
+  
+  // Preload assets with progress tracking
+  try {
+    await preloadAssets((progress) => {
+      if (progressText) {
+        progressText.textContent = `${progress.percentage}%`;
+      }
+    });
+  } catch (error) {
+    console.warn('Some assets failed to preload:', error);
+    // Continue anyway
+  }
+  
+  // Mark body as loaded
+  if (typeof document !== 'undefined') {
+    document.body.classList.add('loaded');
+  }
+  
+  // Hide loader
+  if (loader) {
+    loader.classList.add('hidden');
+    setTimeout(() => {
+      loader.remove();
+    }, 300);
+  }
+  
+  // Render app
+  renderApp();
 }
+
+// Start initialization
+initializeApp();
 
 // Unregister service worker if it's causing issues (one-time check)
 if ('serviceWorker' in navigator) {
@@ -189,5 +227,4 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-// Rendre l'app
-renderApp();
+// App will be rendered by initializeApp() after assets are loaded
