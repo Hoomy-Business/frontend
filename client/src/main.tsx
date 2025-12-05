@@ -12,9 +12,10 @@ declare global {
   }
 }
 
-// Corriger le pathname si on est sur /index.html/...
-if (window.location.pathname.startsWith('/index.html/')) {
-  const cleanPath = window.location.pathname.replace('/index.html', '');
+// Corriger le pathname si on est sur /index.html ou /index.html/...
+const currentPath = window.location.pathname;
+if (currentPath === '/index.html' || currentPath.startsWith('/index.html/')) {
+  const cleanPath = currentPath === '/index.html' ? '/' : currentPath.replace('/index.html', '');
   window.history.replaceState(null, '', cleanPath + window.location.search + window.location.hash);
 }
 
@@ -22,10 +23,10 @@ if (window.location.pathname.startsWith('/index.html/')) {
 if (typeof window !== 'undefined') {
   const redirectPath = sessionStorage.getItem('redirectPath');
   const redirectHandled = sessionStorage.getItem('redirectHandled');
-  const currentPath = window.location.pathname;
+  const pathname = window.location.pathname;
   
   // Handle redirect from 404.html when we're on / or /index.html
-  if (redirectPath && (currentPath === '/' || currentPath === '/index.html') && !redirectHandled) {
+  if (redirectPath && (pathname === '/' || pathname === '/index.html') && !redirectHandled) {
     sessionStorage.setItem('redirectHandled', 'true');
     sessionStorage.removeItem('redirectPath');
     
