@@ -90,7 +90,7 @@ export default defineConfig({
           const name = assetInfo.name || '';
           
           // Root-level public assets (from client/public/)
-          const rootAssets = ['logo.svg', 'favicon.png', 'manifest.json', 'sw.js'];
+          const rootAssets = ['logo.svg', 'favicon.png', 'manifest.json', 'sw.js', '404.html'];
           if (rootAssets.some(asset => name === asset || name.endsWith('/' + asset))) {
             return '[name][extname]';
           }

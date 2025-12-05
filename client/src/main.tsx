@@ -22,8 +22,10 @@ if (window.location.pathname.startsWith('/index.html/')) {
 if (typeof window !== 'undefined') {
   const redirectPath = sessionStorage.getItem('redirectPath');
   const redirectHandled = sessionStorage.getItem('redirectHandled');
+  const currentPath = window.location.pathname;
   
-  if (redirectPath && window.location.pathname === '/' && !redirectHandled) {
+  // Handle redirect from 404.html when we're on / or /index.html
+  if (redirectPath && (currentPath === '/' || currentPath === '/index.html') && !redirectHandled) {
     sessionStorage.setItem('redirectHandled', 'true');
     sessionStorage.removeItem('redirectPath');
     
@@ -32,6 +34,7 @@ if (typeof window !== 'undefined') {
       sessionStorage.removeItem('redirectHandled');
     }, 5000);
     
+    // Use replaceState to update the URL without reloading
     setTimeout(() => {
       window.history.replaceState(null, '', redirectPath);
       window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
