@@ -677,7 +677,7 @@ function StripeConfiguration({
   // If not owner, show info message
   if (!isOwner) {
     return (
-      <Card>
+      <Card className="glass-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
