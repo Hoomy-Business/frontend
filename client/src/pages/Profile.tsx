@@ -239,7 +239,7 @@ export default function Profile() {
           </p>
         </div>
 
-        <Card className="glass-card">
+        <Card>
           <CardHeader>
             <CardTitle>{t('dashboard.profile.title')}</CardTitle>
             <CardDescription>{t('dashboard.profile.desc')}</CardDescription>
