@@ -15,6 +15,7 @@ import { LanguageSelector } from '@/components/LanguageSelector';
 import { useLanguage } from '@/lib/useLanguage';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 import { formatUserDisplayName, getUserProfilePicture, getUserInitials, isUserDeleted } from '@/lib/userUtils';
+import { AbsoluteLink } from '@/components/AbsoluteLink';
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -54,29 +55,37 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
               {isAuthenticated && user ? (
                 <>
                   {isStudent && (
-                    <Link href="/dashboard/student" data-testid="link-dashboard-student">
+                    <AbsoluteLink 
+                      href="/dashboard/student" 
+                      data-testid="link-dashboard-student"
+                      className={`${location.startsWith('/dashboard/student') ? 'bg-accent' : ''} hidden sm:flex`}
+                    >
                       <Button 
                         variant="ghost"
                         size="sm"
-                        className={`${location.startsWith('/dashboard/student') ? 'bg-accent' : ''} hidden sm:flex active:scale-95 transition-transform duration-100`}
+                        className="active:scale-95 transition-transform duration-100"
                       >
                         <User className="h-4 w-4 mr-1.5 sm:mr-2" />
                         <span className="hidden lg:inline">{t('nav.dashboard')}</span>
                       </Button>
-                    </Link>
+                    </AbsoluteLink>
                   )}
                   
                   {isOwner && (
-                    <Link href="/dashboard/owner" data-testid="link-dashboard-owner">
+                    <AbsoluteLink 
+                      href="/dashboard/owner" 
+                      data-testid="link-dashboard-owner"
+                      className={`${location.startsWith('/dashboard/owner') ? 'bg-accent' : ''} hidden sm:flex`}
+                    >
                       <Button 
                         variant="ghost"
                         size="sm"
-                        className={`${location.startsWith('/dashboard/owner') ? 'bg-accent' : ''} hidden sm:flex active:scale-95 transition-transform duration-100`}
+                        className="active:scale-95 transition-transform duration-100"
                       >
                         <Building2 className="h-4 w-4 mr-1.5 sm:mr-2" />
                         <span className="hidden lg:inline">{t('nav.dashboard')}</span>
                       </Button>
-                    </Link>
+                    </AbsoluteLink>
                   )}
 
                   {user.role === 'admin' && (
@@ -122,21 +131,21 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                       </div>
                       <DropdownMenuSeparator />
                       {isStudent && (
-                        <Link href="/dashboard/student" data-testid="link-dashboard-student-mobile">
+                        <AbsoluteLink href="/dashboard/student" data-testid="link-dashboard-student-mobile">
                           <DropdownMenuItem className="cursor-pointer">
                             <User className="h-4 w-4 mr-2" />
                             {t('nav.dashboard')}
                           </DropdownMenuItem>
-                        </Link>
+                        </AbsoluteLink>
                       )}
                       {isOwner && (
                         <>
-                          <Link href="/dashboard/owner" data-testid="link-dashboard-owner-mobile">
+                          <AbsoluteLink href="/dashboard/owner" data-testid="link-dashboard-owner-mobile">
                             <DropdownMenuItem className="cursor-pointer">
                               <Building2 className="h-4 w-4 mr-2" />
                               {t('nav.dashboard')}
                             </DropdownMenuItem>
-                          </Link>
+                          </AbsoluteLink>
                           <Link href="/properties/create" data-testid="link-create-property">
                             <DropdownMenuItem className="cursor-pointer">
                               <Building2 className="h-4 w-4 mr-2" />
