@@ -112,17 +112,8 @@ export default function StudentDashboard() {
   const contracts: Contract[] = Array.isArray(contractsData) ? contractsData : [];
 
 
-  // Redirect to appropriate routes instead of using tabs
-  useEffect(() => {
-    if (isAuthenticated && isStudent) {
-      // Redirect based on current location or default to profile
-      const currentPath = window.location.pathname;
-      if (currentPath === '/dashboard/student') {
-        // Default dashboard view - show overview or redirect to profile
-        setLocation('/profile');
-      }
-    }
-  }, [isAuthenticated, isStudent, setLocation]);
+  // Note: No automatic redirect - users can see the dashboard overview with navigation buttons
+  // They can click on the buttons to navigate to specific pages
 
   return (
     <MainLayout>

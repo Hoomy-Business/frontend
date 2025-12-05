@@ -166,6 +166,13 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                           <DropdownMenuSeparator />
                         </>
                       )}
+                      <Link href="/profile" data-testid="link-profile">
+                        <DropdownMenuItem className="cursor-pointer">
+                          <User className="h-4 w-4 mr-2" />
+                          {t('dashboard.profile.title')}
+                        </DropdownMenuItem>
+                      </Link>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         onClick={logout} 
                         className="cursor-pointer text-destructive focus:text-destructive"

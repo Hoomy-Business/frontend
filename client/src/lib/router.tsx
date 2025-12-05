@@ -158,12 +158,6 @@ export const routes: RouteConfig[] = [
     component: createLazyComponent(() => import('@/pages/MyProperties'), 'MyProperties'),
     preloadOn: 'idle',
   },
-  {
-    path: '/my-properties',
-    priority: RoutePriority.HIGH,
-    component: createLazyComponent(() => import('@/pages/MyProperties'), 'MyProperties'),
-    preloadOn: 'idle',
-  },
   
   // === MEDIUM PRIORITY (Tier 2) - Lazy loaded ===
   {
