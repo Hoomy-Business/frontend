@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Search, MessageSquare, User, LogOut, Shield, Building2 } from 'lucide-react';
+import { Search, MessageSquare, User, LogOut, Shield, Building2, Heart, Inbox, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import {
@@ -15,7 +15,6 @@ import { LanguageSelector } from '@/components/LanguageSelector';
 import { useLanguage } from '@/lib/useLanguage';
 import { normalizeImageUrl } from '@/lib/imageUtils';
 import { formatUserDisplayName, getUserProfilePicture, getUserInitials, isUserDeleted } from '@/lib/userUtils';
-import { AbsoluteLink } from '@/components/AbsoluteLink';
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -54,40 +53,6 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
               <LanguageSelector />
               {isAuthenticated && user ? (
                 <>
-                  {isStudent && (
-                    <AbsoluteLink 
-                      href="/dashboard/student" 
-                      data-testid="link-dashboard-student"
-                      className={`${location.startsWith('/dashboard/student') ? 'bg-accent' : ''} hidden sm:flex`}
-                    >
-                      <Button 
-                        variant="ghost"
-                        size="sm"
-                        className="active:scale-95 transition-transform duration-100"
-                      >
-                        <User className="h-4 w-4 mr-1.5 sm:mr-2" />
-                        <span className="hidden lg:inline">{t('nav.dashboard')}</span>
-                      </Button>
-                    </AbsoluteLink>
-                  )}
-                  
-                  {isOwner && (
-                    <AbsoluteLink 
-                      href="/dashboard/owner" 
-                      data-testid="link-dashboard-owner"
-                      className={`${location.startsWith('/dashboard/owner') ? 'bg-accent' : ''} hidden sm:flex`}
-                    >
-                      <Button 
-                        variant="ghost"
-                        size="sm"
-                        className="active:scale-95 transition-transform duration-100"
-                      >
-                        <Building2 className="h-4 w-4 mr-1.5 sm:mr-2" />
-                        <span className="hidden lg:inline">{t('nav.dashboard')}</span>
-                      </Button>
-                    </AbsoluteLink>
-                  )}
-
                   {user.role === 'admin' && (
                     <Link href="/admin/dashboard" data-testid="link-dashboard-admin">
                       <Button 
@@ -101,13 +66,87 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                     </Link>
                   )}
 
+                  {/* Navigation icons for students */}
+                  {isStudent && (
+                    <>
+                      <Link href="/favorites" data-testid="link-favorites">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className={`${location === '/favorites' ? 'bg-accent' : ''} h-9 w-9 sm:h-10 sm:w-10 active:scale-95 transition-transform duration-100`}
+                          title={t('dashboard.student.favorites')}
+                        >
+                          <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
+                        </Button>
+                      </Link>
+                      <Link href="/requests" data-testid="link-requests">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className={`${location === '/requests' ? 'bg-accent' : ''} h-9 w-9 sm:h-10 sm:w-10 active:scale-95 transition-transform duration-100`}
+                          title={t('dashboard.student.requests')}
+                        >
+                          <Inbox className="h-4 w-4 sm:h-5 sm:w-5" />
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+
+                  {/* Navigation icons for owners */}
+                  {isOwner && (
+                    <>
+                      <Link href="/my-properties" data-testid="link-my-properties">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className={`${location === '/my-properties' ? 'bg-accent' : ''} h-9 w-9 sm:h-10 sm:w-10 active:scale-95 transition-transform duration-100`}
+                          title={t('dashboard.properties')}
+                        >
+                          <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                        </Button>
+                      </Link>
+                      <Link href="/requests" data-testid="link-requests">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className={`${location === '/requests' ? 'bg-accent' : ''} h-9 w-9 sm:h-10 sm:w-10 active:scale-95 transition-transform duration-100`}
+                          title={t('dashboard.requests')}
+                        >
+                          <Inbox className="h-4 w-4 sm:h-5 sm:w-5" />
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+
+                  {/* Common navigation icons for all authenticated users */}
                   <Link href="/messages" data-testid="link-messages">
                     <Button 
                       variant="ghost" 
                       size="icon"
                       className={`${location === '/messages' ? 'bg-accent' : ''} h-9 w-9 sm:h-10 sm:w-10 active:scale-95 transition-transform duration-100`}
+                      title={t('dashboard.messages')}
                     >
                       <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </Button>
+                  </Link>
+                  <Link href="/contracts" data-testid="link-contracts">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className={`${location === '/contracts' ? 'bg-accent' : ''} h-9 w-9 sm:h-10 sm:w-10 active:scale-95 transition-transform duration-100`}
+                      title={t('dashboard.contracts')}
+                    >
+                      <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </Button>
+                  </Link>
+                  <Link href="/profile" data-testid="link-profile-header">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className={`${location === '/profile' ? 'bg-accent' : ''} h-9 w-9 sm:h-10 sm:w-10 active:scale-95 transition-transform duration-100`}
+                      title={t('dashboard.profile.title')}
+                    >
+                      <User className="h-4 w-4 sm:h-5 sm:w-5" />
                     </Button>
                   </Link>
 
@@ -131,21 +170,35 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                       </div>
                       <DropdownMenuSeparator />
                       {isStudent && (
-                        <AbsoluteLink href="/dashboard/student" data-testid="link-dashboard-student-mobile">
-                          <DropdownMenuItem className="cursor-pointer">
-                            <User className="h-4 w-4 mr-2" />
-                            {t('nav.dashboard')}
-                          </DropdownMenuItem>
-                        </AbsoluteLink>
+                        <>
+                          <Link href="/favorites" data-testid="link-favorites-mobile">
+                            <DropdownMenuItem className="cursor-pointer">
+                              <Heart className="h-4 w-4 mr-2" />
+                              {t('dashboard.student.favorites')}
+                            </DropdownMenuItem>
+                          </Link>
+                          <Link href="/requests" data-testid="link-requests-mobile">
+                            <DropdownMenuItem className="cursor-pointer">
+                              <Inbox className="h-4 w-4 mr-2" />
+                              {t('dashboard.student.requests')}
+                            </DropdownMenuItem>
+                          </Link>
+                        </>
                       )}
                       {isOwner && (
                         <>
-                          <AbsoluteLink href="/dashboard/owner" data-testid="link-dashboard-owner-mobile">
+                          <Link href="/my-properties" data-testid="link-my-properties-mobile">
                             <DropdownMenuItem className="cursor-pointer">
                               <Building2 className="h-4 w-4 mr-2" />
-                              {t('nav.dashboard')}
+                              {t('dashboard.properties')}
                             </DropdownMenuItem>
-                          </AbsoluteLink>
+                          </Link>
+                          <Link href="/requests" data-testid="link-requests-mobile">
+                            <DropdownMenuItem className="cursor-pointer">
+                              <Inbox className="h-4 w-4 mr-2" />
+                              {t('dashboard.requests')}
+                            </DropdownMenuItem>
+                          </Link>
                           <Link href="/properties/create" data-testid="link-create-property">
                             <DropdownMenuItem className="cursor-pointer">
                               <Building2 className="h-4 w-4 mr-2" />
@@ -155,6 +208,18 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                           <DropdownMenuSeparator />
                         </>
                       )}
+                      <Link href="/messages" data-testid="link-messages-mobile">
+                        <DropdownMenuItem className="cursor-pointer">
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          {t('dashboard.messages')}
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/contracts" data-testid="link-contracts-mobile">
+                        <DropdownMenuItem className="cursor-pointer">
+                          <FileText className="h-4 w-4 mr-2" />
+                          {t('dashboard.contracts')}
+                        </DropdownMenuItem>
+                      </Link>
                       {user.role === 'admin' && (
                         <>
                           <Link href="/admin/dashboard" data-testid="link-dashboard-admin-mobile">
